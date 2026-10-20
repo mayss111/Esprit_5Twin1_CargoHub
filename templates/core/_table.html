@@ -1,0 +1,22 @@
+{% load cargohub %}
+{% if object_list %}
+  <div class="table-responsive">
+    <table class="table table-ch align-middle">
+      <thead><tr>{% for champ, libelle in colonnes %}<th>{{ libelle }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for objet in object_list %}
+          <tr>{% for champ, libelle in colonnes %}<td>{{ objet|attr:champ }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if is_paginated %}
+    <nav><ul class="pagination">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Précédent</a></li>{% endif %}
+      <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Suivant</a></li>{% endif %}
+    </ul></nav>
+  {% endif %}
+{% else %}
+  <div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Rien à afficher pour le moment.</div>
+{% endif %}

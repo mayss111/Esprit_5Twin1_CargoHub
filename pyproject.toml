@@ -1,0 +1,23 @@
+[project]
+name = "cargohub"
+version = "0.1.0"
+description = "CargoHub — covoiturage de fret entre PME et transporteurs (projet d'équipe Django)"
+requires-python = "==3.12.*"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["tests.py", "test_*.py", "tests_*.py"]
+addopts = "-q"
+filterwarnings = ["ignore:No directory at:UserWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["*/migrations/*", "staticfiles"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "DJ"]
+ignore = ["DJ001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config"]

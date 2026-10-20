@@ -1,0 +1,22 @@
+# Chaque Pull Request qui touche un module demande la relecture de son responsable.
+# Remplacez @membre1 … @membre5 par les pseudos GitHub de l'équipe.
+/apps/accounts/     @membre1
+/apps/messaging/    @membre1
+/apps/contracts/    @membre1
+/apps/shipments/    @membre2
+/apps/warehouses/   @membre2
+/apps/insurance/    @membre2
+/apps/fleet/        @membre3
+/apps/maintenance/  @membre3
+/apps/ecology/      @membre3
+/apps/bookings/     @membre4
+/apps/tenders/      @membre4
+/apps/tracking/     @membre5
+/apps/payments/     @membre5
+/apps/loyalty/      @membre5
+/apps/dashboard/    @membre5
+
+# Fichiers communs : relecture par 2 personnes (règle de protection de branche)
+/config/            @membre1 @membre2 @membre3 @membre4 @membre5
+/requirements/      @membre1 @membre2 @membre3 @membre4 @membre5
+/apps/core/         @membre1 @membre2 @membre3 @membre4 @membre5

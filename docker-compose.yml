@@ -1,0 +1,56 @@
+# Environnement de développement identique pour les 5 membres.
+#   docker compose up --build      → http://localhost:8000
+services:
+  web:
+    build:
+      context: .
+      args:
+        REQUIREMENTS: requirements/dev.txt
+    image: cargohub-dev
+    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+    volumes:
+      - .:/app            # le code de votre PC est utilisé directement (rechargement auto)
+    ports:
+      - "8000:8000"
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+
+  worker:
+    image: cargohub-dev
+    pull_policy: never
+    command: celery -A config worker --beat --loglevel=info
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+    volumes:
+      - .:/app
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cargohub
+      POSTGRES_USER: cargohub
+      POSTGRES_PASSWORD: cargohub
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cargohub"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:

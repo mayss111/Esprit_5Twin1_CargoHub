@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Django
+.env
+db.sqlite3
+media/
+staticfiles/
+
+# Éditeurs / OS
+.vscode/
+.idea/
+.DS_Store
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md

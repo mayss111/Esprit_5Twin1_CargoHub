@@ -1,0 +1,10 @@
+from django.apps import AppConfig
+
+
+class ContractsConfig(AppConfig):
+    """Contrats & documents — responsable : Membre 1."""
+
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.contracts"
+    label = "contracts"
+    verbose_name = "Contrats & documents"

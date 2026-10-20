@@ -1,0 +1,52 @@
+"""M1 — Messagerie & support. Tables : Conversation, Message, TicketSupport."""
+
+from django.conf import settings
+from django.db import models
+
+from apps.core.models import Horodate
+
+
+class Conversation(Horodate):
+    participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="conversations")
+    reservation = models.ForeignKey(
+        "bookings.Reservation", null=True, blank=True, on_delete=models.SET_NULL, related_name="conversations"
+    )
+
+    def __str__(self):
+        return f"Conversation #{self.pk}"
+
+
+class Message(Horodate):
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
+    auteur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    contenu = models.TextField()
+    piece_jointe = models.FileField(upload_to="messagerie/", blank=True)
+    lu = models.BooleanField(default=False)
+    signale = models.BooleanField(default=False)  # rempli par la modération IA
+
+    class Meta:
+        ordering = ["created_at"]
+
+
+class TicketSupport(Horodate):
+    class Priorite(models.TextChoices):
+        BASSE = "BASSE", "Basse"
+        NORMALE = "NORMALE", "Normale"
+        HAUTE = "HAUTE", "Haute"
+
+    class Statut(models.TextChoices):
+        OUVERT = "OUVERT", "Ouvert"
+        EN_COURS = "EN_COURS", "En cours"
+        RESOLU = "RESOLU", "Résolu"
+
+    auteur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tickets")
+    sujet = models.CharField(max_length=150)
+    description = models.TextField()
+    priorite = models.CharField(max_length=10, choices=Priorite.choices, default=Priorite.NORMALE)
+    statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.OUVERT)
+    assigne_a = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="tickets_assignes"
+    )
+
+    def __str__(self):
+        return self.sujet

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Connexion{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-5">
+  <div class="card card-ch p-4">
+    <h1 class="page-title h3 mb-3">Connexion</h1>
+    <form method="post">{% csrf_token %}
+      {{ form|crispy }}
+      <button class="btn btn-primary w-100" type="submit">Se connecter</button>
+    </form>
+    <div class="todo mt-3 small"><b>Membre 1 :</b> ajouter « Mot de passe oublié », la connexion Google et la double authentification des admins.</div>
+    <p class="mt-3 mb-0 text-center small">Pas encore de compte ? <a href="{% url 'accounts:inscription' %}">S’inscrire</a></p>
+  </div>
+</div></div>
+{% endblock %}

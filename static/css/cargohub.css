@@ -1,0 +1,51 @@
+/* Charte CargoHub — mêmes couleurs que la présentation et le logo */
+:root {
+  --ch-navy: #0F1E3D;
+  --ch-amber: #F59E0B;
+  --ch-amber-dark: #B45309;
+  --ch-ink: #1B2436;
+  --ch-muted: #5B6478;
+  --ch-panel: #F3F5F9;
+  --ch-border: #DCE2EB;
+  --bs-primary: #0F1E3D;
+  --bs-primary-rgb: 15, 30, 61;
+  --bs-body-color: #1B2436;
+  --bs-body-font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body { background: #fff; }
+a { color: var(--ch-navy); }
+
+.btn-primary { --bs-btn-bg: var(--ch-navy); --bs-btn-border-color: var(--ch-navy);
+  --bs-btn-hover-bg: #1C2E55; --bs-btn-hover-border-color: #1C2E55; }
+.btn-accent { --bs-btn-bg: var(--ch-amber); --bs-btn-border-color: var(--ch-amber); --bs-btn-color: var(--ch-navy);
+  --bs-btn-hover-bg: #E08E00; --bs-btn-hover-border-color: #E08E00; --bs-btn-font-weight: 700; }
+
+.navbar-ch { background: var(--ch-navy); }
+.navbar-ch .nav-link { color: #DCE4F4; white-space: nowrap; }
+.navbar-ch .nav-link:hover, .navbar-ch .nav-link.active { color: var(--ch-amber); }
+
+.kicker { font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ch-amber-dark); }
+.page-title { font-weight: 800; color: var(--ch-navy); letter-spacing: -.02em; }
+
+.hero { background: var(--ch-navy); color: #fff; border-radius: 1rem; }
+.hero h1 { font-weight: 800; letter-spacing: -.03em; }
+.hero .accent { color: var(--ch-amber); }
+
+.card-ch { border: 1px solid var(--ch-border); border-radius: .9rem; }
+.card-ch:hover { border-color: var(--ch-amber); }
+.icon-tile { width: 42px; height: 42px; border-radius: 10px; background: var(--ch-navy); color: var(--ch-amber);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+
+.table-ch thead th { background: var(--ch-navy); color: #fff; font-weight: 600; border: 0; }
+.table-ch thead th:first-child { border-top-left-radius: .6rem; }
+.table-ch thead th:last-child { border-top-right-radius: .6rem; }
+
+/* Back-office */
+.bo-sidebar { width: 250px; min-height: 100vh; background: var(--ch-navy); }
+.bo-sidebar .nav-link { color: #C9D4EA; border-radius: .5rem; padding: .4rem .7rem; font-size: .92rem; }
+.bo-sidebar .nav-link:hover { background: #1C2E55; color: #fff; }
+.bo-group { font-size: .7rem; font-weight: 800; letter-spacing: .12em; margin: 1rem .7rem .3rem; }
+.kpi { border: 1px solid var(--ch-border); border-radius: .9rem; padding: 1.1rem 1.2rem; }
+.kpi .val { font-size: 1.8rem; font-weight: 800; color: var(--ch-navy); }
+.todo { border: 1px dashed var(--ch-amber); background: #FFF8EA; border-radius: .7rem; padding: .7rem 1rem; font-size: .9rem; }
