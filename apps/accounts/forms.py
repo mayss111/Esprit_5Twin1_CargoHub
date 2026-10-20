@@ -18,6 +18,15 @@ class InscriptionForm(UserCreationForm):
         model = Utilisateur
         fields = ("email", "first_name", "last_name", "telephone", "role")
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["email"].label = "Adresse email"
+        self.fields["first_name"].label = "Prénom"
+        self.fields["last_name"].label = "Nom"
+        self.fields["telephone"].label = "Téléphone"
+        self.fields["password1"].label = "Mot de passe"
+        self.fields["password2"].label = "Confirmation du mot de passe"
+
     def clean(self):
         data = super().clean()
         if data.get("role") == Role.PME and not data.get("raison_sociale"):
@@ -35,4 +44,8 @@ class InscriptionForm(UserCreationForm):
 
 
 class ConnexionForm(AuthenticationForm):
-    username = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"autofocus": True}))
+    username = forms.EmailField(label="Adresse email", widget=forms.EmailInput(attrs={"autofocus": True}))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["password"].label = "Mot de passe"
