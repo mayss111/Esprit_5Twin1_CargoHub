@@ -1,0 +1,24 @@
+<div class="voice-panel">
+  {% if not masquer_notice %}
+  <p class="voice-notice" id="voice-privacy">
+    <i class="bi bi-mic" aria-hidden="true"></i>
+    Dictez les champs signalés par un microphone. CargoHub n’enregistre ni l’audio ni la transcription.
+    Selon le navigateur, la reconnaissance peut passer par son service vocal.
+    Relisez chaque champ : le formulaire n’est jamais envoyé automatiquement.
+  </p>
+  {% endif %}
+  <div class="voice-toolbar" data-voice-controls>
+    <label class="form-label mb-0" for="voice-lang">Langue de dictée</label>
+    <select id="voice-lang" class="form-select form-select-sm" data-voice-lang aria-describedby="voice-lang-hint">
+      <option value="fr-FR">Français</option>
+      <option value="ar-TN">Arabe tunisien</option>
+      <option value="en-US">Anglais</option>
+    </select>
+    <p class="voice-hint" id="voice-lang-hint">
+      L’arabe tunisien dépend du moteur du navigateur. S’il n’est pas reconnu, un message vous proposera le français ou l’anglais.
+    </p>
+  </div>
+  <p class="voice-fallback d-none" data-voice-fallback role="status">
+    La dictée vocale n’est pas disponible dans ce navigateur. Utilisez Chrome ou Edge sur cet ordinateur, ou remplissez tous les champs au clavier.
+  </p>
+</div>
