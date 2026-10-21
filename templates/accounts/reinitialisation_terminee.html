@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Mot de passe modifié{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-5">
+  <div class="card card-ch p-4 text-center">
+    <i class="bi bi-check-circle display-5 text-success"></i>
+    <h1 class="page-title h4 my-3">Mot de passe modifié</h1>
+    <a class="btn btn-primary w-100" href="{% url 'accounts:connexion' %}">Se connecter</a>
+  </div>
+</div></div>
+{% endblock %}

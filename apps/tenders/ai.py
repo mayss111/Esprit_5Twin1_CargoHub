@@ -18,6 +18,18 @@ def _formule(distance_km: float, poids_kg: float) -> float:
     return max(PRIX_MINIMUM, distance_km * (poids_kg / 1000) * PRIX_KM_TONNE + 20)
 
 
+def caracteristiques(distance_km: float, poids_kg: float) -> list[float]:
+    """Variables du modèle. Le prix dépend surtout de « distance × tonnes » (comme la formule)."""
+    return [distance_km, poids_kg, distance_km * poids_kg / 1000]
+
+
+def entrainer(historique: list) -> object:
+    """Entraîne la régression sur [(distance, poids, prix), …] — utilisée aussi par `evaluer_ia`."""
+    from sklearn.linear_model import LinearRegression
+
+    return LinearRegression().fit([caracteristiques(d, p) for d, p, _ in historique], [prix for *_, prix in historique])
+
+
 def suggerer_prix(distance_km: float, poids_kg: float) -> dict:
     """Renvoie {"prix": Decimal, "methode": str}."""
     historique = [
@@ -27,10 +39,8 @@ def suggerer_prix(distance_km: float, poids_kg: float) -> dict:
         .prefetch_related("appel__expedition__articles")[:500]
     ]
     if len(historique) >= 10:
-        from sklearn.linear_model import LinearRegression
-
-        modele = LinearRegression().fit([[d, p] for d, p, _ in historique], [prix for *_, prix in historique])
-        prix = float(modele.predict([[distance_km, poids_kg]])[0])
+        modele = entrainer(historique)
+        prix = float(modele.predict([caracteristiques(distance_km, poids_kg)])[0])
         methode = f"régression sur {len(historique)} offres"
     else:
         prix, methode = _formule(distance_km, poids_kg), "formule"
