@@ -1,0 +1,37 @@
+{% extends "backoffice/base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}{{ utilisateur.email }}{% endblock %}
+{% block content %}
+<nav aria-label="Fil d’Ariane"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bo_accounts:liste' %}">Utilisateurs</a></li><li class="breadcrumb-item active" aria-current="page">{{ utilisateur.email }}</li></ol></nav>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <h1 class="page-title mb-0">{{ utilisateur.get_full_name|default:utilisateur.email }}</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-primary" href="{% url 'bo_accounts:modifier' utilisateur.pk %}"><i class="bi bi-pencil" aria-hidden="true"></i> Modifier</a>
+    {% if utilisateur != user %}<a class="btn btn-outline-danger" href="{% url 'bo_accounts:supprimer' utilisateur.pk %}"><i class="bi bi-trash" aria-hidden="true"></i> Supprimer</a>{% endif %}
+  </div>
+</div>
+<div class="card card-ch p-4 mb-3">
+  <dl class="row mb-0">
+    <dt class="col-sm-3">Email</dt><dd class="col-sm-9">{{ utilisateur.email }}</dd>
+    <dt class="col-sm-3">Rôle</dt><dd class="col-sm-9">{{ utilisateur.get_role_display }}</dd>
+    <dt class="col-sm-3">Téléphone</dt><dd class="col-sm-9">{{ utilisateur.telephone|default:"—" }}</dd>
+    <dt class="col-sm-3">Compte actif</dt><dd class="col-sm-9">{{ utilisateur.is_active|yesno:"Oui,Non" }}</dd>
+    <dt class="col-sm-3">Inscrit le</dt><dd class="col-sm-9">{{ utilisateur.date_joined|date:"d/m/Y H:i" }}</dd>
+    {% if utilisateur.profil_pme %}<dt class="col-sm-3">Entreprise</dt><dd class="col-sm-9">{{ utilisateur.profil_pme.raison_sociale }}{% if utilisateur.profil_pme.matricule_fiscal %} ({{ utilisateur.profil_pme.matricule_fiscal }}){% endif %}</dd>{% endif %}
+  </dl>
+</div>
+{% if profil_transporteur %}
+<div class="card card-ch p-4">
+  <h2 class="h5">Validation des documents</h2>
+  <ul class="list-unstyled small">
+    <li>Numéro de permis : {{ profil_transporteur.numero_permis|default:"—" }}</li>
+    <li>Permis : {% if profil_transporteur.permis %}<a href="{{ profil_transporteur.permis.url }}" target="_blank" rel="noopener">ouvrir<span class="visually-hidden"> le permis (nouvel onglet)</span></a>{% else %}non déposé{% endif %}</li>
+    <li>Carte grise : {% if profil_transporteur.carte_grise %}<a href="{{ profil_transporteur.carte_grise.url }}" target="_blank" rel="noopener">ouvrir<span class="visually-hidden"> la carte grise (nouvel onglet)</span></a>{% else %}non déposée{% endif %}</li>
+  </ul>
+  <form method="post" action="{% url 'bo_accounts:valider' utilisateur.pk %}" class="d-flex flex-wrap gap-2 align-items-end">{% csrf_token %}
+    <div>{{ form_validation|crispy }}</div>
+    <button class="btn btn-accent mb-3" type="submit">Enregistrer la décision</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}
