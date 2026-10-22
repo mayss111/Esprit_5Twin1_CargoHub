@@ -1,0 +1,33 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Tickets de support{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-2">
+  <h1 class="page-title mb-0">Tickets de support</h1>
+  <a class="btn btn-outline-secondary" href="{% url 'bo_messaging:moderation' %}"><i class="bi bi-flag" aria-hidden="true"></i> Messages signalés</a>
+</div>
+<p class="text-muted">{{ page_obj.paginator.count }} ticket(s)</p>
+<nav class="nav nav-pills mb-3" aria-label="Filtrer par statut">
+  <a class="nav-link {% if not request.GET.statut %}active{% endif %}" href="?" {% if not request.GET.statut %}aria-current="page"{% endif %}>Tous</a>
+  {% for valeur, libelle in statuts %}
+  <a class="nav-link {% if request.GET.statut == valeur %}active{% endif %}" href="?statut={{ valeur }}" {% if request.GET.statut == valeur %}aria-current="page"{% endif %}>{{ libelle }}</a>
+  {% endfor %}
+</nav>
+{% if object_list %}
+<div class="table-responsive"><table class="table table-ch align-middle">
+  <caption class="visually-hidden">Tickets de support</caption>
+  <thead><tr><th scope="col">Sujet</th><th scope="col">Auteur</th><th scope="col">Priorité</th><th scope="col">Statut</th><th scope="col">Assigné à</th><th scope="col">Ouvert le</th></tr></thead>
+  <tbody>{% for t in object_list %}
+    <tr>
+      <td><a href="{% url 'bo_messaging:ticket' t.pk %}">{{ t.sujet }}</a></td>
+      <td>{{ t.auteur }}</td>
+      <td>{% if t.priorite == "HAUTE" %}<span class="badge text-bg-danger">Haute</span>{% else %}{{ t.get_priorite_display }}{% endif %}</td>
+      <td>{% include "messaging/_statut_ticket.html" with ticket=t %}</td>
+      <td>{{ t.assigne_a|default:"—" }}</td>
+      <td>{{ t.created_at|date:"d/m/Y H:i" }}</td>
+    </tr>{% endfor %}
+  </tbody></table></div>
+{% include "core/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5">Aucun ticket.</div>
+{% endif %}
+{% endblock %}

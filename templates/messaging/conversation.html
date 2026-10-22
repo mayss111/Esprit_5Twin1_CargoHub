@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags static %}
+{% block title %}Conversation{% endblock %}
+{% block content %}
+<nav aria-label="Fil d’Ariane"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'messaging:liste' %}">Messagerie</a></li><li class="breadcrumb-item active" aria-current="page">Conversation #{{ conversation.pk }}</li></ol></nav>
+<h1 class="page-title h3 mb-1">Avec {% for p in interlocuteurs %}{{ p }}{% if not forloop.last %}, {% endif %}{% empty %}vous seul{% endfor %}</h1>
+{% if conversation.reservation %}<p class="text-muted">À propos de la {{ conversation.reservation|lower }}</p>{% endif %}
+
+<div class="card card-ch p-3 mb-3 chat-fil">
+  <ol class="list-unstyled mb-0" id="fil" data-conversation="{{ conversation.pk }}" data-moi="{{ user.pk }}" aria-live="polite" aria-label="Messages de la conversation">
+    {% for m, texte in fil %}
+    <li class="chat-message {% if m.auteur_id == user.pk %}chat-moi{% endif %}"{% if forloop.last %} id="dernier"{% endif %}>
+      <div class="small text-muted">{{ m.auteur }} · {{ m.created_at|date:"d/m H:i" }}
+        {% if m.signale and m.auteur_id == user.pk %}<span class="badge text-bg-danger ms-1">Signalé : {{ m.raison_signalement|default:"modération" }}</span>{% endif %}</div>
+      <div class="chat-bulle {% if m.signale %}fst-italic{% endif %}">{{ texte|linebreaksbr }}</div>
+      {% if m.piece_jointe and not m.signale %}<a class="small" href="{{ m.piece_jointe.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip" aria-hidden="true"></i> Pièce jointe<span class="visually-hidden"> (nouvel onglet)</span></a>{% endif %}
+      {% if m.auteur_id == user.pk %}
+      <form method="post" action="{% url 'messaging:message_supprimer' m.pk %}" class="d-inline">{% csrf_token %}
+        <button class="btn btn-link btn-sm p-0 text-danger" type="submit" aria-label="Supprimer ce message du {{ m.created_at|date:'d/m H:i' }}"><i class="bi bi-trash" aria-hidden="true"></i></button>
+      </form>
+      {% endif %}
+    </li>
+    {% empty %}
+    <li class="text-muted" data-vide>Aucun message pour le moment.</li>
+    {% endfor %}
+  </ol>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="card card-ch p-3">{% csrf_token %}
+  {{ form|crispy }}
+  <p class="small text-muted">Les messages sont vérifiés automatiquement : pas de numéro de téléphone ni de paiement en dehors de CargoHub.</p>
+  <button class="btn btn-primary" type="submit"><i class="bi bi-send" aria-hidden="true"></i> Envoyer</button>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/messagerie.js' %}" defer></script>
+{% endblock %}

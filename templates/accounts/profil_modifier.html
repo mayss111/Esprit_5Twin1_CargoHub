@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Modifier mon profil{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-lg-7">
+  <h1 class="page-title mb-4">Modifier mon profil</h1>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <fieldset class="card card-ch p-4 mb-3">
+      <legend class="h5">Compte</legend>
+      <p class="small text-muted">Email : {{ user.email }} (non modifiable)</p>
+      {{ form|crispy }}
+    </fieldset>
+    {% if form_profil %}
+    <fieldset class="card card-ch p-4 mb-3">
+      <legend class="h5">{% if user.role == "PME" %}Entreprise{% else %}Documents du transporteur{% endif %}</legend>
+      {% if user.role == "TRANSPORTEUR" %}<p class="small text-muted">Un nouveau document repasse le compte « en attente de validation » par un administrateur.</p>{% endif %}
+      {{ form_profil|crispy }}
+    </fieldset>
+    {% endif %}
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" type="submit">Enregistrer</button>
+      <a class="btn btn-outline-secondary" href="{% url 'accounts:profil' %}">Annuler</a>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}{% if object %}Modifier le ticket{% else %}Nouveau ticket{% endif %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-lg-7">
+  <h1 class="page-title mb-3">{% if object %}Modifier le ticket{% else %}Nouveau ticket{% endif %}</h1>
+  <div class="card card-ch p-4">
+    <form method="post">{% csrf_token %}
+      {{ form|crispy }}
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="submit">{% if object %}Enregistrer{% else %}Envoyer le ticket{% endif %}</button>
+        <a class="btn btn-outline-secondary" href="{% if object %}{% url 'messaging:ticket' object.pk %}{% else %}{% url 'messaging:tickets' %}{% endif %}">Annuler</a>
+      </div>
+    </form>
+  </div>
+</div></div>
+{% endblock %}
