@@ -1,0 +1,90 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+{% block title %}Expéditions{% endblock %}
+{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}" rel="stylesheet">{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <h1 class="page-title mb-1">Toutes les expéditions</h1>
+  <p class="text-muted mb-0">{{ page_obj.paginator.count }} expédition{{ page_obj.paginator.count|pluralize }} sur la plateforme.</p>
+</div>
+
+<form method="get" class="card card-ch p-3 mb-4" role="search" data-filtre-auto>
+  <div class="row g-3 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label" for="bo-reference">Référence</label>
+      <input class="form-control" id="bo-reference" name="q" value="{{ filtre.q }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="bo-pme">Entreprise</label>
+      <input class="form-control" id="bo-pme" name="pme" value="{{ filtre.pme }}" placeholder="Raison sociale ou email">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="bo-statut">Statut</label>
+      <select class="form-select" id="bo-statut" name="statut">
+        <option value="">Tous</option>
+        {% for valeur, libelle in statuts %}
+          <option value="{{ valeur }}" {% if filtre.statut == valeur %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="bo-date">Date</label>
+      <input class="form-control" id="bo-date" type="date" name="date" value="{{ filtre.date }}">
+    </div>
+  </div>
+</form>
+
+{% if expeditions %}
+  <div class="table-responsive">
+    <table class="table table-ch align-middle">
+      <thead>
+        <tr>
+          <th>Référence</th>
+          <th>Entreprise</th>
+          <th>Départ</th>
+          <th>Arrivée</th>
+          <th>Date</th>
+          <th>Poids</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for expedition in expeditions %}
+          <tr>
+            <td>{{ expedition.reference }}</td>
+            <td>
+              <div>{{ expedition.pme.profil_pme.raison_sociale|default:expedition.pme.email }}</div>
+              {% if expedition.pme.profil_pme.raison_sociale %}
+                <div class="small text-muted">{{ expedition.pme.email }}</div>
+              {% endif %}
+            </td>
+            <td>{{ expedition.adresse_depart.ville }}</td>
+            <td>{{ expedition.adresse_arrivee.ville }}</td>
+            <td>{{ expedition.date_souhaitee|date:"d/m/Y" }}</td>
+            <td>{{ expedition.poids_total_kg }} kg</td>
+            <td><span class="badge-statut badge-{{ expedition.statut }}">{{ expedition.get_statut_display }}</span></td>
+            <td><a href="{% url 'bo_shipments:detail' expedition.pk %}">Détail</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if is_paginated %}
+    <nav aria-label="Pages des expéditions">
+      <ul class="pagination">
+        {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtres %}&{{ filtres }}{% endif %}">Précédent</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtres %}&{{ filtres }}{% endif %}">Suivant</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
+{% else %}
+  <div class="text-center text-muted border rounded-3 py-5">Aucune expédition ne correspond à cette recherche.</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}<script src="{% static 'shipments/js/filtre.js' %}"></script>{% endblock %}

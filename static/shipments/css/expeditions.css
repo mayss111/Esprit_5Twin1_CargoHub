@@ -1,0 +1,18 @@
+.badge-statut {
+  display: inline-block;
+  border-radius: 999px;
+  padding: .2rem .65rem;
+  font-size: .78rem;
+  font-weight: 700;
+}
+.badge-BROUILLON { background: var(--ch-panel); color: var(--ch-ink); }
+.badge-PUBLIEE { background: var(--ch-navy); color: #fff; }
+.badge-ANNULEE { background: #fde8e8; color: #9b1c1c; }
+.badge-RESERVEE, .badge-LIVREE { background: #e7f6ee; color: #067647; }
+
+.article-card { background: #fff; }
+.expedition-form .form-label { font-size: .78rem; font-weight: 600; margin-bottom: .15rem; }
+.expedition-form h2 { color: var(--ch-navy); }
+@media (max-width: 576px) {
+  .table-ch { font-size: .9rem; }
+}

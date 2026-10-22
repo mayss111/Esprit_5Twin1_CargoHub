@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ titre }}{% endblock %}
+{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}" rel="stylesheet">{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card card-ch p-4">
+      <h1 class="page-title h3 mb-3">{{ titre }}</h1>
+      <p>{{ question }}</p>
+      <p class="text-muted small">{{ expedition.adresse_depart.ville }} → {{ expedition.adresse_arrivee.ville }} · {{ expedition.get_statut_display }}</p>
+      <form method="post" class="d-flex flex-wrap gap-2">
+        {% csrf_token %}
+        <button class="btn btn-accent" type="submit">{{ action }}</button>
+        <a class="btn btn-outline-secondary" href="{% url 'shipments:detail' expedition.pk %}">Retour</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
