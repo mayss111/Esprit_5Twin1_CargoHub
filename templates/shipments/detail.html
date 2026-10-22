@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ expedition.reference }}{% endblock %}
+{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}" rel="stylesheet">{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <p class="kicker mb-1">Expédition</p>
+    <h1 class="page-title mb-1">{{ expedition.reference }}</h1>
+    <span class="badge-statut badge-{{ expedition.statut }}">{{ expedition.get_statut_display }}</span>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'shipments:liste' %}">Liste</a>
+    {% if expedition.peut_etre_modifiee %}
+      <a class="btn btn-primary" href="{% url 'shipments:modifier' expedition.pk %}">Modifier</a>
+    {% endif %}
+    {% if expedition.peut_etre_annulee %}
+      <a class="btn btn-outline-secondary" href="{% url 'shipments:annuler' expedition.pk %}">Annuler</a>
+    {% endif %}
+    {% if expedition.peut_etre_supprimee %}
+      <a class="btn btn-outline-danger" href="{% url 'shipments:supprimer' expedition.pk %}">Supprimer</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <section class="card card-ch p-3 h-100">
+      <h2 class="h6">Départ</h2>
+      <p class="mb-0">{{ expedition.adresse_depart }}</p>
+    </section>
+  </div>
+  <div class="col-md-4">
+    <section class="card card-ch p-3 h-100">
+      <h2 class="h6">Arrivée</h2>
+      <p class="mb-0">{{ expedition.adresse_arrivee }}</p>
+    </section>
+  </div>
+  <div class="col-md-4">
+    <section class="card card-ch p-3 h-100">
+      <h2 class="h6">Dates</h2>
+      <p class="mb-1">Expédition le {{ expedition.date_souhaitee|date:"d/m/Y" }}</p>
+      <p class="mb-0 small text-muted">Créée le {{ expedition.created_at|date:"d/m/Y H:i" }} · modifiée le {{ expedition.updated_at|date:"d/m/Y H:i" }}</p>
+    </section>
+  </div>
+</div>
+
+{% if expedition.description %}
+  <p>{{ expedition.description }}</p>
+{% endif %}
+
+<h2 class="h5">Articles</h2>
+{% if expedition.articles.all %}
+  <div class="table-responsive">
+    <table class="table table-ch align-middle">
+      <thead>
+        <tr>
+          <th>Article</th>
+          <th>Catégorie</th>
+          <th>Quantité</th>
+          <th>Poids</th>
+          <th>Volume</th>
+          <th>Fragile</th>
+          <th>Valeur déclarée</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for article in expedition.articles.all %}
+          <tr>
+            <td>
+              {{ article.designation }}
+              {% if article.description %}<div class="small text-muted">{{ article.description }}</div>{% endif %}
+            </td>
+            <td>{{ article.get_type_marchandise_display }}</td>
+            <td>{{ article.quantite }}</td>
+            <td>{{ article.poids_kg }} kg</td>
+            <td>{{ article.volume_m3 }} m³</td>
+            <td>{% if article.fragile %}Oui{% else %}Non{% endif %}</td>
+            <td>{% if article.valeur_declaree %}{{ article.valeur_declaree }} DT{% else %}—{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="mb-0">Poids total : <strong>{{ expedition.poids_total_kg }} kg</strong> · Volume total : <strong>{{ expedition.volume_total_m3 }} m³</strong></p>
+{% else %}
+  <p class="text-muted">Aucun article pour le moment.</p>
+{% endif %}
+{% endblock %}

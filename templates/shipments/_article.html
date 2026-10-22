@@ -1,0 +1,23 @@
+<div class="article-card border rounded-3 px-3 pt-2 pb-1 mb-2">
+  {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger py-2" role="alert">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <div class="row g-2 align-items-end">
+    <div class="col-md-3">{% include "shipments/_champ.html" with champ=form.designation %}</div>
+    <div class="col-md-2">{% include "shipments/_champ.html" with champ=form.type_marchandise %}</div>
+    <div class="col-6 col-md-1">{% include "shipments/_champ.html" with champ=form.quantite %}</div>
+    <div class="col-6 col-md-2">{% include "shipments/_champ.html" with champ=form.poids_kg %}</div>
+    <div class="col-6 col-md-2">{% include "shipments/_champ.html" with champ=form.volume_m3 %}</div>
+    <div class="col-6 col-md-2">{% include "shipments/_champ.html" with champ=form.valeur_declaree %}</div>
+    <div class="col-md-4">{% include "shipments/_champ.html" with champ=form.description %}</div>
+    <div class="col-md-3">{% include "shipments/_champ.html" with champ=form.fragile %}</div>
+    {% if form.instance.pk %}
+      <div class="col-md-3 mb-2">
+        <label class="form-check-label small" for="{{ form.DELETE.id_for_label }}">
+          {{ form.DELETE }} Retirer
+        </label>
+      </div>
+    {% endif %}
+  </div>
+</div>
