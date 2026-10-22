@@ -1,0 +1,1 @@
+<span class="badge {% if ticket.statut == 'RESOLU' %}text-bg-success{% elif ticket.statut == 'EN_COURS' %}text-bg-info{% else %}text-bg-warning{% endif %}">{{ ticket.get_statut_display }}</span>

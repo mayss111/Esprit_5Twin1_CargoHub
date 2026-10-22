@@ -21,3 +21,11 @@ ignore = ["DJ001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["apps", "config"]
+
+[tool.coverage.run]
+source = ["apps", "config"]
+omit = ["*/migrations/*", "*/tests*.py", "config/asgi.py", "config/wsgi.py", "config/settings/prod.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

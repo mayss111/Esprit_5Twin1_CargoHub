@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Connexion avec {{ provider.name }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-5">
+  <div class="card card-ch p-4 text-center">
+    <h1 class="page-title h4 mb-3"><i class="bi bi-google"></i> Continuer avec {{ provider.name }}</h1>
+    <p class="text-muted">Vous allez être redirigé vers {{ provider.name }} pour vous identifier.</p>
+    <form method="post">{% csrf_token %}
+      <button class="btn btn-primary w-100" type="submit">Continuer</button>
+    </form>
+  </div>
+</div></div>
+{% endblock %}

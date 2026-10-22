@@ -1,0 +1,15 @@
+{% extends "backoffice/base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Modifier {{ utilisateur.email }}{% endblock %}
+{% block content %}
+<h1 class="page-title mb-3">Modifier {{ utilisateur.email }}</h1>
+<div class="card card-ch p-4" style="max-width: 40rem">
+  <form method="post">{% csrf_token %}
+    {{ form|crispy }}
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" type="submit">Enregistrer</button>
+      <a class="btn btn-outline-secondary" href="{% url 'bo_accounts:detail' utilisateur.pk %}">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

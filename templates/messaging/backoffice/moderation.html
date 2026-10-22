@@ -1,0 +1,28 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Messages signalés{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">Messages signalés</h1>
+<p class="text-muted">Messages masqués par la modération IA. Rétablissez ceux signalés à tort (cela améliore aussi le jeu de test).</p>
+{% if object_list %}
+<div class="table-responsive"><table class="table table-ch align-middle">
+  <caption class="visually-hidden">Messages signalés par la modération</caption>
+  <thead><tr><th scope="col">Message</th><th scope="col">Auteur</th><th scope="col">Raison</th><th scope="col">Date</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+  <tbody>{% for m in object_list %}
+    <tr>
+      <td>{{ m.contenu|truncatechars:120 }}</td>
+      <td>{{ m.auteur }}</td>
+      <td>{{ m.raison_signalement|default:"—" }}</td>
+      <td>{{ m.created_at|date:"d/m/Y H:i" }}</td>
+      <td class="text-end text-nowrap">
+        <form method="post" action="{% url 'bo_messaging:moderer' m.pk %}" class="d-inline">{% csrf_token %}
+          <button class="btn btn-sm btn-outline-success" name="action" value="retablir" type="submit">Rétablir</button>
+          <button class="btn btn-sm btn-outline-danger" name="action" value="supprimer" type="submit">Supprimer</button>
+        </form>
+      </td>
+    </tr>{% endfor %}
+  </tbody></table></div>
+{% include "core/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5">Aucun message signalé.</div>
+{% endif %}
+{% endblock %}

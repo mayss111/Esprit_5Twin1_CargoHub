@@ -16,8 +16,6 @@ Pillow==13.0.0
 requests==2.34.2
 
 # Fonctionnalités avancées
-django-allauth==65.20.0   # M1 — connexion Google
-django-otp==1.7.5         # M1 — double authentification des admins
 stripe==16.0.0            # M5 — paiement en ligne (mode test)
 reportlab==5.0.1          # PDF : bon d'expédition, lettre de voiture, factures
 qrcode==8.2               # M2 — QR code des colis

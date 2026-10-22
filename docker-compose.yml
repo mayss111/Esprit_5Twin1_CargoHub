@@ -20,7 +20,7 @@ services:
       redis: { condition: service_started }
 
   worker:
-    image: cargohub-dev
+    image: cargohub-dev     # réutilise l'image construite par « web » (une seule construction)
     pull_policy: never
     command: celery -A config worker --beat --loglevel=info
     env_file: .env
