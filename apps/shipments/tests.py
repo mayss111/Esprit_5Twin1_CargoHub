@@ -298,4 +298,3 @@ def test_pme_ne_ouvre_pas_le_backoffice_des_expeditions(client, pme, expedition)
     client.force_login(pme)
     assert client.get(reverse("bo_shipments:liste")).status_code == 403
     assert client.get(reverse("bo_shipments:detail", args=[expedition.pk])).status_code == 403
-
