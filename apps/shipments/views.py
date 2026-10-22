@@ -237,9 +237,7 @@ class BackofficeExpeditionView(AdminRequiredMixin, ListView):
         queryset = filtrer_expeditions(queryset, self.request)
         pme = self.request.GET.get("pme", "").strip()
         if pme:
-            queryset = queryset.filter(
-                Q(pme__email__icontains=pme) | Q(pme__profil_pme__raison_sociale__icontains=pme)
-            )
+            queryset = queryset.filter(Q(pme__email__icontains=pme) | Q(pme__profil_pme__raison_sociale__icontains=pme))
         return queryset
 
     def get_context_data(self, **kwargs):
