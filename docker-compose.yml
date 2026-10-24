@@ -20,7 +20,7 @@ services:
       redis: { condition: service_started }
 
   worker:
-    image: cargohub-dev
+    image: cargohub-dev     # réutilise l'image construite par « web » (une seule construction)
     pull_policy: never
     command: celery -A config worker --beat --loglevel=info
     env_file: .env
@@ -28,6 +28,8 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.dev
     volumes:
       - .:/app
+    healthcheck:
+      disable: true
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_started }
@@ -40,8 +42,7 @@ services:
       POSTGRES_PASSWORD: cargohub
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Database access is internal to Compose; avoid host port 5432 conflicts.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cargohub"]
       interval: 5s

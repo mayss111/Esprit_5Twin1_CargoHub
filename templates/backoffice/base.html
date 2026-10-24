@@ -11,36 +11,41 @@
   <link href="{% static 'css/cargohub.css' %}" rel="stylesheet">
 </head>
 <body>
+<a href="#contenu" class="lien-evitement">Aller au contenu</a>
 <div class="d-flex">
-  <aside class="bo-sidebar p-3 d-none d-md-block">
-    <a href="{% url 'dashboard:accueil' %}"><img src="{% static 'img/logo-sombre.svg' %}" alt="CargoHub" class="mb-2" style="height:40px"></a>
-    <nav class="nav flex-column">
-      <a class="nav-link" href="{% url 'dashboard:accueil' %}"><i class="bi bi-speedometer2"></i> Tableau de bord</a>
+  <aside class="bo-sidebar p-3 collapse d-md-block" id="menuBo" aria-label="Menu du back-office">
+    <a href="{% url 'dashboard:accueil' %}"><img src="{% static 'img/logo-sombre.svg' %}" alt="CargoHub, tableau de bord" class="mb-2" style="height:40px"></a>
+    <nav class="nav flex-column" aria-label="Modules">
+      <a class="nav-link" href="{% url 'dashboard:accueil' %}"><i class="bi bi-speedometer2" aria-hidden="true"></i> Tableau de bord</a>
       {% for membre, couleur, liens in menu_backoffice %}
         <div class="bo-group" style="color: {{ couleur }}">{{ membre }}</div>
         {% for libelle, url, icone in liens %}
-          <a class="nav-link" href="{% url url %}"><i class="bi bi-{{ icone }}"></i> {{ libelle }}</a>
+          <a class="nav-link" href="{% url url %}"><i class="bi bi-{{ icone }}" aria-hidden="true"></i> {{ libelle }}</a>
         {% endfor %}
       {% endfor %}
       <hr class="border-secondary">
-      <a class="nav-link" href="{% url 'core:accueil' %}"><i class="bi bi-house"></i> Retour au site</a>
+      <a class="nav-link" href="{% url 'core:accueil' %}"><i class="bi bi-house" aria-hidden="true"></i> Retour au site</a>
     </nav>
   </aside>
   <div class="flex-grow-1">
     <header class="border-bottom px-4 py-2 d-flex justify-content-between align-items-center">
-      <span class="kicker">Back-office administrateur</span>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-outline-secondary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#menuBo" aria-controls="menuBo" aria-expanded="false" aria-label="Ouvrir le menu"><i class="bi bi-list" aria-hidden="true"></i></button>
+        <span class="kicker">Back-office administrateur</span>
+      </div>
       <form method="post" action="{% url 'accounts:deconnexion' %}" class="d-flex align-items-center gap-3">{% csrf_token %}
-        <span class="small text-muted"><i class="bi bi-shield-lock"></i> {{ user }}</span>
+        <span class="small text-muted"><i class="bi bi-shield-lock" aria-hidden="true"></i> {{ user }}</span>
         <button class="btn btn-sm btn-outline-secondary" type="submit">Déconnexion</button>
       </form>
     </header>
-    <main class="p-4">
-      {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}
+    <main class="p-4" id="contenu" tabindex="-1">
+      {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>{% endfor %}
       {% block content %}{% endblock %}
     </main>
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/cargohub.js' %}"></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,5 +1,5 @@
 # Raccourcis communs à toute l'équipe (Linux / macOS / WSL / Git Bash).
-.PHONY: up down logs shell migrate migrations superuser demo test lint format
+.PHONY: up down logs shell migrate migrations superuser demo test cov ia lint format
 
 up:            ## Lance toute l'application (site, base, Redis, Celery)
 	docker compose up --build
@@ -27,6 +27,12 @@ demo:          ## Remplit la base avec des données de démonstration
 
 test:
 	docker compose exec web pytest
+
+cov:           ## Tests + rapport de couverture (ouvrir htmlcov/index.html)
+	docker compose exec web pytest --cov --cov-report=term --cov-report=html
+
+ia:            ## Métriques des 5 parties IA
+	docker compose exec web python manage.py evaluer_ia
 
 lint:
 	docker compose exec web ruff check .

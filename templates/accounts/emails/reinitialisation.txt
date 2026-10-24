@@ -1,0 +1,11 @@
+{% autoescape off %}Bonjour {{ user.first_name|default:user.email }},
+
+Vous avez demandé à changer le mot de passe de votre compte CargoHub.
+Cliquez sur ce lien (valable 24 heures) pour en choisir un nouveau :
+
+{{ protocol }}://{{ domain }}{% url 'accounts:reinitialiser_mot_de_passe' uidb64=uid token=token %}
+
+Si vous n’êtes pas à l’origine de cette demande, ignorez simplement cet email : votre mot de passe reste inchangé.
+
+L’équipe CargoHub
+{% endautoescape %}

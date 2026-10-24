@@ -50,6 +50,16 @@ a { color: var(--ch-navy); }
 .kpi .val { font-size: 1.8rem; font-weight: 800; color: var(--ch-navy); }
 .todo { border: 1px dashed var(--ch-amber); background: #FFF8EA; border-radius: .7rem; padding: .7rem 1rem; font-size: .9rem; }
 
+/* Accessibilité (grille : focus visible, lien d'évitement, contraste) */
+.lien-evitement { position: absolute; left: -9999px; top: 0; z-index: 2000; background: var(--ch-amber);
+  color: var(--ch-navy); font-weight: 700; padding: .6rem 1rem; border-radius: 0 0 .5rem 0; }
+.lien-evitement:focus { left: 0; }
+:focus-visible { outline: 3px solid var(--ch-amber) !important; outline-offset: 2px; }
+.text-muted { color: #5B6478 !important; }   /* contraste 6:1 sur fond blanc */
+
+/* Indicateur de chargement des boutons IA */
+.ia-chargement .spinner-border { width: 1rem; height: 1rem; }
+
 /* Saisie vocale — formulaires d'authentification */
 .voice-panel {
   background: var(--ch-panel);
@@ -103,3 +113,11 @@ a { color: var(--ch-navy); }
 @media (prefers-reduced-motion: reduce) {
   .btn-voice.is-listening { animation: none; }
 }
+
+/* Messagerie (M1) */
+.chat-fil { max-height: 60vh; overflow-y: auto; }
+.chat-message { margin-bottom: .9rem; max-width: 85%; }
+.chat-message.chat-moi { margin-left: auto; text-align: right; }
+.chat-bulle { display: inline-block; background: var(--ch-panel); border: 1px solid var(--ch-border);
+  border-radius: .8rem; padding: .5rem .8rem; text-align: left; overflow-wrap: anywhere; }
+.chat-moi .chat-bulle { background: #FFF4DE; border-color: #F5D08A; }

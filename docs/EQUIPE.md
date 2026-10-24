@@ -100,3 +100,30 @@ Pour travailler sans Internet : installer [Ollama](https://ollama.com), puis `AI
 | Relectures par module | `.github/CODEOWNERS` | Chacun pour ses modules |
 
 Pensez à remplacer `@membre1` … `@membre5` dans `.github/CODEOWNERS` par les vrais pseudos GitHub.
+
+## 8. Grille de validation finale : où se trouve chaque critère
+
+> ⚠️ **Pas de Git → note individuelle divisée par 2. Pas d'intégration + déploiement → note d'équipe = 0.**
+> Chacun commite avec SON compte GitHub, régulièrement (le jury regarde l'historique).
+
+| Critère (points) | Ce qui est déjà dans le projet | Ce que CHAQUE membre doit faire |
+|---|---|---|
+| **CRUD (2)** | Pages liste front + back | Créer / modifier / supprimer / détail sur ses entités, validation des formulaires (serveur + `required`, `min`… côté client), messages de succès |
+| **Tests unitaires (0,75)** | `conftest.py`, tests des services et de l'IA | Tests de ses modèles (validations, contraintes) et de sa logique métier |
+| **Tests d'intégration (0,75)** | Toutes les pages testées par rôle | Tests de ses vues : statut HTTP, données affichées, formulaire POST valide / invalide |
+| **Couverture (0,5)** | `make cov` → `htmlcov/index.html` ; rapport aussi dans GitHub → Actions → « couverture » | Garder ses apps au-dessus de 80 % |
+| **Sécurité (0,75)** | CSRF actif, ORM uniquement, mots de passe hachés, `DEBUG=False` en prod, secrets dans `.env` | Ne jamais écrire de SQL brut ni de clé dans le code |
+| **Rôles / permissions (0,75)** | `RoleRequiredMixin`, `AdminRequiredMixin`, tests 403 et redirection | Protéger chaque nouvelle vue ; filtrer `get_queryset()` sur l'utilisateur (une PME ne voit QUE ses données, même en changeant l'id dans l'URL) + un test pour le prouver |
+| **Robustesse (0,5)** | Pages 403 / 404 / 500 personnalisées | `get_object_or_404`, `try/except` autour des appels externes (IA, Stripe), messages d'erreur clairs |
+| **Accessibilité (2)** | `<header>/<nav>/<main>/<footer>`, lien « Aller au contenu », focus visible, `aria-label` sur les boutons-icônes, contrastes AA | Dans ses pages : un seul `<h1>`, `<label>` sur chaque champ, `alt` sur chaque image, `aria-label` sur les boutons sans texte ; passer **Lighthouse** (Chrome → F12 → Lighthouse → Accessibilité) et faire une capture du score |
+| **IA — intégration (2)** | Clé dans `.env`, repli sans clé, `ai.mesurer()`, spinner `data-ia` | Brancher sa fonction IA dans une vraie page (vue dédiée) avec `<form data-ia="Analyse en cours…">` et un message clair si l'IA échoue |
+| **IA — métriques et performance (2)** | `python manage.py evaluer_ia` (F1, matrice de confusion, MAE, R², temps de réponse) | Agrandir SON jeu de test dans `apps/core/evaluation/jeux.py` (30 à 50 exemples), commenter les chiffres à l'oral ; si l'appel LLM dépasse ~1 s → le lancer en tâche Celery (voir ci-dessous) |
+| **UX/UI (1)** | Charte CargoHub, Bootstrap, menus responsive | Vérifier ses pages sur téléphone (F12 → mode mobile) |
+| **QCM / questions (8)** | — | Savoir expliquer : architecture, sécurité, choix de l'IA, CI/CD, Docker |
+
+### Appel IA long → Celery (performance)
+Pour M1 (réponse du support) et M5 (résumé des avis), l'appel au LLM prend 1 à 3 secondes :
+1. Créer une tâche `@shared_task` dans `apps/<module>/tasks.py` qui appelle la fonction IA et **enregistre le résultat en base** (ex. champ `resume_ia` du profil, ou `reponse_ia` du ticket).
+2. Dans la vue : `ma_tache.delay(objet.pk)` puis rediriger tout de suite avec le message « Analyse en cours… ».
+3. La page affiche le résultat dès qu'il est enregistré (rafraîchissement, ou WebSocket comme dans `tracking`).
+Sans Redis (tests, sans Docker), Celery exécute la tâche directement : rien à changer.
