@@ -16,6 +16,8 @@ MENU_PME = [
     ("Paiements", "payments:liste", "credit-card"),
     ("Assurance", "insurance:liste", "shield-check"),
     ("Messagerie", "messaging:liste", "chat-dots"),
+    ("Contrats", "contracts:liste", "file-earmark-text"),
+    ("Aide et support", "messaging:assistant", "life-preserver"),
     ("Fidélité", "loyalty:liste", "gift"),
 ]
 MENU_TRANSPORTEUR = [
@@ -27,6 +29,8 @@ MENU_TRANSPORTEUR = [
     ("Suivi", "tracking:liste", "geo-alt"),
     ("Revenus", "payments:liste", "cash-coin"),
     ("Messagerie", "messaging:liste", "chat-dots"),
+    ("Contrats", "contracts:liste", "file-earmark-text"),
+    ("Aide et support", "messaging:assistant", "life-preserver"),
     ("Mon bilan CO₂", "ecology:liste", "tree"),
 ]
 
@@ -38,6 +42,7 @@ MENU_BACKOFFICE = [
         [
             ("Utilisateurs", "bo_accounts:liste", "people"),
             ("Support", "bo_messaging:liste", "life-preserver"),
+            ("Modération", "bo_messaging:moderation", "flag"),
             ("Contrats", "bo_contracts:liste", "file-earmark-text"),
         ],
     ),
