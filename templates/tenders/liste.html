@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Appels d’offres{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="page-title mb-1">Appels d’offres</h1>
+    <p class="text-muted mb-0">{% if user.role == "PME" %}Mettez les transporteurs en concurrence pour vos expéditions.{% else %}Les PME cherchent un transporteur : faites votre offre.{% endif %}</p>
+  </div>
+  {% if user.role == "PME" %}<a class="btn btn-accent" href="{% url 'tenders:creer' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> Nouvel appel d’offres</a>{% endif %}
+</div>
+{% if object_list %}
+<div class="table-responsive"><table class="table table-ch align-middle">
+  <caption class="visually-hidden">Appels d’offres</caption>
+  <thead><tr><th scope="col">N°</th><th scope="col">Trajet</th><th scope="col">Marchandise</th><th scope="col">Budget</th><th scope="col">Date limite</th><th scope="col">{% if user.role == "PME" %}Offres{% else %}Mon offre{% endif %}</th><th scope="col">Statut</th></tr></thead>
+  <tbody>{% for a in object_list %}
+    <tr>
+      <td><a href="{% url 'tenders:detail' a.pk %}">#{{ a.pk }}</a></td>
+      <td>{{ a.expedition.adresse_depart.ville }} → {{ a.expedition.adresse_arrivee.ville }}<div class="small text-muted">le {{ a.expedition.date_souhaitee|date:"d/m/Y" }}</div></td>
+      <td>{{ a.expedition.poids_total_kg|floatformat:0 }} kg</td>
+      <td>{% if a.prix_max %}{{ a.prix_max }} DT{% else %}—{% endif %}</td>
+      <td>{{ a.date_cloture|date:"d/m/Y H:i" }}</td>
+      <td>{% if user.role == "PME" %}{{ a.nb_offres }}{% elif a.mon_offre %}<i class="bi bi-check2" aria-hidden="true"></i> Envoyée{% else %}—{% endif %}</td>
+      <td>{% include "tenders/_statut.html" with statut=a.statut libelle=a.get_statut_display %}</td>
+    </tr>{% endfor %}
+  </tbody></table></div>
+{% include "core/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-megaphone fs-1 d-block mb-2" aria-hidden="true"></i>{% if user.role == "PME" %}Aucun appel d’offres.{% else %}Aucun appel d’offres ouvert pour le moment.{% endif %}</div>
+{% endif %}
+{% endblock %}

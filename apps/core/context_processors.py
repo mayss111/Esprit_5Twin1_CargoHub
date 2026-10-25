@@ -9,6 +9,7 @@ from .roles import Role, est_admin
 
 MENU_PME = [
     ("Mes expéditions", "shipments:liste", "box-seam"),
+    ("Trouver un camion", "bookings:trouver", "search"),
     ("Points relais", "warehouses:liste", "shop"),
     ("Réservations", "bookings:liste", "calendar-check"),
     ("Appels d’offres", "tenders:liste", "megaphone"),
@@ -23,6 +24,7 @@ MENU_PME = [
 MENU_TRANSPORTEUR = [
     ("Mes véhicules", "fleet:vehicules", "truck"),
     ("Mes trajets", "fleet:liste", "signpost-split"),
+    ("Demandes reçues", "bookings:demandes", "inbox"),
     ("Réservations", "bookings:liste", "calendar-check"),
     ("Appels d’offres", "tenders:liste", "megaphone"),
     ("Entretien", "maintenance:liste", "tools"),

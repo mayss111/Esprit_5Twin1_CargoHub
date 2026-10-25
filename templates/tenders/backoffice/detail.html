@@ -1,0 +1,27 @@
+{% extends "backoffice/base.html" %}
+{% block title %}{{ appel }}{% endblock %}
+{% block content %}
+<nav aria-label="Fil d’Ariane"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bo_tenders:liste' %}">Appels d’offres</a></li><li class="breadcrumb-item active" aria-current="page">{{ appel }}</li></ol></nav>
+<h1 class="page-title mb-3">{{ appel }}</h1>
+<div class="row g-3">
+  <div class="col-lg-5"><div class="card card-ch p-4"><h2 class="h5 mb-3">L’appel d’offres</h2>
+    <p class="mb-2">PME : {{ appel.expedition.pme }}</p>{% include "tenders/_resume_appel.html" %}</div></div>
+  <div class="col-lg-7"><div class="card card-ch p-4">
+    <h2 class="h5">Offres ({{ offres|length }})</h2>
+    {% if offres %}
+    <div class="table-responsive"><table class="table align-middle mb-0">
+      <caption class="visually-hidden">Offres reçues</caption>
+      <thead><tr><th scope="col">Transporteur</th><th scope="col">Trajet</th><th scope="col">Prix</th><th scope="col">Statut</th><th scope="col">Reçue le</th></tr></thead>
+      <tbody>{% for o in offres %}
+        <tr>
+          <td>{{ o.transporteur }}</td>
+          <td>{% if o.trajet %}{{ o.trajet.ville_depart }} → {{ o.trajet.ville_arrivee }}{% else %}—{% endif %}</td>
+          <td>{{ o.prix }} DT</td>
+          <td>{% include "tenders/_statut.html" with statut=o.statut libelle=o.get_statut_display %}</td>
+          <td>{{ o.created_at|date:"d/m/Y H:i" }}</td>
+        </tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}<p class="text-muted mb-0">Aucune offre.</p>{% endif %}
+  </div></div>
+</div>
+{% endblock %}
