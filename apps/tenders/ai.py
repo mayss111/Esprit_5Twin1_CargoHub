@@ -105,18 +105,21 @@ def _score(offre: dict) -> float:
     return ecart - bonus
 
 
+def _nombre(valeur: float) -> str:
+    """Écriture française : 144,6 et non 144.6."""
+    return f"{valeur:g}".replace(".", ",")
+
+
 def recommander_par_regle(resume: list[dict]) -> dict:
     meilleure = min(resume, key=lambda o: (_score(o), o["prix"]))
-    phrases = [
-        f"L’offre de {meilleure['transporteur']} à {meilleure['prix']:g} DT a le meilleur rapport prix / fiabilité."
-    ]
+    prix = _nombre(meilleure["prix"])
+    phrases = [f"L’offre de {meilleure['transporteur']} à {prix} DT a le meilleur rapport prix / fiabilité."]
     if meilleure["ecart_pct"] is not None:
         sens = "sous le" if meilleure["ecart_pct"] <= 0 else "au-dessus du"
-        phrases.append(
-            f"Elle est {abs(meilleure['ecart_pct']):g} % {sens} prix juste estimé ({meilleure['prix_juste']:g} DT)."
-        )
+        ecart, juste = _nombre(abs(meilleure["ecart_pct"])), _nombre(meilleure["prix_juste"])
+        phrases.append(f"Elle est {ecart} % {sens} prix juste estimé ({juste} DT).")
     if meilleure["note"] is not None:
-        phrases.append(f"Le transporteur a une note de {meilleure['note']:g}/5.")
+        phrases.append(f"Le transporteur a une note de {_nombre(meilleure['note'])}/5.")
     else:
         phrases.append("Le transporteur n’a pas encore de note.")
     return {"offre_id": meilleure["offre_id"], "explication": " ".join(phrases), "methode": "règle"}
