@@ -32,7 +32,7 @@ def retenir_offre(offre: Offre, par) -> Reservation:
     appel.save(update_fields=["statut", "updated_at"])
 
     reservation = reserver(appel.expedition, offre.trajet, prix=offre.prix)
-    changer_statut(reservation, Reservation.Statut.ACCEPTEE, par=par)
+    reservation = changer_statut(reservation, Reservation.Statut.ACCEPTEE, par=par)  # renvoie l'objet à jour
 
     transaction.on_commit(
         lambda: notifier.delay(
