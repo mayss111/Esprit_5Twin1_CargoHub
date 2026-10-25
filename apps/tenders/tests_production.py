@@ -238,3 +238,33 @@ def test_messages_en_francais_meme_si_le_navigateur_est_en_anglais(client, pme, 
     reponse = client.post(reverse("tenders:creer"), {}, HTTP_ACCEPT_LANGUAGE="en-US,en;q=0.9")
     html = reponse.content.decode()
     assert "Ce champ est obligatoire" in html and "This field is required" not in html
+
+
+# ---------------------------------------------------------------- 8. données de démo de la soutenance
+
+
+def test_donnees_demo_soutenance_idempotentes(db):
+    from apps.accounts.models import Utilisateur
+    from apps.tenders.ai import resumer_offres
+    from apps.tracking.models import Avis
+
+    sortie = StringIO()
+    call_command("donnees_demo", stdout=sortie)
+    call_command("donnees_demo", stdout=sortie)  # relancée : aucun doublon
+    assert "Scénario de soutenance prêt" in sortie.getvalue()
+
+    mohamed = Utilisateur.objects.get(email="mohamed@transport.tn")
+    assert mohamed.is_active and mohamed.check_password("cargohub2026")
+    appel = AppelOffre.objects.get(expedition__description="[démo soutenance]")
+    assert appel.statut == AppelOffre.Statut.OUVERT and appel.est_ouvert
+    assert appel.expedition.poids_total_kg == 300
+    offres = {o.transporteur.first_name: o for o in appel.offres.select_related("transporteur", "trajet")}
+    assert set(offres) == {"Karim", "Mohamed"} and offres["Mohamed"].prix < offres["Karim"].prix
+    for offre in offres.values():
+        assert est_compatible(appel.expedition, offre.trajet)  # les deux offres sont « retenables »
+    assert [e.ville for e in offres["Karim"].trajet.etapes.all()] == ["Monastir", "Sousse"]
+    # Mohamed : 1 trajet pour l’offre + 2 transports passés (ses avis) ; 5 avis au total — rien en double.
+    assert Trajet.objects.filter(transporteur=mohamed).count() == 3 and Avis.objects.count() == 5
+
+    notes = {o["transporteur"]: o["note"] for o in resumer_offres(appel)}
+    assert notes == {"Karim": 4.7, "Mohamed": 2.5}  # vrai arbitrage : Mohamed moins cher, Karim mieux noté
