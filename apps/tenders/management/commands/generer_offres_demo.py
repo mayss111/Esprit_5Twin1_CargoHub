@@ -87,6 +87,7 @@ class Command(BaseCommand):
                 adresse_depart=Adresse.objects.create(ligne="Zone industrielle", ville=depart),
                 adresse_arrivee=Adresse.objects.create(ligne="Centre-ville", ville=arrivee),
                 date_souhaitee=date.date(),
+                date_arrivee=(date + timedelta(days=1)).date(),
                 statut=Expedition.Statut.LIVREE,
                 description=MARQUE,
             )
