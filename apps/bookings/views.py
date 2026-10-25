@@ -28,8 +28,12 @@ EN_COURS = [Reservation.Statut.EN_ATTENTE, Reservation.Statut.ACCEPTEE]
 
 def reservations_de(user):
     """Réservations où l'utilisateur est la PME ou le transporteur (une autre réservation → 404)."""
-    return Reservation.objects.filter(Q(expedition__pme=user) | Q(trajet__transporteur=user)).select_related(
-        "expedition__pme", "expedition__adresse_depart", "expedition__adresse_arrivee", "trajet__transporteur"
+    return (
+        Reservation.objects.filter(Q(expedition__pme=user) | Q(trajet__transporteur=user))
+        .select_related(
+            "expedition__pme", "expedition__adresse_depart", "expedition__adresse_arrivee", "trajet__transporteur"
+        )
+        .prefetch_related("trajet__etapes")  # « Sfax → Tunis, via Monastir » sans une requête par ligne
     )
 
 

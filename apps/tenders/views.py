@@ -143,7 +143,7 @@ class AppelDetailView(RoleRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
-        offres = self.object.offres.select_related("transporteur", "trajet")
+        offres = self.object.offres.select_related("transporteur", "trajet").prefetch_related("trajet__etapes")
         if user.role == Role.PME:
             ctx["offres"] = offres
             ctx["prix_moyen"] = offres.aggregate(m=Avg("prix"))["m"]
