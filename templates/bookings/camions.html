@@ -4,7 +4,7 @@
 {% block content %}
 <nav aria-label="Fil d’Ariane"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bookings:trouver' %}">Trouver un camion</a></li><li class="breadcrumb-item active" aria-current="page">{{ expedition.reference }}</li></ol></nav>
 <h1 class="page-title mb-1">Camions compatibles</h1>
-<p class="text-muted">{{ expedition.reference }} · {{ expedition.adresse_depart.ville }} → {{ expedition.adresse_arrivee.ville }} · le {{ expedition.date_souhaitee|date:"d/m/Y" }} · {{ expedition.poids_total_kg|floatformat:0 }} kg</p>
+<p class="text-muted">{{ expedition.reference }} · {{ expedition.adresse_depart.ville }} → {{ expedition.adresse_arrivee.ville }} · le {{ expedition.date_souhaitee|date:"d/m/Y" }} · {{ expedition.poids_total_kg|floatformat:"-2" }} kg</p>
 
 {% if vide %}
 <div class="alert alert-warning" role="alert">{{ message_vide }} <a href="{% url 'shipments:detail' expedition.pk %}">Ouvrir l’expédition</a></div>

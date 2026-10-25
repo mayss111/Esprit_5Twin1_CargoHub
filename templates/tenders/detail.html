@@ -31,7 +31,9 @@
             <td class="fw-semibold">{{ o.prix }} DT</td>
             <td>{% include "tenders/_statut.html" with statut=o.statut libelle=o.get_statut_display %}</td>
             <td class="text-end">
-              {% if appel.statut == "OUVERT" and o.statut == "PROPOSEE" %}
+              {% if appel.statut == "OUVERT" and o.pk in incompatibles %}
+              <span class="badge text-bg-secondary text-wrap" title="Le trajet ne correspond plus à la date ou aux villes de l’expédition"><i class="bi bi-slash-circle" aria-hidden="true"></i> Trajet incompatible</span>
+              {% elif appel.statut == "OUVERT" and o.statut == "PROPOSEE" %}
               <form method="post" action="{% url 'tenders:retenir' o.pk %}">{% csrf_token %}
                 <button class="btn btn-sm btn-accent" type="submit">Retenir<span class="visually-hidden"> l’offre de {{ o.transporteur }} à {{ o.prix }} DT</span></button>
               </form>

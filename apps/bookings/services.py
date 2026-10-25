@@ -43,9 +43,7 @@ def score_compatibilite(expedition, trajet) -> int:
 
 ECART_MAX_JOURS = 2
 
-EXPEDITION_VIDE = (
-    "Cette expédition ne contient aucune marchandise (0 kg) : ajoutez des articles avant de chercher un transporteur."
-)
+EXPEDITION_VIDE = "Cette expédition n’a aucune marchandise (0 kg) : ajoutez des articles avant de réserver."
 
 
 def est_compatible(expedition, trajet) -> bool:
@@ -71,7 +69,10 @@ def trajets_compatibles(expedition, score_minimum=SCORE_MINIMUM):
 
 
 def reserver(expedition, trajet, prix=None) -> Reservation:
-    """Crée une réservation EN_ATTENTE et prévient le transporteur."""
+    """Crée une réservation EN_ATTENTE et prévient le transporteur. Refuse une expédition sans marchandise."""
+    # Contrôle dans le service (et pas seulement dans la page) : aucun chemin ne peut le contourner.
+    if expedition.poids_total_kg <= 0:
+        raise ReservationImpossible(EXPEDITION_VIDE)
     reservation = Reservation.objects.create(
         expedition=expedition,
         trajet=trajet,
