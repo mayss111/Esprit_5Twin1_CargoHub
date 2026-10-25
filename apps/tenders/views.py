@@ -6,6 +6,7 @@ Back-office  : tous les appels d'offres avec quelques indicateurs.
 """
 
 import logging
+from datetime import timedelta
 
 from django.contrib import messages
 from django.db.models import Avg, Count, Exists, OuterRef, Q
@@ -16,7 +17,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, UpdateView
 
-from apps.bookings.services import ReservationImpossible
+from apps.bookings.services import ECART_MAX_JOURS, ReservationImpossible
 from apps.core import ai
 from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
 from apps.core.roles import Role
@@ -220,6 +221,16 @@ class StatutRecommandationView(RoleRequiredMixin, View):
 # ---------------------------------------------------------------- offres des transporteurs
 
 
+def contexte_offre(appel):
+    """L'appel, et la plage de départ acceptée (pour expliquer pourquoi aucun trajet ne convient)."""
+    date = appel.expedition.date_souhaitee
+    return {
+        "appel": appel,
+        "date_min": date - timedelta(days=ECART_MAX_JOURS),
+        "date_max": date + timedelta(days=ECART_MAX_JOURS),
+    }
+
+
 class OffreCreerView(RoleRequiredMixin, CreateView):
     roles = [Role.TRANSPORTEUR]
     model = Offre
@@ -242,7 +253,7 @@ class OffreCreerView(RoleRequiredMixin, CreateView):
         return {**super().get_form_kwargs(), "transporteur": self.request.user, "appel": self.appel}
 
     def get_context_data(self, **kwargs):
-        return {**super().get_context_data(**kwargs), "appel": self.appel}
+        return {**super().get_context_data(**kwargs), **contexte_offre(self.appel)}
 
     def form_valid(self, form):
         self.appel.effacer_recommandation()  # nouvelle offre : l'aide au choix doit être refaite
@@ -280,7 +291,7 @@ class OffreModifierView(MesOffresMixin, UpdateView):
         return {**super().get_form_kwargs(), "transporteur": self.request.user, "appel": self.object.appel}
 
     def get_context_data(self, **kwargs):
-        return {**super().get_context_data(**kwargs), "appel": self.object.appel}
+        return {**super().get_context_data(**kwargs), **contexte_offre(self.object.appel)}
 
     def form_valid(self, form):
         self.object.appel.effacer_recommandation()

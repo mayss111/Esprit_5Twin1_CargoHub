@@ -1,15 +1,45 @@
 """Tests des corrections issues des essais en production (M4)."""
 
+from datetime import timedelta
+from decimal import Decimal
 from io import StringIO
 from unittest import mock
 
 import pytest
 from django.apps import apps
 from django.core.management import call_command
+from django.urls import reverse
 
+from apps.bookings.models import Reservation
+from apps.bookings.services import ReservationImpossible, est_compatible
 from apps.core import ai
+from apps.fleet.models import Trajet, Vehicule
 from apps.tenders import apps as config_tenders
 from apps.tenders.ai import chauffer_modele
+from apps.tenders.forms import TRAJET_INCOMPATIBLE, OffreForm
+from apps.tenders.models import AppelOffre, Offre
+from apps.tenders.services import retenir_offre
+
+
+@pytest.fixture
+def offre(appel_offre, transporteur, trajet):
+    return Offre.objects.create(appel=appel_offre, transporteur=transporteur, trajet=trajet, prix=Decimal("90"))
+
+
+@pytest.fixture
+def trajet_tardif(trajet):
+    """Bon itinéraire et assez de place (score 70), mais 6 jours après la date souhaitée : le cas vu en production."""
+    return Trajet.objects.create(
+        transporteur=trajet.transporteur,
+        vehicule=trajet.vehicule,
+        ville_depart="Monastir",
+        ville_arrivee="Tunis",
+        date_depart=trajet.date_depart + timedelta(days=6),
+        capacite_dispo_kg=Decimal("1000"),
+        capacite_dispo_m3=Decimal("8"),
+        distance_km=160,
+    )
+
 
 # ---------------------------------------------------------------- 1. préchargement de scikit-learn et chauffe
 
@@ -63,3 +93,44 @@ def test_chauffer_ia_avec_llm(db, settings):
     with mock.patch("apps.core.ai.demander", side_effect=ai.IAIndisponible("modèle introuvable")):
         call_command("chauffer_ia", stdout=sortie)
     assert "indisponible : modèle introuvable" in sortie.getvalue()
+
+
+# ---------------------------------------------------------------- 2. offre seulement sur un trajet compatible
+
+
+def test_regle_de_compatibilite(expedition, trajet, trajet_tardif, autre_trajet):
+    assert est_compatible(expedition, trajet)
+    assert not est_compatible(expedition, trajet_tardif)  # bonnes villes, mais 6 jours trop tard
+    assert not est_compatible(expedition, autre_trajet)  # ne passe pas par Monastir
+    Vehicule.objects.filter(pk=trajet.vehicule_id).update(conforme=False)
+    trajet.refresh_from_db()
+    assert not est_compatible(expedition, trajet)
+
+
+def test_formulaire_ne_propose_que_les_trajets_compatibles(appel_offre, transporteur, trajet, trajet_tardif):
+    form = OffreForm(transporteur=transporteur, appel=appel_offre)
+    assert list(form.fields["trajet"].queryset) == [trajet]
+    form = OffreForm({"trajet": trajet_tardif.pk, "prix": "90"}, transporteur=transporteur, appel=appel_offre)
+    assert form.errors["trajet"] == [TRAJET_INCOMPATIBLE]
+
+
+def test_trajet_devenu_incompatible_pendant_la_saisie(appel_offre, transporteur, trajet):
+    form = OffreForm({"trajet": trajet.pk, "prix": "90"}, transporteur=transporteur, appel=appel_offre)
+    Trajet.objects.filter(pk=trajet.pk).update(date_depart=trajet.date_depart + timedelta(days=5))
+    assert not form.is_valid() and form.errors["trajet"] == [TRAJET_INCOMPATIBLE]
+
+
+def test_page_explique_l_absence_de_trajet_compatible(client, transporteur, appel_offre, trajet):
+    Trajet.objects.filter(pk=trajet.pk).update(date_depart=trajet.date_depart + timedelta(days=6))
+    client.force_login(transporteur)
+    html = client.get(reverse("tenders:offre_creer", args=[appel_offre.pk])).content.decode()
+    assert "Aucun de vos trajets ne convient" in html and "<strong>Monastir</strong>" in html
+    assert 'id="form-offre"' not in html
+
+
+def test_retenir_reverifie_le_trajet(pme, appel_offre, offre, trajet):
+    Trajet.objects.filter(pk=trajet.pk).update(date_depart=trajet.date_depart + timedelta(days=5))
+    with pytest.raises(ReservationImpossible, match="ne correspond plus"):
+        retenir_offre(offre, par=pme)
+    appel_offre.refresh_from_db()
+    assert appel_offre.statut == AppelOffre.Statut.OUVERT and not Reservation.objects.exists()

@@ -3,7 +3,7 @@
 from django.db import transaction
 
 from apps.bookings.models import Reservation
-from apps.bookings.services import ReservationImpossible, changer_statut, reserver
+from apps.bookings.services import ReservationImpossible, changer_statut, est_compatible, reserver
 from apps.bookings.tasks import notifier
 
 from .models import AppelOffre, Offre
@@ -24,6 +24,11 @@ def retenir_offre(offre: Offre, par) -> Reservation:
         raise ReservationImpossible("Cette offre n’est plus disponible.")
     if offre.trajet is None:
         raise ReservationImpossible("Cette offre n’indique plus de trajet : demandez au transporteur de la modifier.")
+    # Le trajet a pu changer (date, étapes) depuis l'offre : on revérifie, dans la transaction.
+    if not est_compatible(appel.expedition, offre.trajet):
+        raise ReservationImpossible(
+            "Le trajet de cette offre ne correspond plus à l’expédition (date trop éloignée ou mauvaises villes)."
+        )
 
     appel.offres.exclude(pk=offre.pk).update(statut=Offre.Statut.REJETEE)
     offre.statut = Offre.Statut.RETENUE

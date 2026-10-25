@@ -3,10 +3,13 @@ from decimal import Decimal
 from django import forms
 from django.utils import timezone
 
+from apps.bookings.services import est_compatible
 from apps.fleet.models import Trajet
 from apps.shipments.models import Expedition
 
 from .models import AppelOffre, Offre
+
+TRAJET_INCOMPATIBLE = "Ce trajet part trop loin de la date souhaitée ou ne passe pas par les bonnes villes."
 
 
 class AppelOffreForm(forms.ModelForm):
@@ -73,11 +76,28 @@ class OffreForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.instance.appel = appel
         self.instance.transporteur = transporteur
-        self.fields["trajet"].required = True
-        self.fields["trajet"].queryset = Trajet.objects.filter(
-            transporteur=transporteur, statut=Trajet.Statut.OUVERT, date_depart__gte=timezone.now()
-        ).order_by("date_depart")
-        self.fields["trajet"].empty_label = "Choisissez un de vos trajets ouverts"
+        ouverts = (
+            Trajet.objects.filter(
+                transporteur=transporteur, statut=Trajet.Statut.OUVERT, date_depart__gte=timezone.now()
+            )
+            .select_related("vehicule")
+            .prefetch_related("etapes")
+        )
+        # Seuls les trajets qui conviennent à l'expédition (villes, date ± 2 jours, place) sont proposés.
+        compatibles = [t.pk for t in ouverts if est_compatible(appel.expedition, t)]
+        self.a_des_trajets_ouverts = bool(ouverts)
+        champ = self.fields["trajet"]
+        champ.required = True
+        champ.queryset = Trajet.objects.filter(pk__in=compatibles).prefetch_related("etapes").order_by("date_depart")
+        champ.empty_label = "Choisissez un de vos trajets compatibles"
+        champ.error_messages["invalid_choice"] = TRAJET_INCOMPATIBLE
+        champ.help_text = "Seuls vos trajets qui passent par les bonnes villes, à ± 2 jours de la date, sont proposés."
+
+    def clean_trajet(self):
+        trajet = self.cleaned_data["trajet"]
+        if not est_compatible(self.instance.appel.expedition, trajet):
+            raise forms.ValidationError(TRAJET_INCOMPATIBLE)
+        return trajet
 
     def clean_prix(self):
         prix = self.cleaned_data["prix"]
