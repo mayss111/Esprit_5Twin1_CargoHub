@@ -27,9 +27,11 @@
       const reponse = await fetch(form.dataset.suggestionUrl, { method: "POST", body: donnees });
       const json = await reponse.json();
       if (!reponse.ok) throw new Error(json.erreur || "Le calcul du prix a échoué.");
-      champPrix.value = json.prix;
+      champPrix.value = json.prix; // le champ numérique attend « 45.62 »
+      // Le texte, lui, est écrit à la française : « 45,62 DT ».
+      const prix = Number(json.prix).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       resultat.classList.add("text-success");
-      resultat.textContent = `Prix suggéré : ${json.prix} DT — méthode : ${json.methode} (${json.duree_ms} ms). Vous pouvez l’ajuster.`;
+      resultat.textContent = `Prix suggéré : ${prix} DT — méthode : ${json.methode} (${json.duree_ms} ms). Vous pouvez l’ajuster.`;
       champPrix.focus();
     } catch (erreur) {
       resultat.classList.add("text-danger");

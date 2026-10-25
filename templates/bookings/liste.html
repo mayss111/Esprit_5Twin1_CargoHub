@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load trajets %}
 {% block title %}Mes réservations{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
@@ -17,7 +18,7 @@
   <tbody>{% for r in object_list %}
     <tr>
       <td><a href="{% url 'bookings:detail' r.pk %}">#{{ r.pk }}</a></td>
-      <td>{{ r.trajet.ville_depart }} → {{ r.trajet.ville_arrivee }}</td>
+      <td>{{ r.trajet|itineraire }}</td>
       <td>{% if user.role == "TRANSPORTEUR" %}{{ r.expedition.pme }}{% else %}{{ r.trajet.transporteur }}{% endif %}</td>
       <td>{{ r.trajet.date_depart|date:"d/m/Y" }}</td>
       <td>{% if r.prix_convenu %}{{ r.prix_convenu }} DT{% else %}—{% endif %}</td>
