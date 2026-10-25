@@ -1,0 +1,109 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+{% block title %}Gestion des entrepôts{% endblock %}
+{% block extra_head %}<link href="{% static 'warehouses/css/relais.css' %}?v=20261025g" rel="stylesheet">{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <h1 class="page-title mb-1">Gestion des entrepôts</h1>
+    <p class="text-muted mb-0">{{ page_obj.paginator.count }} entrepôt{{ page_obj.paginator.count|pluralize }}.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-accent" href="{% url 'bo_warehouses:creer' %}">Ajouter un entrepôt</a>
+    <a class="btn btn-outline-secondary" href="{% url 'bo_warehouses:importer' %}">Importer un fichier</a>
+    <a class="btn btn-outline-secondary" href="{% url 'bo_warehouses:reservations' %}">Réservations de dépôt</a>
+  </div>
+</div>
+
+<form method="get" class="card card-ch p-3 mb-4" role="search" data-filtre-auto>
+  <div class="row g-3 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-nom">Nom</label>
+      <input class="form-control" id="filtre-nom" name="q" value="{{ filtre.q }}" maxlength="80" autocomplete="off">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-ville">Ville</label>
+      <input class="form-control" id="filtre-ville" name="ville" value="{{ filtre.ville }}" maxlength="80" autocomplete="off">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-adresse">Adresse</label>
+      <input class="form-control" id="filtre-adresse" name="adresse" value="{{ filtre.adresse }}" maxlength="120" autocomplete="off">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-gouvernorat">Gouvernorat</label>
+      <select class="form-select" id="filtre-gouvernorat" name="gouvernorat">
+        <option value="">Tous</option>
+        {% for valeur, libelle in gouvernorats %}
+          <option value="{{ valeur }}" {% if filtre.gouvernorat == valeur %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-statut">Statut</label>
+      <select class="form-select" id="filtre-statut" name="statut">
+        <option value="">Tous</option>
+        <option value="actif" {% if filtre.statut == "actif" %}selected{% endif %}>Actifs</option>
+        <option value="inactif" {% if filtre.statut == "inactif" %}selected{% endif %}>Inactifs</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-date">Date de création</label>
+      <input class="form-control" id="filtre-date" type="date" name="date" value="{{ filtre.date }}">
+    </div>
+  </div>
+  {% if recherche %}
+    <p class="mb-0 mt-2"><a href="{% url 'bo_warehouses:liste' %}">Effacer les filtres</a></p>
+  {% endif %}
+</form>
+
+{% if entrepots %}
+  <div class="table-responsive">
+    <table class="table table-ch align-middle entrepots-table">
+      <thead>
+        <tr>
+          <th>Nom</th>
+          <th>Ville</th>
+          <th>Adresse</th>
+          <th>Capacité maximale</th>
+          <th>Statut</th>
+          <th>Date de création</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entrepot in entrepots %}
+          <tr>
+            <td class="col-nom">{{ entrepot.nom }}</td>
+            <td class="col-chiffre">{{ entrepot.ville }}</td>
+            <td class="col-adresse">{{ entrepot.adresse }}</td>
+            <td class="col-chiffre">{{ entrepot.capacite_max_m3 }} m³</td>
+            <td>
+              {% if entrepot.actif %}
+                <span class="badge-statut badge-PUBLIEE">Actif</span>
+              {% else %}
+                <span class="badge-statut badge-BROUILLON">Inactif</span>
+              {% endif %}
+            </td>
+            <td class="col-chiffre">{{ entrepot.created_at|date:"d/m/Y" }}</td>
+            <td>
+              <a href="{% url 'bo_warehouses:detail' entrepot.pk %}">Voir</a>
+              · <a href="{% url 'bo_warehouses:modifier' entrepot.pk %}">Modifier</a>
+              {% if entrepot.actif %}
+                · <a href="{% url 'bo_warehouses:desactiver' entrepot.pk %}">Désactiver</a>
+              {% else %}
+                · <form method="post" action="{% url 'bo_warehouses:activer' entrepot.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-link btn-sm p-0 align-baseline" type="submit">Activer</button></form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "core/_pagination.html" %}
+{% else %}
+  <p class="text-muted">
+    {% if recherche %}Aucun entrepôt ne correspond à cette recherche.{% else %}Aucun entrepôt enregistré.{% endif %}
+  </p>
+{% endif %}
+{% endblock %}
+{% block extra_js %}<script src="{% static 'shipments/js/filtre.js' %}"></script>{% endblock %}

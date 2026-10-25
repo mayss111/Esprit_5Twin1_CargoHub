@@ -1,0 +1,6 @@
+<div class="col-md-4 col-xl-3">
+  <section class="card card-ch p-3 h-100">
+    <h2 class="h6 text-muted">{{ libelle }}</h2>
+    <p class="fs-4 mb-0">{% if cle %}<span data-stat="{{ cle }}">{{ valeur }}</span>{% else %}{{ valeur }}{% endif %}{% if unite %} {{ unite }}{% endif %}</p>
+  </section>
+</div>

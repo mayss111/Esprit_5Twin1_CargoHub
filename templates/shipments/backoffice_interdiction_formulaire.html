@@ -1,0 +1,18 @@
+{% extends "backoffice/base.html" %}
+{% block title %}{{ titre }}{% endblock %}
+{% block content %}
+<p class="mb-3"><a href="{% url 'bo_shipments:interdictions' %}">Toutes les règles</a></p>
+<h1 class="page-title mb-3">{{ titre }}</h1>
+<form method="post" class="card card-ch p-3 col-lg-8">
+  {% csrf_token %}
+  {% for champ in formulaire %}
+    <div class="mb-3">
+      <label class="form-label" for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+      {{ champ }}
+      {% if champ.help_text %}<div class="form-text">{{ champ.help_text }}</div>{% endif %}
+      {% for erreur in champ.errors %}<div class="invalid-feedback d-block">{{ erreur }}</div>{% endfor %}
+    </div>
+  {% endfor %}
+  <button class="btn btn-accent" type="submit">Enregistrer</button>
+</form>
+{% endblock %}

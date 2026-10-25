@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Vérification du bon{% endblock %}
+{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}" rel="stylesheet">{% endblock %}
+{% block content %}
+<div class="card card-ch p-4">
+  {% if not valide %}
+    <p class="kicker mb-1">QR Code</p>
+    <h1 class="page-title">Référence invalide</h1>
+    <p class="mb-0">Ce QR Code ne correspond à aucune expédition CargoHub.</p>
+  {% else %}
+    <p class="kicker mb-1">QR Code</p>
+    <h1 class="page-title mb-2">Référence valide</h1>
+    <p class="mb-1"><strong>{{ reference }}</strong></p>
+    <p class="mb-3">Statut actuel : <span class="badge-statut badge-{{ code_statut }}">{{ statut }}</span></p>
+    {% if expedition %}
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <h2 class="h6">PME</h2>
+          <p class="mb-0">{{ expedition.pme.profil_pme.raison_sociale|default:expedition.pme.email }}<br>{{ expedition.pme.email }}</p>
+        </div>
+        <div class="col-md-6">
+          <h2 class="h6">Transport</h2>
+          <p class="mb-1">Départ : {{ expedition.adresse_depart }}</p>
+          <p class="mb-1">Arrivée : {{ expedition.adresse_arrivee }}</p>
+          <p class="mb-0">Départ le {{ expedition.date_souhaitee|date:"d/m/Y" }} · arrivée le {{ expedition.date_arrivee|date:"d/m/Y" }}</p>
+        </div>
+      </div>
+      <h2 class="h6">Articles</h2>
+      <ul>
+        {% for article in expedition.articles.all %}
+          <li>{{ article.designation }} — {{ article.quantite }} — {{ article.get_type_marchandise_display }}</li>
+        {% empty %}
+          <li>Aucun article.</li>
+        {% endfor %}
+      </ul>
+      <p>Poids total : {{ expedition.poids_total_kg }} kg · Volume total : {{ expedition.volume_total_m3 }} m³</p>
+      {% if lien_detail %}
+        <a class="btn btn-outline-secondary" href="{{ lien_detail }}">Ouvrir l'expédition</a>
+      {% endif %}
+      {% if expedition.bon_disponible %}
+        <a class="btn btn-accent" href="{% url 'shipments:bon' expedition.pk %}">Télécharger le bon d'expédition PDF</a>
+      {% endif %}
+    {% else %}
+      <p class="mb-0">Les adresses et les coordonnées restent réservées à la PME propriétaire et à l'administrateur.</p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

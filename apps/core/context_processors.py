@@ -10,7 +10,8 @@ from .roles import Role, est_admin
 MENU_PME = [
     ("Mes expéditions", "shipments:liste", "box-seam"),
     ("Trouver un camion", "bookings:trouver", "search"),
-    ("Points relais", "warehouses:liste", "shop"),
+    ("Entrepôts & points relais", "warehouses:liste", "shop"),
+    ("Mes dépôts", "warehouses:mes_depots", "calendar-event"),
     ("Réservations", "bookings:liste", "calendar-check"),
     ("Appels d’offres", "tenders:liste", "megaphone"),
     ("Suivi", "tracking:liste", "geo-alt"),
@@ -54,7 +55,11 @@ MENU_BACKOFFICE = [
         "#0E9F8E",
         [
             ("Expéditions", "bo_shipments:liste", "box-seam"),
+            ("Vérifications", "bo_shipments:verifications", "shield-check"),
+            ("Interdictions", "bo_shipments:interdictions", "slash-circle"),
             ("Entrepôts", "bo_warehouses:liste", "shop"),
+            ("Dépôts", "bo_warehouses:reservations", "calendar-event"),
+            ("Occupation", "bo_warehouses:occupation", "pie-chart"),
             ("Sinistres", "bo_insurance:liste", "shield-exclamation"),
         ],
     ),
@@ -96,8 +101,12 @@ def navigation(request):
             menu = MENU_PME
         elif user.role == Role.TRANSPORTEUR:
             menu = MENU_TRANSPORTEUR
+    notifications = []
+    if user.is_authenticated:
+        notifications = list(user.notifications.filter(lu=False)[:5])
     return {
         "menu_front": menu,
         "menu_backoffice": MENU_BACKOFFICE,
         "est_admin": est_admin(user),
+        "notifications_non_lues": notifications,
     }

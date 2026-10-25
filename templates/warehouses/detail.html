@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ entrepot.nom }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link href="{% static 'warehouses/css/relais.css' %}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<p class="mb-2"><a href="{% url 'warehouses:liste' %}">Tous les points relais</a></p>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+  <div>
+    <h1 class="page-title mb-1">{{ entrepot.nom }}</h1>
+    <span class="badge-statut badge-PUBLIEE">Actif</span>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    {% if entrepot.latitude is not None %}
+      <div id="carte-relais" class="carte-relais carte-relais-petite" role="region" aria-label="Localisation de l'entrepôt"></div>
+      <p class="small text-muted mt-1 mb-0">Fond de carte © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a></p>
+    {% else %}
+      <p class="text-muted">Cet entrepôt n'a pas de coordonnées GPS. Son emplacement n'est pas placé sur la carte.</p>
+    {% endif %}
+  </div>
+  <div class="col-lg-5">
+    <section class="card card-ch p-3">
+      {% if entrepot.description %}<p>{{ entrepot.description }}</p>{% endif %}
+      <p class="mb-1">{{ entrepot.adresse }}</p>
+      <p class="mb-1">{{ entrepot.code_postal }} {{ entrepot.ville }}{% if entrepot.gouvernorat %} ({{ entrepot.gouvernorat }}){% endif %}</p>
+      <p class="mb-1">Ouvert de {{ entrepot.horaire_ouverture|time:"H:i" }} à {{ entrepot.horaire_fermeture|time:"H:i" }}</p>
+      <p class="mb-1">Capacité maximale : {{ entrepot.capacite_max_m3 }} m³</p>
+      <p class="mb-1">Réservé : {{ occupation.reserve }} m³</p>
+      <p class="mb-1">Disponible : {{ occupation.disponible }} m³</p>
+      <p class="mb-1">Taux d'occupation : <strong>{{ occupation.taux }} %</strong></p>
+      <div class="progress mb-3" role="progressbar" aria-label="Taux d'occupation" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ occupation.barre }}">
+        <div class="progress-bar" style="width: {{ occupation.barre }}%"></div>
+      </div>
+      <a class="btn btn-accent" href="{% url 'warehouses:reserver' entrepot.pk %}{% if expedition_id %}?expedition={{ expedition_id }}{% endif %}">Réserver un créneau de dépôt</a>
+    </section>
+  </div>
+</div>
+{{ marqueurs|json_script:"marqueurs-entrepots" }}
+{% endblock %}
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="{% static 'warehouses/js/carte.js' %}?v=20261025d"></script>
+{% endblock %}

@@ -1,7 +1,7 @@
 {% extends "backoffice/base.html" %}
 {% load static %}
 {% block title %}{{ expedition.reference }}{% endblock %}
-{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}" rel="stylesheet">{% endblock %}
+{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}?v=20261025k" rel="stylesheet">{% endblock %}
 {% block content %}
 <p class="mb-2"><a href="{% url 'bo_shipments:liste' %}">Toutes les expéditions</a></p>
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
@@ -9,11 +9,17 @@
     <h1 class="page-title mb-1">{{ expedition.reference }}</h1>
     <span class="badge-statut badge-{{ expedition.statut }}">{{ expedition.get_statut_display }}</span>
   </div>
-  <p class="mb-0">
-    <strong>{{ expedition.pme.profil_pme.raison_sociale|default:expedition.pme.email }}</strong><br>
-    {{ expedition.pme.email }}
-  </p>
+  <div class="d-flex flex-wrap gap-2">
+    {% if expedition.bon_disponible %}
+      <a class="btn btn-accent" href="{% url 'shipments:bon' expedition.pk %}">Télécharger le bon d'expédition PDF</a>
+    {% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'shipments:verifier' jeton_bon %}">Vérifier la référence du QR Code</a>
+  </div>
 </div>
+<p class="mb-4">
+  <strong>{{ expedition.pme.profil_pme.raison_sociale|default:expedition.pme.email }}</strong><br>
+  {{ expedition.pme.email }}
+</p>
 
 <div class="row g-3 mb-4">
   <div class="col-md-4">
@@ -36,6 +42,8 @@
     </section>
   </div>
 </div>
+
+{% include "warehouses/_depot_expedition.html" with lien_admin=True %}
 
 <h2 class="h5">Articles</h2>
 <div class="table-responsive">
