@@ -14,6 +14,8 @@ django-crispy-forms==2.7
 crispy-bootstrap5==2026.9
 Pillow==13.0.0
 requests==2.34.2
+djangorestframework==3.16.1   # API REST de la flotte (M3), consommée par le SPA React
+djangorestframework-simplejwt==5.5.1  # authentification JWT de l'API
 
 # Fonctionnalités avancées
 stripe==16.0.0            # M5 — paiement en ligne (mode test)

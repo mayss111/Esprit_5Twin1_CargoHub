@@ -1,0 +1,47 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Véhicules{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <h1 class="page-title mb-0">Véhicules</h1>
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'bo_fleet:trajets' %}"><i class="bi bi-signpost-split" aria-hidden="true"></i> Tous les trajets</a>
+</div>
+<section class="row g-3 mb-4" aria-label="Indicateurs">
+  <div class="col-sm-4"><div class="kpi"><div class="small text-muted">Véhicules</div><div class="val">{{ nb_vehicules }}</div></div></div>
+  <div class="col-sm-4"><div class="kpi"><div class="small text-muted">Non conformes</div><div class="val">{{ nb_non_conformes }}</div></div></div>
+  <div class="col-sm-4"><div class="kpi"><div class="small text-muted">Trajets ouverts</div><div class="val">{{ nb_trajets_ouverts }}</div></div></div>
+</section>
+<nav class="nav nav-pills flex-wrap gap-1 mb-3" aria-label="Filtrer par statut">
+  <a class="nav-link{% if not request.GET.statut %} active{% endif %}" href="?"{% if not request.GET.statut %} aria-current="page"{% endif %}>Tous</a>
+  {% for valeur, libelle in statuts %}
+  <a class="nav-link{% if request.GET.statut == valeur %} active{% endif %}" href="?statut={{ valeur }}"{% if request.GET.statut == valeur %} aria-current="page"{% endif %}>{{ libelle }}</a>
+  {% endfor %}
+</nav>
+{% if object_list %}
+<div class="table-responsive"><table class="table table-ch align-middle">
+  <caption class="visually-hidden">Véhicules ({{ page_obj.paginator.count }})</caption>
+  <thead><tr><th scope="col">Immatriculation</th><th scope="col">Transporteur</th><th scope="col">Type</th><th scope="col">Documents</th><th scope="col">Statut</th><th scope="col">Décision</th></tr></thead>
+  <tbody>{% for v in object_list %}
+    <tr>
+      <td class="fw-semibold">{{ v.immatriculation }}</td>
+      <td>{{ v.transporteur }}</td>
+      <td>{{ v.get_type_display }}</td>
+      <td>{% for doc in v.documents.all %}<a class="badge text-bg-light border text-decoration-none" href="{{ doc.fichier.url }}" target="_blank" rel="noopener">{{ doc.get_type_display }} · {{ doc.date_expiration|date:"d/m/Y" }}</a> {% empty %}<span class="text-muted small">Aucun</span>{% endfor %}</td>
+      <td>
+        {% include "fleet/_statut.html" with statut=v.statut libelle=v.get_statut_display %}
+        {% if v.motif_non_conformite %}<div class="text-danger small">{{ v.motif_non_conformite }}</div>{% endif %}
+      </td>
+      <td>
+        <form method="post" action="{% url 'bo_fleet:decision' v.pk %}" class="d-flex flex-wrap gap-1">{% csrf_token %}
+          <label class="visually-hidden" for="motif-{{ v.pk }}">Motif du refus pour {{ v.immatriculation }}</label>
+          <input id="motif-{{ v.pk }}" name="motif" class="form-control form-control-sm w-auto" placeholder="Motif du refus" maxlength="255">
+          <button class="btn btn-sm btn-outline-danger" name="decision" value="refuser" type="submit">Refuser</button>
+          <button class="btn btn-sm btn-outline-success" name="decision" value="valider" type="submit">Valider</button>
+        </form>
+      </td>
+    </tr>{% endfor %}
+  </tbody></table></div>
+{% include "core/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5">Aucun véhicule.</div>
+{% endif %}
+{% endblock %}

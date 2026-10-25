@@ -22,3 +22,7 @@ staticfiles/
 .DS_Store
 htmlcov/
 .coverage
+
+# Frontend dependencies and generated build output
+frontend/node_modules/
+frontend/dist/

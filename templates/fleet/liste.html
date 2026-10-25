@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Mes trajets{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">
+<style>#carte-trajets { height: 380px; border-radius: 12px; }</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="page-title mb-1">Mes trajets</h1>
+    <p class="text-muted mb-0">Les trajets que vous proposez, leur place libre et leur itinéraire.</p>
+  </div>
+  <a class="btn btn-accent" href="{% url 'fleet:trajet_creer' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> Publier un trajet</a>
+</div>
+{% if object_list %}
+<div class="table-responsive"><table class="table table-ch align-middle">
+  <caption class="visually-hidden">Mes trajets</caption>
+  <thead><tr><th scope="col">Trajet</th><th scope="col">Départ</th><th scope="col">Véhicule</th><th scope="col">Place libre</th><th scope="col">Remplissage</th><th scope="col">Statut</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+  <tbody>{% for t in object_list %}
+    <tr>
+      <td class="fw-semibold">{{ t.ville_depart }} → {{ t.ville_arrivee }}{% if t.etapes.all %}<div class="small text-muted">via {{ t.etapes.all|join:", " }}</div>{% endif %}</td>
+      <td>{{ t.date_depart|date:"d/m/Y H:i" }}{% if t.recurrent %} <i class="bi bi-arrow-repeat" title="Chaque semaine" aria-label="Chaque semaine"></i>{% endif %}</td>
+      <td>{{ t.vehicule.immatriculation }}</td>
+      <td>{{ t.capacite_dispo_kg|floatformat:0 }} kg · {{ t.capacite_dispo_m3|floatformat:1 }} m³</td>
+      <td>{% widthratio t.taux_remplissage 1 100 %} %</td>
+      <td>{% include "fleet/_statut.html" with statut=t.statut libelle=t.get_statut_display %}</td>
+      <td class="text-end text-nowrap">
+        {% if t.statut == "OUVERT" or t.statut == "COMPLET" %}
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'fleet:trajet_modifier' t.pk %}">Modifier</a>
+        <form method="post" action="{% url 'fleet:trajet_annuler' t.pk %}" class="d-inline" data-confirmer="Annuler ce trajet ?">{% csrf_token %}
+          <button class="btn btn-sm btn-outline-danger" type="submit">Annuler</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>{% endfor %}
+  </tbody></table></div>
+{% include "core/_pagination.html" %}
+
+<h2 class="h5 mt-4 mb-3"><i class="bi bi-map" aria-hidden="true"></i> Vos trajets sur la carte</h2>
+<div id="carte-trajets" role="region" aria-label="Carte des trajets"></div>
+<div id="choix-itineraires" class="card card-ch p-3 mt-3" aria-label="Calculer un itinéraire routier"></div>
+<div id="resultat-itineraire" class="mt-3" aria-live="polite"></div>
+<p class="small text-muted mt-2 mb-0">Itinéraires calculés par Valhalla / OpenStreetMap (le premier est le plus rapide). Points approximatifs (centre-ville), sans trafic en temps réel ; les camions utilisent le profil poids lourd standard.</p>
+{{ trajets_carte|json_script:"donnees-trajets" }}
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-signpost-split fs-1 d-block mb-2" aria-hidden="true"></i>Aucun trajet publié pour le moment.</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{% if object_list %}
+<script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'fleet/js/trajets.js' %}"></script>
+{% endif %}
+{% endblock %}

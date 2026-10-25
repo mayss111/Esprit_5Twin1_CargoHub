@@ -10,7 +10,7 @@ from apps.accounts.models import Utilisateur
 from apps.bookings.models import Reservation
 from apps.core.mixins import AdminRequiredMixin
 from apps.core.roles import Role
-from apps.fleet.models import Trajet
+from apps.fleet.models import Trajet, Vehicule
 from apps.payments.models import Paiement
 from apps.shipments.models import Expedition
 
@@ -20,9 +20,14 @@ class AccueilBackofficeView(AdminRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        nb_vehicules = Vehicule.objects.count()
+        nb_conformes = Vehicule.objects.filter(statut=Vehicule.Statut.ACTIF, conforme=True).count()
+        taux_conformite = round(100 * nb_conformes / nb_vehicules) if nb_vehicules else 0
         ctx["kpis"] = [
             ("PME inscrites", Utilisateur.objects.filter(role=Role.PME).count(), "building"),
             ("Transporteurs", Utilisateur.objects.filter(role=Role.TRANSPORTEUR).count(), "truck"),
+            ("Véhicules", nb_vehicules, "truck-front"),
+            ("Taux de conformité (%)", taux_conformite, "shield-check"),
             ("Expéditions", Expedition.objects.count(), "box-seam"),
             ("Trajets ouverts", Trajet.objects.filter(statut=Trajet.Statut.OUVERT).count(), "signpost-split"),
             ("Réservations", Reservation.objects.count(), "calendar-check"),
