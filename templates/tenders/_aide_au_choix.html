@@ -1,0 +1,35 @@
+{% load static %}
+<section class="card card-ch p-4 mb-3" aria-labelledby="titre-aide" id="aide-au-choix"
+  data-statut-url="{% url 'tenders:recommandation_statut' appel.pk %}" data-statut="{{ appel.recommandation_statut }}">
+  <h2 class="h5" id="titre-aide"><i class="bi bi-stars" aria-hidden="true"></i> Aide au choix</h2>
+
+  {% if appel.recommandation_statut == "EN_COURS" %}
+    <p class="mb-0" role="status" aria-live="polite">
+      <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+      <span data-aide-message>Analyse en cours… L’IA compare les {{ nb_proposees }} offres.</span>
+    </p>
+
+  {% elif appel.recommandation_statut == "PRETE" and offre_recommandee %}
+    <div class="border border-2 border-info rounded-3 p-3 mb-2">
+      <h3 class="h6 mb-1">Offre recommandée : {{ offre_recommandee.transporteur }} — {{ offre_recommandee.prix }} DT</h3>
+      <p class="mb-2">{{ appel.recommandation_ia.explication }}</p>
+      <p class="small text-muted mb-0">Méthode : {{ appel.recommandation_ia.methode }}{% if appel.recommandation_duree_ms is not None %} · {{ appel.recommandation_duree_ms }} ms{% endif %}</p>
+    </div>
+    <p class="small mb-2">C’est un conseil : vous restez libre de retenir une autre offre.</p>
+    <form method="post" action="{% url 'tenders:recommander' appel.pk %}">{% csrf_token %}
+      <button class="btn btn-sm btn-outline-primary" type="submit">Relancer l’analyse</button>
+    </form>
+
+  {% else %}
+    {% if appel.recommandation_statut == "ERREUR" %}
+      <p class="text-danger" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        L’analyse n’a pas abouti. Vous pouvez réessayer, ou comparer les offres vous-même.</p>
+    {% else %}
+      <p class="small text-muted">L’IA compare le prix de chaque offre au prix juste du marché, la note des transporteurs et la date de départ.</p>
+    {% endif %}
+    <form method="post" action="{% url 'tenders:recommander' appel.pk %}">{% csrf_token %}
+      <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-stars" aria-hidden="true"></i> {% if appel.recommandation_statut == "ERREUR" %}Réessayer{% else %}Aide au choix{% endif %}</button>
+    </form>
+  {% endif %}
+</section>
+{% if appel.recommandation_statut == "EN_COURS" %}<script src="{% static 'js/aide_au_choix.js' %}" defer></script>{% endif %}

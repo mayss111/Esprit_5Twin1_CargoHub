@@ -1,5 +1,6 @@
 """Tests du module Appels d’offres & négociation (M4) : règles, retenir une offre, IA, pages par rôle, back-office."""
 
+import json
 from datetime import timedelta
 from decimal import Decimal
 from io import StringIO
@@ -11,14 +12,16 @@ from django.db import IntegrityError
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.accounts.models import ProfilTransporteur, Utilisateur
 from apps.bookings.models import Notification, Reservation
 from apps.bookings.services import ReservationImpossible
-from apps.fleet.models import Trajet
-from apps.tenders.ai import suggerer_prix
+from apps.core.roles import Role
+from apps.fleet.models import Trajet, Vehicule
+from apps.tenders.ai import recommander_depuis_resume, recommander_par_regle, suggerer_prix
 from apps.tenders.forms import AppelOffreForm, OffreForm
 from apps.tenders.models import AppelOffre, Offre
 from apps.tenders.services import retenir_offre
-from apps.tenders.tasks import cloturer_appels_offres
+from apps.tenders.tasks import calculer_recommandation, cloturer_appels_offres
 
 
 @pytest.fixture
@@ -368,3 +371,206 @@ def test_backoffice_appels(client, admin_user, appel_offre, offre):
 def test_backoffice_appels_interdit_aux_utilisateurs(client, pme, appel_offre):
     client.force_login(pme)
     assert client.get(reverse("bo_tenders:detail", args=[appel_offre.pk])).status_code == 403
+
+
+# ---------------------------------------------------------------- IA n° 2 : aide au choix d'une offre
+
+
+def _offre_resumee(offre_id, prix, ecart, note):
+    juste = round(prix / (1 + ecart / 100), 2)
+    return {
+        "offre_id": offre_id,
+        "transporteur": f"T{offre_id}",
+        "prix": prix,
+        "prix_juste": juste,
+        "ecart_pct": ecart,
+        "note": note,
+        "depart": "2026-11-02",
+    }
+
+
+def _recommandation(appel):
+    appel.refresh_from_db()
+    return appel.recommandation_statut, appel.recommandation_ia
+
+
+def _mettre_en_cours(appel):
+    AppelOffre.objects.filter(pk=appel.pk).update(recommandation_statut=AppelOffre.Recommandation.EN_COURS)
+
+
+def _rendre_prete(appel, offre):
+    AppelOffre.objects.filter(pk=appel.pk).update(
+        recommandation_statut=AppelOffre.Recommandation.PRETE,
+        recommandation_ia={"offre_id": offre.pk, "explication": "Test.", "methode": "règle"},
+        recommandation_duree_ms=3,
+    )
+
+
+@pytest.fixture
+def troisieme_transporteur(db):
+    user = Utilisateur.objects.create_user("rania@test.tn", "motdepasse123", role=Role.TRANSPORTEUR, first_name="Rania")
+    ProfilTransporteur.objects.create(utilisateur=user, statut_validation=ProfilTransporteur.Statut.VALIDE)
+    vehicule = Vehicule.objects.create(
+        transporteur=user, type=Vehicule.Type.CAMION, immatriculation="555 TU 1111", capacite_kg=2000, capacite_m3=10
+    )
+    trajet = Trajet.objects.create(
+        transporteur=user,
+        vehicule=vehicule,
+        ville_depart="Monastir",
+        ville_arrivee="Tunis",
+        date_depart=timezone.now() + timedelta(days=2),
+        capacite_dispo_kg=Decimal("1500"),
+        capacite_dispo_m3=Decimal("8"),
+        distance_km=160,
+    )
+    return user, trajet
+
+
+def test_regle_privilegie_le_rapport_prix_fiabilite():
+    resume = [_offre_resumee(1, 80, -20, 2.0), _offre_resumee(2, 95, -5, 4.8)]
+    resultat = recommander_par_regle(resume)
+    assert resultat["offre_id"] == 2 and resultat["methode"] == "règle"
+    assert "4,8/5" in resultat["explication"] and "5 % sous le prix juste" in resultat["explication"]
+
+
+def test_regle_sans_note_ni_prix_juste():
+    resume = [_offre_resumee(1, 120, 10, None), _offre_resumee(2, 100, 0, None)]
+    resume[0].update(prix_juste=None, ecart_pct=None)
+    resultat = recommander_par_regle(resume)
+    assert resultat["offre_id"] == 2 and "pas encore de note" in resultat["explication"]
+
+
+def test_recommandation_sans_offre():
+    with pytest.raises(ValueError):
+        recommander_depuis_resume([])
+
+
+def test_tache_en_mode_de_repli(appel_offre, offre, offre_concurrente):
+    _mettre_en_cours(appel_offre)
+    calculer_recommandation(appel_offre.pk)
+    statut, reco = _recommandation(appel_offre)
+    assert statut == AppelOffre.Recommandation.PRETE
+    assert reco["offre_id"] == offre.pk and reco["methode"] == "règle" and reco["explication"]
+    assert appel_offre.recommandation_duree_ms is not None
+
+
+def test_tache_avec_llm_mocke(settings, appel_offre, offre, offre_concurrente):
+    settings.AI_API_KEY, settings.AI_MODEL = "cle-de-test", "modele-test"
+    reponse = json.dumps({"offre_id": offre_concurrente.pk, "explication": "Départ plus sûr et bonne réputation."})
+    _mettre_en_cours(appel_offre)
+    with mock.patch("apps.core.ai.demander", return_value=reponse) as appel_llm:
+        calculer_recommandation(appel_offre.pk)
+    statut, reco = _recommandation(appel_offre)
+    assert statut == AppelOffre.Recommandation.PRETE
+    assert reco == {
+        "offre_id": offre_concurrente.pk,
+        "explication": "Départ plus sûr et bonne réputation.",
+        "methode": "LLM (modele-test)",
+    }
+    assert str(offre.pk) in appel_llm.call_args.args[0]  # le résumé des offres est bien envoyé
+
+
+@pytest.mark.parametrize(
+    "reponse",
+    ['{"offre_id": 999999, "explication": "Offre inventée"}', '{"offre_id": "%s"}', "Je ne sais pas."],
+)
+def test_reponse_llm_invalide_donne_la_regle(settings, appel_offre, offre, offre_concurrente, reponse):
+    settings.AI_API_KEY = "cle-de-test"
+    _mettre_en_cours(appel_offre)
+    with mock.patch("apps.core.ai.demander", return_value=reponse.replace("%s", str(offre.pk))):
+        calculer_recommandation(appel_offre.pk)
+    statut, reco = _recommandation(appel_offre)
+    assert statut == AppelOffre.Recommandation.PRETE
+    assert reco["offre_id"] == offre.pk and reco["methode"].startswith("règle")
+
+
+def test_tache_en_erreur(appel_offre, offre, offre_concurrente):
+    _mettre_en_cours(appel_offre)
+    with mock.patch("apps.tenders.tasks.recommander_offre", side_effect=RuntimeError("panne")):
+        calculer_recommandation(appel_offre.pk)
+    assert _recommandation(appel_offre) == (AppelOffre.Recommandation.ERREUR, None)
+
+
+def test_tache_n_ecrase_pas_un_resultat_perime(appel_offre, offre, offre_concurrente):
+    calculer_recommandation(appel_offre.pk)  # analyse annulée entre-temps (statut vide)
+    assert _recommandation(appel_offre) == ("", None)
+    calculer_recommandation(999_999)  # appel supprimé : aucune erreur
+
+
+def test_lancer_l_aide_au_choix(client, pme, appel_offre, offre, offre_concurrente):
+    client.force_login(pme)
+    url = reverse("tenders:recommander", args=[appel_offre.pk])
+    assert client.get(url).status_code == 405
+    html = client.post(url, follow=True).content.decode()
+    assert "Analyse en cours" in html  # message de lancement (Celery s'exécute tout de suite en test)
+    assert "Offre recommandée : Karim — 90,00 DT" in html and "Recommandée par l’aide au choix" in html
+    assert "Méthode : règle" in html and "vous restez libre" in html
+
+
+@pytest.mark.parametrize("cas", ["une_offre", "appel_attribue", "deja_en_cours"])
+def test_lancer_refuse(client, pme, appel_offre, offre, offre_concurrente, cas):
+    if cas == "une_offre":
+        offre_concurrente.delete()
+    elif cas == "appel_attribue":
+        AppelOffre.objects.filter(pk=appel_offre.pk).update(statut=AppelOffre.Statut.ATTRIBUE)
+    else:
+        _mettre_en_cours(appel_offre)
+    client.force_login(pme)
+    with mock.patch("apps.tenders.views.calculer_recommandation.delay") as delay:
+        client.post(reverse("tenders:recommander", args=[appel_offre.pk]))
+    delay.assert_not_called()
+
+
+def test_lancer_sans_celery(client, pme, appel_offre, offre, offre_concurrente):
+    client.force_login(pme)
+    with mock.patch("apps.tenders.views.calculer_recommandation.delay", side_effect=ConnectionError("Redis")):
+        html = client.post(reverse("tenders:recommander", args=[appel_offre.pk]), follow=True).content.decode()
+    assert _recommandation(appel_offre)[0] == AppelOffre.Recommandation.ERREUR
+    assert "n’a pas pu démarrer" in html and "L’analyse n’a pas abouti" in html and "Réessayer" in html
+
+
+def test_aide_au_choix_permissions(client, autre_pme, transporteur, appel_offre, offre, offre_concurrente):
+    urls = [
+        ("post", reverse("tenders:recommander", args=[appel_offre.pk])),
+        ("get", reverse("tenders:recommandation_statut", args=[appel_offre.pk])),
+    ]
+    for methode, url in urls:
+        assert getattr(client, methode)(url).status_code == 302  # anonyme → connexion
+    client.force_login(autre_pme)
+    for methode, url in urls:
+        assert getattr(client, methode)(url).status_code == 404
+    client.force_login(transporteur)
+    for methode, url in urls:
+        assert getattr(client, methode)(url).status_code == 403
+    assert _recommandation(appel_offre)[0] == ""
+
+
+def test_endpoint_json(client, pme, appel_offre, offre, offre_concurrente):
+    client.force_login(pme)
+    url = reverse("tenders:recommandation_statut", args=[appel_offre.pk])
+    _mettre_en_cours(appel_offre)
+    assert client.get(url).json() == {"statut": "EN_COURS", "recommandation": None, "duree_ms": None}
+    html = client.get(reverse("tenders:detail", args=[appel_offre.pk])).content.decode()
+    assert 'aria-live="polite"' in html and "Analyse en cours" in html and "aide_au_choix.js" in html
+    calculer_recommandation(appel_offre.pk)
+    data = client.get(url).json()
+    assert data["statut"] == "PRETE" and data["recommandation"]["offre_id"] == offre.pk and data["duree_ms"] >= 0
+
+
+def test_nouvelle_offre_efface_la_recommandation(client, appel_offre, offre, offre_concurrente, troisieme_transporteur):
+    _rendre_prete(appel_offre, offre)
+    rania, trajet = troisieme_transporteur
+    client.force_login(rania)
+    client.post(reverse("tenders:offre_creer", args=[appel_offre.pk]), {"trajet": trajet.pk, "prix": "85"})
+    assert Offre.objects.filter(transporteur=rania).exists()
+    assert _recommandation(appel_offre) == ("", None)
+
+
+def test_modifier_ou_retirer_une_offre_efface_la_recommandation(client, transporteur, appel_offre, offre, trajet):
+    client.force_login(transporteur)
+    _rendre_prete(appel_offre, offre)
+    client.post(reverse("tenders:offre_modifier", args=[offre.pk]), {"trajet": trajet.pk, "prix": "87"})
+    assert _recommandation(appel_offre) == ("", None)
+    _rendre_prete(appel_offre, offre)
+    client.post(reverse("tenders:offre_retirer", args=[offre.pk]))
+    assert _recommandation(appel_offre) == ("", None)
