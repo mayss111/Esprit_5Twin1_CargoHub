@@ -102,16 +102,14 @@ def changer_statut(reservation: Reservation, nouveau: str, par=None, motif: str 
     poids = Decimal(reservation.expedition.poids_total_kg)
     volume = Decimal(reservation.expedition.volume_total_m3)
 
+    # La place est gérée par le modèle Trajet (M3) : il passe COMPLET quand il est plein, puis OUVERT s'il se libère.
     if nouveau == Reservation.Statut.ACCEPTEE:
-        if trajet.capacite_dispo_kg < poids or trajet.capacite_dispo_m3 < volume:
-            raise ReservationImpossible("Plus assez de place dans ce camion")
-        trajet.capacite_dispo_kg -= poids
-        trajet.capacite_dispo_m3 -= volume
-        trajet.save(update_fields=["capacite_dispo_kg", "capacite_dispo_m3"])
+        try:
+            trajet.reserver_capacite(poids, volume)
+        except ValueError as erreur:
+            raise ReservationImpossible("Plus assez de place dans ce camion") from erreur
     elif nouveau == Reservation.Statut.ANNULEE and reservation.statut == Reservation.Statut.ACCEPTEE:
-        trajet.capacite_dispo_kg += poids
-        trajet.capacite_dispo_m3 += volume
-        trajet.save(update_fields=["capacite_dispo_kg", "capacite_dispo_m3"])
+        trajet.liberer_capacite(poids, volume)
 
     HistoriqueStatut.objects.create(
         reservation=reservation, ancien=reservation.statut, nouveau=nouveau, par=par, motif=motif

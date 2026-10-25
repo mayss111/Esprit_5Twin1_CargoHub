@@ -94,19 +94,21 @@ class Command(BaseCommand):
             "  Données simulées : 200 camions, 5 entretiens chacun ; on prédit le 5e à partir des 4 premiers."
         )
         hasard = random.Random(42)
-        reels, predits, base = [], [], []
+        reels, predits, base, temps = [], [], [], []
         for _ in range(200):
             km_jour, jour, km, historique = hasard.uniform(60, 300), date(2025, 1, 1), 50_000, []
             for _ in range(5):
                 historique.append((jour, round(km)))
                 duree = INTERVALLE_KM / (km_jour * hasard.uniform(0.8, 1.2))
                 jour, km = jour + timedelta(days=round(duree)), km + INTERVALLE_KM
-            prediction = predire_depuis_historique(historique[:4])
+            prediction, millisecondes = ai.mesurer(predire_depuis_historique, historique[:4])
             reels.append((historique[4][0] - historique[3][0]).days)
             predits.append((prediction["date_prevue"] - historique[3][0]).days)
             base.append(180)
+            temps.append(millisecondes)
         self.stdout.write("  Erreur exprimée en jours entre le dernier entretien et le suivant :")
         self.regression(reels, predits, base, "Règle « tous les 6 mois »")
+        self.stdout.write(f"  Temps de prédiction moyen : {mean(temps):.1f} ms (200 véhicules simulés)")
 
     def m4(self):
         from apps.tenders.ai import _formule, caracteristiques, entrainer, suggerer_prix

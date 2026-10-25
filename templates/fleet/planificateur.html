@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Planificateur IA{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <h1 class="page-title mb-1"><i class="bi bi-stars text-warning" aria-hidden="true"></i> Planificateur IA</h1>
+  <p class="text-muted mb-0">Trouvez le véhicule le mieux adapté à une mission : capacité, impact carbone et entretien prévisionnel.</p>
+</div>
+<div class="row g-4 align-items-start">
+  <div class="col-lg-5">
+    <section class="card card-ch p-4" aria-labelledby="titre-mission">
+      <h2 id="titre-mission" class="h5 mb-3">La mission</h2>
+      <form method="post" data-ia="Analyse de votre flotte…">{% csrf_token %}
+        {{ form|crispy }}
+        <button class="btn btn-accent w-100" type="submit"><i class="bi bi-stars" aria-hidden="true"></i> Analyser ma flotte</button>
+      </form>
+    </section>
+    <p class="small text-muted mt-3"><i class="bi bi-info-circle" aria-hidden="true"></i> Analyse prévisionnelle : elle ne réserve aucun véhicule et ne publie aucun trajet.</p>
+  </div>
+  <div class="col-lg-7">
+    {% if recommandations %}
+    <section aria-labelledby="titre-resultats">
+      <h2 id="titre-resultats" class="h5 mb-1">Véhicules recommandés</h2>
+      <p class="text-muted small">{{ mission.ville_depart }} → {{ mission.ville_arrivee }} · {{ mission.poids_kg }} kg · {{ mission.volume_m3 }} m³</p>
+      {% for option in recommandations.resultats %}
+      <article class="card card-ch p-3 mb-3{% if forloop.first %} border-warning{% endif %}">
+        <div class="d-flex flex-wrap justify-content-between gap-2">
+          <div>
+            <h3 class="h6 mb-0">{{ option.vehicule.get_type_display }} · {{ option.vehicule.immatriculation }}{% if forloop.first %} <span class="badge text-bg-warning">Meilleur choix</span>{% endif %}</h3>
+            <p class="small text-muted mb-0 mt-1">Capacité : {{ option.vehicule.capacite_kg }} kg · {{ option.vehicule.capacite_m3 }} m³</p>
+          </div>
+          <div class="text-end"><strong class="fs-4">{{ option.score }}</strong><span class="text-muted"> / 100</span></div>
+        </div>
+        <div class="progress mt-3" role="progressbar" aria-label="Score" aria-valuenow="{{ option.score }}" aria-valuemin="0" aria-valuemax="100" style="height:.5rem">
+          <div class="progress-bar bg-warning" style="width: {{ option.score }}%"></div>
+        </div>
+        <div class="row g-2 mt-2 small">
+          <div class="col-sm-4"><span class="text-muted d-block">Adéquation capacité</span><strong>{{ option.adequation }} / 100</strong></div>
+          <div class="col-sm-4"><span class="text-muted d-block">CO₂ estimé</span><strong>{{ option.co2_kg }} kg</strong></div>
+          <div class="col-sm-4"><span class="text-muted d-block">Entretien prédit</span><strong>{{ option.date_entretien_prevue|date:"d/m/Y" }}</strong></div>
+        </div>
+        <p class="small mb-0 mt-3"><i class="bi bi-wrench-adjustable-circle text-secondary" aria-hidden="true"></i> {{ option.statut_maintenance }} · {% if option.methode_maintenance == "règle" %}estimation de repli{% else %}régression linéaire{% endif %}</p>
+      </article>
+      {% empty %}
+      <div class="alert alert-info" role="status"><i class="bi bi-info-circle" aria-hidden="true"></i> {{ recommandations.message }}</div>
+      {% endfor %}
+      {% if recommandations.resultats %}<p class="small text-muted">Score : capacité 55 %, émissions 25 %, entretien prévisionnel 20 %. Les véhicules non conformes, en maintenance ou trop petits sont exclus.</p>{% endif %}
+    </section>
+    {% else %}
+    <div class="text-center text-muted border rounded-3 py-5 px-3"><i class="bi bi-truck fs-1 d-block mb-2" aria-hidden="true"></i>Décrivez une mission pour comparer vos véhicules.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

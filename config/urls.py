@@ -2,6 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 # (préfixe front-office, préfixe back-office, application)
 MODULES = [
@@ -25,6 +26,11 @@ urlpatterns = [
     path("", include("apps.core.urls")),
     path("backoffice/", include("apps.dashboard.urls")),
     path("django-admin/", admin.site.urls),  # outil de développement, pas le back-office final
+    # API REST (JWT) — utilisée par le SPA React (frontend/)
+    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/fleet/", include("apps.fleet.api_urls")),
+    path("api/admin/", include("apps.fleet.admin_api_urls")),
 ]
 
 for front, back, app in MODULES:
