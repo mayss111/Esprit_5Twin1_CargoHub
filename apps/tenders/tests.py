@@ -31,6 +31,9 @@ def offre(appel_offre, transporteur, trajet):
 
 @pytest.fixture
 def offre_concurrente(appel_offre, autre_transporteur, autre_trajet):
+    # Nabil part de Monastir lui aussi : son offre est compatible, donc comparable et « retenable ».
+    Trajet.objects.filter(pk=autre_trajet.pk).update(ville_depart="Monastir")
+    autre_trajet.refresh_from_db()
     return Offre.objects.create(
         appel=appel_offre, transporteur=autre_transporteur, trajet=autre_trajet, prix=Decimal("120")
     )

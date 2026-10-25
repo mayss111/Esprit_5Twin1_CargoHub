@@ -93,8 +93,10 @@ def notes_des_avis(transporteurs) -> dict:
 
 
 def resumer_offres(appel) -> list[dict]:
-    """Ce que l'IA (ou la règle) voit de chaque offre encore proposée."""
-    offres = list(appel.offres.filter(statut=Offre.Statut.PROPOSEE).select_related("trajet", "transporteur"))
+    """Ce que l'IA (ou la règle) voit : uniquement les offres retenables (trajet encore compatible)."""
+    from .services import offres_retenables  # import local : services importe déjà ce module
+
+    offres = offres_retenables(appel)  # une offre incompatible n'est jamais envoyée au LLM
     notes = notes_des_avis([o.transporteur_id for o in offres])
     poids = float(appel.expedition.poids_total_kg)
     estimer, _ = estimateur()

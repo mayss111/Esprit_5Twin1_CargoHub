@@ -256,14 +256,19 @@ def test_identifiants_remplaces_par_les_noms(texte, attendu):
     assert sans_identifiants(texte, {63: "Karim", 64: "Nabil"}) == attendu
 
 
-def test_notes_des_avis_envoyees_au_llm(settings, pme, autre_pme, appel_offre, offre, trajet, autre_transporteur):
+def test_notes_des_avis_envoyees_au_llm(
+    settings, pme, autre_pme, appel_offre, offre, trajet, autre_transporteur, autre_trajet
+):
     import json as json_
 
     from apps.bookings import services
     from apps.tenders.ai import SANS_AVIS, recommander_offre
     from apps.tracking.models import Avis
 
-    concurrente = Offre.objects.create(appel=appel_offre, transporteur=autre_transporteur, prix=Decimal("120"))
+    Trajet.objects.filter(pk=autre_trajet.pk).update(ville_depart="Monastir")  # offre compatible
+    concurrente = Offre.objects.create(
+        appel=appel_offre, transporteur=autre_transporteur, trajet=autre_trajet, prix=Decimal("120")
+    )
     passee = services.reserver(appel_offre.expedition, trajet)
     Avis.objects.create(reservation=passee, auteur=pme, cible=offre.transporteur, note=4)
     Avis.objects.create(reservation=passee, auteur=autre_pme, cible=offre.transporteur, note=5)
@@ -320,3 +325,57 @@ def test_donnees_demo_soutenance_idempotentes(db):
 
     notes = {o["transporteur"]: o["note"] for o in resumer_offres(appel)}
     assert notes == {"Karim": 4.7, "Mohamed": 2.5}  # vrai arbitrage : Mohamed moins cher, Karim mieux noté
+
+
+# ---------------------------------------------------------------- 3 (retest). offre devenue incompatible
+
+
+@pytest.fixture
+def offre_incompatible(appel_offre, autre_transporteur, autre_trajet):
+    """Nabil propose un trajet Sousse → Tunis : il ne passe pas par Monastir (cas de l'appel #62)."""
+    return Offre.objects.create(
+        appel=appel_offre, transporteur=autre_transporteur, trajet=autre_trajet, prix=Decimal("70")
+    )
+
+
+def test_badge_trajet_incompatible_a_la_place_de_retenir(client, pme, appel_offre, offre, offre_incompatible):
+    client.force_login(pme)
+    reponse = client.get(reverse("tenders:detail", args=[appel_offre.pk]))
+    html = reponse.content.decode()
+    assert reponse.context["incompatibles"] == {offre_incompatible.pk}
+    assert "Trajet incompatible" in html
+    assert reverse("tenders:retenir", args=[offre_incompatible.pk]) not in html
+    assert reverse("tenders:retenir", args=[offre.pk]) in html  # l'offre compatible garde son bouton
+
+
+def test_retenir_une_offre_incompatible_par_la_page(client, pme, appel_offre, offre_incompatible):
+    client.force_login(pme)
+    reponse = client.post(reverse("tenders:retenir", args=[offre_incompatible.pk]), follow=True)
+    assert "ne correspond plus à l’expédition" in reponse.content.decode()
+    assert not Reservation.objects.exists()
+    offre_incompatible.refresh_from_db()
+    assert offre_incompatible.statut == Offre.Statut.PROPOSEE
+
+
+def test_aide_au_choix_ignore_les_offres_incompatibles(settings, appel_offre, offre, offre_incompatible):
+    import json as json_
+
+    from apps.tenders.ai import recommander_offre, resumer_offres
+
+    assert [o["offre_id"] for o in resumer_offres(appel_offre)] == [offre.pk]  # jamais envoyée au LLM
+
+    settings.AI_API_KEY = "cle-de-test"
+    reponse = json_.dumps({"offre_id": offre_incompatible.pk, "explication": "La moins chère."})
+    with mock.patch("apps.core.ai.demander", return_value=reponse):
+        resultat = recommander_offre(appel_offre)
+    assert resultat["offre_id"] == offre.pk and resultat["methode"].startswith("règle")  # repli
+
+
+def test_lancer_aide_au_choix_compte_seulement_les_offres_compatibles(
+    client, pme, appel_offre, offre, offre_incompatible
+):
+    client.force_login(pme)
+    reponse = client.post(reverse("tenders:recommander", args=[appel_offre.pk]), follow=True)
+    assert "au moins 2 offres compatibles" in reponse.content.decode()
+    appel_offre.refresh_from_db()
+    assert appel_offre.recommandation_statut == ""
