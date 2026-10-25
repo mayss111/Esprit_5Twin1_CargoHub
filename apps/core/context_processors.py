@@ -9,6 +9,8 @@ from .roles import Role, est_admin
 
 MENU_PME = [
     ("Mes expéditions", "shipments:liste", "box-seam"),
+    ("Mes réclamations", "reclamations:liste", "exclamation-circle"),
+    ("Mes sinistres", "insurance:liste", "shield-exclamation"),
     ("Trouver un camion", "bookings:trouver", "search"),
     ("Points relais", "warehouses:liste", "shop"),
     ("Réservations", "bookings:liste", "calendar-check"),
@@ -24,6 +26,8 @@ MENU_PME = [
 MENU_TRANSPORTEUR = [
     ("Mes véhicules", "fleet:vehicules", "truck"),
     ("Mes trajets", "fleet:liste", "signpost-split"),
+    ("Mes réclamations", "reclamations:liste", "exclamation-circle"),
+    ("Mes sinistres", "insurance:liste", "shield-exclamation"),
     ("Demandes reçues", "bookings:demandes", "inbox"),
     ("Réservations", "bookings:liste", "calendar-check"),
     ("Appels d’offres", "tenders:liste", "megaphone"),
@@ -44,6 +48,7 @@ MENU_BACKOFFICE = [
         [
             ("Utilisateurs", "bo_accounts:liste", "people"),
             ("Support", "bo_messaging:liste", "life-preserver"),
+            ("Réclamations", "bo_reclamations:liste", "exclamation-circle"),
             ("Modération", "bo_messaging:moderation", "flag"),
             ("Contrats", "bo_contracts:liste", "file-earmark-text"),
         ],

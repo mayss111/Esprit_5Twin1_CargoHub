@@ -7,6 +7,7 @@ from django.urls import include, path
 MODULES = [
     ("comptes/", "utilisateurs/", "accounts"),
     ("messagerie/", "support/", "messaging"),
+    ("reclamations/", "reclamations/", "reclamations"),
     ("contrats/", "contrats/", "contracts"),
     ("expeditions/", "expeditions/", "shipments"),
     ("entrepots/", "entrepots/", "warehouses"),

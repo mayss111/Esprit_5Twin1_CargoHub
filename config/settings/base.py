@@ -41,6 +41,7 @@ LOCAL_APPS = [
     "apps.core",  # partagé : base, rôles, couche IA
     "apps.accounts",  # M1 — Comptes & sécurité
     "apps.messaging",  # M1 — Messagerie & support
+    "apps.reclamations",  # M1 — Réclamations
     "apps.contracts",  # M1 — Contrats & documents
     "apps.shipments",  # M2 — Expéditions
     "apps.warehouses",  # M2 — Entrepôts & points relais
