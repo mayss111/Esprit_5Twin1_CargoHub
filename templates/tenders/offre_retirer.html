@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Retirer mon offre{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-6">
+  <div class="card card-ch p-4">
+    <h1 class="page-title h3 mb-3">Retirer mon offre de {{ offre.prix }} DT ?</h1>
+    <p>{{ offre.appel }} — vous pourrez en refaire une tant que l’appel est ouvert.</p>
+    <form method="post">{% csrf_token %}
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-danger" type="submit">Retirer</button>
+        <a class="btn btn-outline-secondary" href="{% url 'tenders:detail' offre.appel_id %}">Annuler</a>
+      </div>
+    </form>
+  </div>
+</div></div>
+{% endblock %}
