@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load trajets %}
 {% block title %}Demandes reçues{% endblock %}
 {% block content %}
 <h1 class="page-title mb-1">Demandes reçues</h1>
@@ -11,7 +12,7 @@
     <tr>
       <td><a href="{% url 'bookings:detail' r.pk %}">#{{ r.pk }}</a></td>
       <td>{{ r.expedition.pme }}</td>
-      <td>{{ r.trajet.ville_depart }} → {{ r.trajet.ville_arrivee }}<div class="small text-muted">{{ r.trajet.date_depart|date:"d/m/Y H:i" }}</div></td>
+      <td>{{ r.trajet|itineraire }}<div class="small text-muted">{{ r.trajet.date_depart|date:"d/m/Y H:i" }}</div></td>
       <td>{{ r.expedition.poids_total_kg|floatformat:0 }} kg · {{ r.expedition.volume_total_m3|floatformat:2 }} m³</td>
       <td>{% if r.prix_convenu %}{{ r.prix_convenu }} DT{% else %}—{% endif %}</td>
       <td class="text-end text-nowrap">

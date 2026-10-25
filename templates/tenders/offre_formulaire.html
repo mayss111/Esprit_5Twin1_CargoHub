@@ -8,7 +8,17 @@
   <div class="card card-ch p-4 mb-3">{% include "tenders/_resume_appel.html" %}</div>
   <div class="card card-ch p-4">
     {% if not form.fields.trajet.queryset.exists %}
-      <p class="mb-0">Vous n’avez aucun trajet ouvert à venir. <a href="{% url 'fleet:liste' %}">Créez d’abord un trajet</a>.</p>
+      <div role="alert">
+      {% if form.a_des_trajets_ouverts %}
+        <p class="mb-2"><strong>Aucun de vos trajets ne convient à cette expédition.</strong></p>
+        <p class="mb-2">Il faut un trajet ouvert qui passe par <strong>{{ appel.expedition.adresse_depart.ville }}</strong> puis
+          <strong>{{ appel.expedition.adresse_arrivee.ville }}</strong>, qui part entre le {{ date_min|date:"d/m/Y" }} et le
+          {{ date_max|date:"d/m/Y" }}, avec assez de place ({{ appel.expedition.poids_total_kg|floatformat:0 }} kg).</p>
+        <p class="mb-0"><a href="{% url 'fleet:liste' %}">Créer ou modifier un trajet</a></p>
+      {% else %}
+        <p class="mb-0">Vous n’avez aucun trajet ouvert à venir. <a href="{% url 'fleet:liste' %}">Créez d’abord un trajet</a>.</p>
+      {% endif %}
+      </div>
     {% else %}
     <form method="post" id="form-offre" data-suggestion-url="{% url 'tenders:suggestion_prix' %}" data-appel="{{ appel.pk }}">{% csrf_token %}
       {{ form|crispy }}

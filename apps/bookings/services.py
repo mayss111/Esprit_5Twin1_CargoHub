@@ -21,6 +21,10 @@ class ReservationImpossible(Exception):
     pass
 
 
+# En dessous de ce score, le trajet ne convient pas à l'expédition (mauvaises villes ou date trop éloignée).
+SCORE_MINIMUM = 60
+
+
 def score_compatibilite(expedition, trajet) -> int:
     """Score de 0 à 100 : même itinéraire, date proche, place suffisante (à affiner par M4)."""
     score = 0
@@ -37,13 +41,30 @@ def score_compatibilite(expedition, trajet) -> int:
     return score
 
 
-def trajets_compatibles(expedition, score_minimum=60):
+ECART_MAX_JOURS = 2
+
+EXPEDITION_VIDE = (
+    "Cette expédition ne contient aucune marchandise (0 kg) : ajoutez des articles avant de chercher un transporteur."
+)
+
+
+def est_compatible(expedition, trajet) -> bool:
+    """Même règle que « Camions compatibles » : camion conforme, départ à ± 2 jours, score ≥ 60 (bonnes villes)."""
+    ecart = abs((trajet.date_depart.date() - expedition.date_souhaitee).days)
+    return (
+        trajet.vehicule.conforme
+        and ecart <= ECART_MAX_JOURS
+        and score_compatibilite(expedition, trajet) >= SCORE_MINIMUM
+    )
+
+
+def trajets_compatibles(expedition, score_minimum=SCORE_MINIMUM):
     """Trajets ouverts autour de la date souhaitée, classés du meilleur au moins bon."""
     date = expedition.date_souhaitee
     candidats = Trajet.objects.filter(
         statut=Trajet.Statut.OUVERT,
         vehicule__conforme=True,
-        date_depart__date__range=(date - timedelta(days=2), date + timedelta(days=2)),
+        date_depart__date__range=(date - timedelta(days=ECART_MAX_JOURS), date + timedelta(days=ECART_MAX_JOURS)),
     ).prefetch_related("etapes")
     resultats = [(t, score_compatibilite(expedition, t)) for t in candidats]
     return sorted([r for r in resultats if r[1] >= score_minimum], key=lambda r: r[1], reverse=True)
