@@ -42,6 +42,8 @@
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19,
+    // Les tuiles OSM exigent un en-tête Referer (sinon 403) ; Django envoie « Referrer-Policy: same-origin ».
+    referrerPolicy: "strict-origin-when-cross-origin",
   }).addTo(carte);
   const calquesRoutes = L.layerGroup().addTo(carte);
 

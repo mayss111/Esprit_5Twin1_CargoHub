@@ -280,6 +280,8 @@ function CarteTrajets({ trajets }) {
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
+      // Les tuiles OSM exigent un en-tête Referer, sinon elles répondent 403.
+      referrerPolicy: "strict-origin-when-cross-origin",
     }).addTo(instance);
     carteRef.current = instance;
     const timer = setTimeout(() => instance.invalidateSize(), 150);
