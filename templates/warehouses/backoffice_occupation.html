@@ -1,0 +1,71 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+{% block title %}Occupation des entrepôts{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">Occupation des entrepôts</h1>
+<p class="text-muted">Le volume réservé est la somme des réservations actives. Une réservation compte dès sa confirmation, même si le dépôt est prévu plus tard, et jusqu'à sa date de fin.</p>
+
+<form method="get" class="card card-ch p-3 mb-3" role="search" data-filtre-auto>
+  <div class="row g-3 align-items-end">
+    <div class="col-md-6">
+      <label class="form-label" for="occupation-nom">Nom de l'entrepôt</label>
+      <input class="form-control" id="occupation-nom" name="q" value="{{ nom }}" maxlength="80" autocomplete="off">
+    </div>
+  </div>
+  {% if recherche %}
+    <p class="mb-0 mt-2"><a href="{% url 'bo_warehouses:occupation' %}">Effacer les filtres</a></p>
+  {% endif %}
+</form>
+
+<div class="row g-3 mb-4" data-occupation-url="{{ url_chiffres }}">
+  {% include "warehouses/_chiffre.html" with libelle="Entrepôts actifs" valeur=entrepots_actifs cle="entrepots_actifs" %}
+  {% include "warehouses/_chiffre.html" with libelle="Capacité totale" valeur=capacite unite="m³" cle="capacite" %}
+  {% include "warehouses/_chiffre.html" with libelle="Capacité réservée" valeur=reserve unite="m³" cle="reserve" %}
+  {% include "warehouses/_chiffre.html" with libelle="Disponible" valeur=disponible unite="m³" cle="disponible" %}
+  {% include "warehouses/_chiffre.html" with libelle="Taux d'occupation" valeur=taux unite="%" cle="taux" %}
+  {% include "warehouses/_chiffre.html" with libelle="Réservations actives" valeur=actives cle="actives" %}
+</div>
+
+{% if lignes %}
+  <div class="table-responsive">
+    <table class="table table-ch align-middle">
+      <caption class="visually-hidden">Occupation par entrepôt</caption>
+      <thead>
+        <tr>
+          <th>Entrepôt</th>
+          <th>Capacité</th>
+          <th>Réservé</th>
+          <th>Disponible</th>
+          <th>Taux d'occupation</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in lignes %}
+          <tr data-entrepot="{{ ligne.entrepot.pk }}">
+            <td><a href="{% url 'bo_warehouses:detail' ligne.entrepot.pk %}">{{ ligne.entrepot.nom }}</a></td>
+            <td data-col="capacite">{{ ligne.capacite }} m³</td>
+            <td data-col="reserve">{{ ligne.reserve }} m³</td>
+            <td data-col="disponible">{{ ligne.disponible }} m³</td>
+            <td style="min-width: 9rem;">
+              {% if ligne.taux is not None %}
+                <div class="progress mb-1" role="progressbar" aria-label="Taux d'occupation de {{ ligne.entrepot.nom }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ ligne.barre }}">
+                  <div class="progress-bar" style="width: {{ ligne.barre }}%"></div>
+                </div>
+                <span data-col="taux-valeur">{{ ligne.taux }} %</span>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="text-muted mb-0">
+    {% if nom %}Aucun entrepôt ne correspond à cette recherche.{% else %}Aucun entrepôt actif.{% endif %}
+  </p>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'shipments/js/filtre.js' %}"></script>
+<script src="{% static 'warehouses/js/occupation.js' %}?v=20261025n"></script>
+{% endblock %}

@@ -8,7 +8,40 @@
   <a href="{% url 'shipments:liste' %}">Retour à la liste</a>
 </div>
 
-<form method="post" class="card card-ch expedition-form p-3" novalidate>
+{% if not expedition %}
+<section class="card card-ch assistant-ia p-3 mb-4" id="assistant-saisie" data-url="{% url 'shipments:assistant' %}">
+  <h2 class="h6 mb-1">Créer mon expédition avec l'IA</h2>
+  <p class="small text-muted mb-2">Smart Shipment Assistant propose les champs. Vous vérifiez, vous complétez, puis vous enregistrez. Rien n'est publié tant que vous ne confirmez pas le formulaire. La vérification des marchandises reste faite au moment de publier.</p>
+  {% csrf_token %}
+  <label class="form-label" for="assistant-description">Décrivez l'expédition</label>
+  <textarea class="form-control form-control-sm mb-2" id="assistant-description" rows="4" placeholder="Exemple : 5 cartons d'ordinateurs portables et 3 écrans, de Tunis à Sousse, le 15 novembre 2026. Poids total 80 kg. Les écrans sont fragiles."></textarea>
+  <button class="btn btn-accent btn-sm" id="assistant-remplir" type="button">Remplir automatiquement avec l'IA</button>
+  <div class="d-none align-items-center gap-2 mt-2" id="assistant-chargement" role="status">
+    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+    Analyse en cours…
+  </div>
+  <div class="mt-3" id="assistant-propositions"></div>
+</section>
+
+<section class="card card-ch p-3 mb-4">
+  <h2 class="h6 mb-1">Créer plusieurs expéditions depuis un fichier Excel</h2>
+  <p class="small text-muted mb-2">Une ligne du fichier devient une expédition. À l'import, chaque expédition est publiée avec AI Cargo Checker et les règles d'interdiction : elle peut être publiée, refusée ou à vérifier. Le formulaire manuel ci-dessous reste disponible. Les lignes qui portent le même groupe forment une seule expédition avec plusieurs articles.</p>
+  <p class="mb-2"><a href="{% url 'shipments:importer' %}?format=xlsx">Télécharger le modèle Excel</a></p>
+  <form method="post" action="{% url 'shipments:importer' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <label class="form-label" for="import-fichier">Fichier Excel</label>
+    <input class="form-control" id="import-fichier" type="file" name="fichier" accept=".xlsx,.csv" required>
+    <button class="btn btn-accent mt-3" type="submit">Importer et publier</button>
+  </form>
+  {% if erreurs_import %}
+    <div class="alert alert-danger mt-3 mb-0" role="alert">
+      {% for erreur in erreurs_import %}{{ erreur }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+    </div>
+  {% endif %}
+</section>
+{% endif %}
+
+<form method="post" class="card card-ch expedition-form p-3" novalidate data-ia="Vérification des marchandises…">
   {% csrf_token %}
   {% if saisie.generale.non_field_errors %}
     <div class="alert alert-danger" role="alert">
@@ -70,4 +103,7 @@
 {% endblock %}
 {% block extra_js %}
 <script src="{% static 'shipments/js/articles.js' %}"></script>
+{% if not expedition %}
+<script src="{% static 'shipments/js/assistant.js' %}?v=20261025p"></script>
+{% endif %}
 {% endblock %}

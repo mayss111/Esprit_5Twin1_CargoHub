@@ -1,0 +1,79 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+{% block title %}Scanner un colis{% endblock %}
+{% block extra_head %}
+<style>#lecteur { max-width: 28rem; }</style>
+{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">Scanner un colis</h1>
+<p class="text-muted">Le QR Code du bon d'expédition est lu d'abord. Rien n'est enregistré avant la confirmation.</p>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div id="lecteur" class="mb-2"></div>
+    <button class="btn btn-outline-secondary btn-sm" id="ouvrir-camera" type="button">Ouvrir la caméra</button>
+    <p class="small text-muted mt-2" id="camera-message" role="status">La caméra n'est pas ouverte.</p>
+  </div>
+  <div class="col-lg-7">
+    <form method="post" class="card card-ch p-3 mb-3" id="form-identifier">
+      {% csrf_token %}
+      <label class="form-label" for="jeton">QR Code ou lien du bon</label>
+      <textarea class="form-control mb-2" id="jeton" name="jeton" rows="3" required>{{ jeton }}</textarea>
+      <button class="btn btn-outline-secondary" type="submit" name="identifier" value="1">Lire le QR Code</button>
+    </form>
+
+    {% if apercu %}
+      <section class="card card-ch p-3">
+        {% if apercu.erreur and not apercu.peut_sortir %}
+          <div class="alert alert-danger" role="alert">{{ apercu.erreur }}</div>
+        {% endif %}
+        {% if apercu.expedition %}
+          <h2 class="h6">{{ apercu.expedition.reference }}</h2>
+          <p class="mb-1">{{ apercu.expedition.get_statut_display }} — {{ apercu.expedition.adresse_depart.ville }} → {{ apercu.expedition.adresse_arrivee.ville }}</p>
+          <p class="mb-1">Volume : {{ apercu.expedition.volume_total_m3 }} m³</p>
+          {% if apercu.creneau %}
+            <p class="mb-1">{{ apercu.creneau.entrepot.nom }} — {{ apercu.creneau.debut|date:"d/m/Y H:i" }} – {{ apercu.creneau.fin|time:"H:i" }} — {{ apercu.creneau.get_statut_display }}</p>
+          {% endif %}
+          {% if apercu.stockage %}
+            <p class="mb-1">Présent depuis {{ apercu.entree.date|date:"d/m/Y H:i" }}.</p>
+            {% if apercu.stockage.depasse %}
+              <div class="alert alert-danger" role="alert">La durée maximale de stockage est dépassée. Aucune sortie n'a été créée automatiquement.</div>
+            {% elif apercu.stockage.approche %}
+              <div class="alert alert-warning" role="alert">La durée maximale de stockage approche.</div>
+            {% endif %}
+          {% endif %}
+          {% if apercu.peut_entrer %}
+            <form method="post" class="mt-3">
+              {% csrf_token %}
+              <input type="hidden" name="jeton" value="{{ jeton }}">
+              {% if apercu.hors_creneau %}
+                <div class="alert alert-warning" role="alert">Arrivée hors du créneau de 2 heures. L'entrée normale est refusée sans validation exceptionnelle.</div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" id="exceptionnel" name="exceptionnel">
+                  <label class="form-check-label" for="exceptionnel">Valider cette entrée exceptionnelle</label>
+                </div>
+                <label class="form-label" for="motif">Motif</label>
+                <textarea class="form-control mb-2" id="motif" name="motif" rows="2" minlength="10"></textarea>
+              {% endif %}
+              <button class="btn btn-accent" type="submit" name="confirmer_entree" value="1">Confirmer l'entrée</button>
+            </form>
+          {% endif %}
+          {% if apercu.peut_sortir %}
+            <form method="post" class="mt-3">
+              {% csrf_token %}
+              <input type="hidden" name="jeton" value="{{ jeton }}">
+              <label class="form-label" for="commentaire">Commentaire</label>
+              <textarea class="form-control mb-2" id="commentaire" name="commentaire" rows="2"></textarea>
+              <button class="btn btn-accent" type="submit" name="confirmer_sortie" value="1">Confirmer la sortie</button>
+            </form>
+          {% endif %}
+        {% endif %}
+      </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{% static 'warehouses/js/scanner.js' %}"></script>
+{% endblock %}

@@ -69,8 +69,11 @@ def trajets_compatibles(expedition, score_minimum=SCORE_MINIMUM):
 
 
 def reserver(expedition, trajet, prix=None) -> Reservation:
-    """Crée une réservation EN_ATTENTE et prévient le transporteur. Refuse une expédition sans marchandise."""
-    # Contrôle dans le service (et pas seulement dans la page) : aucun chemin ne peut le contourner.
+    """Crée une réservation EN_ATTENTE et prévient le transporteur. Refuse une expédition vide ou non publiée."""
+    from apps.shipments.models import Expedition
+
+    if expedition.statut != Expedition.Statut.PUBLIEE:
+        raise ReservationImpossible("Seule une expédition publiée peut être mise en relation.")
     if expedition.poids_total_kg <= 0:
         raise ReservationImpossible(EXPEDITION_VIDE)
     reservation = Reservation.objects.create(

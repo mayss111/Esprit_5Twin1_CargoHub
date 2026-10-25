@@ -1,0 +1,18 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Désactiver {{ entrepot.nom }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card card-ch p-4">
+      <h1 class="page-title h3 mb-3">Désactiver {{ entrepot.nom }}</h1>
+      <p>Cet entrepôt ne sera plus proposé pour de nouveaux dépôts. Il reste dans l'historique, avec ses réservations et ses mouvements.</p>
+      <p class="text-muted small mb-4">{{ entrepot.adresse }}, {{ entrepot.ville }}</p>
+      <form method="post" class="d-flex flex-wrap gap-2">
+        {% csrf_token %}
+        <button class="btn btn-accent" type="submit">Désactiver</button>
+        <a class="btn btn-outline-secondary" href="{% url 'bo_warehouses:detail' entrepot.pk %}">Annuler</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

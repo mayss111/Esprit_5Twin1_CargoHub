@@ -14,3 +14,4 @@ STORAGES = {
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
 AI_API_KEY = ""  # les tests n'appellent jamais un vrai service d'IA
+GEMINI_API_KEY = ""

@@ -54,7 +54,7 @@ def _donnees(date, articles, initial=0, arrivee=None):
     for index, article in enumerate(articles):
         prefixe = f"articles-{index}-"
         donnees[prefixe + "designation"] = article.get("designation", "Cartons")
-        donnees[prefixe + "description"] = article.get("description", "")
+        donnees[prefixe + "description"] = article.get("description", "Textile emballé pour le transport")
         donnees[prefixe + "type_marchandise"] = article.get("type_marchandise", "TEXTILE")
         donnees[prefixe + "quantite"] = str(article.get("quantite", 2))
         donnees[prefixe + "poids_kg"] = str(article.get("poids_kg", "10"))
@@ -145,6 +145,19 @@ def test_categorie_interdite_bloquee_a_la_publication(pme):
     assert "interdite" in publication.generale.non_field_errors()[0]
 
     brouillon = SaisieExpedition(_donnees(date, [article]), pme=pme, publier=False)
+    assert brouillon.is_valid(), brouillon.generale.errors
+
+
+def test_descriptions_obligatoires_a_la_publication(pme):
+    date = timezone.localdate() + timedelta(days=3)
+    donnees = _donnees(date, [_article(description="court")])
+    donnees["generale-description"] = "court"
+    publication = SaisieExpedition(donnees, pme=pme, publier=True)
+    assert not publication.is_valid()
+    assert "expédition" in publication.generale.errors["description"][0]
+    assert "article" in publication.articles.errors[0]["description"][0]
+
+    brouillon = SaisieExpedition(donnees, pme=pme, publier=False)
     assert brouillon.is_valid(), brouillon.generale.errors
 
 
@@ -275,29 +288,36 @@ def test_autre_pme_ne_voit_pas_lexpedition(client, expedition):
     assert client.post(reverse("shipments:annuler", args=[expedition.pk])).status_code == 404
 
 
-def test_annulation_conserve_lexpedition(client, pme, expedition):
+def test_annulation_masque_la_liste_et_garde_lhistorique(client, pme, expedition):
+    client.force_login(pme)
+    reponse = client.post(reverse("shipments:annuler", args=[expedition.pk]))
+    assert reponse.status_code == 302
+    assert reponse.url == reverse("shipments:historique")
+    expedition.refresh_from_db()
+    assert expedition.statut == Expedition.Statut.ANNULEE
+    historique = client.get(reverse("shipments:historique"))
+    assert expedition.reference in historique.content.decode()
+    liste = client.get(reverse("shipments:liste"))
+    assert expedition.reference not in liste.content.decode()
+
+
+def test_annulation_dun_brouillon_ne_supprime_pas(client, pme, expedition):
+    expedition.statut = Expedition.Statut.BROUILLON
+    expedition.save(update_fields=["statut"])
     client.force_login(pme)
     reponse = client.post(reverse("shipments:annuler", args=[expedition.pk]))
     assert reponse.status_code == 302
     expedition.refresh_from_db()
     assert expedition.statut == Expedition.Statut.ANNULEE
-    assert client.get(reverse("shipments:historique")).status_code == 200
-    assert expedition.reference in client.get(reverse("shipments:historique")).content.decode()
+    assert Expedition.objects.filter(pk=expedition.pk).exists()
 
 
-def test_suppression_dun_brouillon(client, pme, expedition):
-    expedition.statut = Expedition.Statut.BROUILLON
-    expedition.save(update_fields=["statut"])
+def test_suppression_refusee(client, pme, expedition):
     client.force_login(pme)
-    assert client.get(reverse("shipments:supprimer", args=[expedition.pk])).status_code == 200
     reponse = client.post(reverse("shipments:supprimer", args=[expedition.pk]))
     assert reponse.status_code == 302
-    assert not Expedition.objects.filter(pk=expedition.pk).exists()
-
-
-def test_suppression_dune_publication_refusee(client, pme, expedition):
-    client.force_login(pme)
-    client.post(reverse("shipments:supprimer", args=[expedition.pk]))
+    expedition.refresh_from_db()
+    assert expedition.statut == Expedition.Statut.PUBLIEE
     assert Expedition.objects.filter(pk=expedition.pk).exists()
 
 
