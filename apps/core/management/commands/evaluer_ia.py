@@ -94,19 +94,21 @@ class Command(BaseCommand):
             "  Données simulées : 200 camions, 5 entretiens chacun ; on prédit le 5e à partir des 4 premiers."
         )
         hasard = random.Random(42)
-        reels, predits, base = [], [], []
+        reels, predits, base, temps = [], [], [], []
         for _ in range(200):
             km_jour, jour, km, historique = hasard.uniform(60, 300), date(2025, 1, 1), 50_000, []
             for _ in range(5):
                 historique.append((jour, round(km)))
                 duree = INTERVALLE_KM / (km_jour * hasard.uniform(0.8, 1.2))
                 jour, km = jour + timedelta(days=round(duree)), km + INTERVALLE_KM
-            prediction = predire_depuis_historique(historique[:4])
+            prediction, millisecondes = ai.mesurer(predire_depuis_historique, historique[:4])
             reels.append((historique[4][0] - historique[3][0]).days)
             predits.append((prediction["date_prevue"] - historique[3][0]).days)
             base.append(180)
+            temps.append(millisecondes)
         self.stdout.write("  Erreur exprimée en jours entre le dernier entretien et le suivant :")
         self.regression(reels, predits, base, "Règle « tous les 6 mois »")
+        self.stdout.write(f"  Temps de prédiction moyen : {mean(temps):.1f} ms (200 véhicules simulés)")
 
     def m4(self):
         from apps.tenders.ai import _formule, caracteristiques, entrainer, suggerer_prix
@@ -140,6 +142,38 @@ class Command(BaseCommand):
         self.regression([prix for *_, prix in test], predits, [_formule(d, p) for d, p, _ in test], "Formule fixe")
         _, ms = ai.mesurer(suggerer_prix, distance_km=160, poids_kg=300)
         self.stdout.write(f"  Temps de réponse de suggerer_prix : {ms} ms")
+        self.m4b()
+
+    def m4b(self):
+        from collections import Counter
+
+        from apps.tenders.ai import recommander_depuis_resume
+
+        self.titre("M4b — Aide au choix d'une offre (accord avec le choix d'un humain)")
+        accords, temps, methodes = 0, [], Counter()
+        for offres, attendu in jeux.RECOMMANDATIONS:
+            resume = [
+                {
+                    "offre_id": numero,
+                    "transporteur": f"Transporteur {numero}",
+                    "prix": prix,
+                    "prix_juste": juste,
+                    "ecart_pct": round((prix - juste) / juste * 100, 1),
+                    "note": note,
+                    "depart": (date.today() + timedelta(days=jours)).isoformat(),
+                }
+                for numero, (prix, juste, note, jours) in enumerate(offres, start=1)
+            ]
+            resultat, ms = ai.mesurer(recommander_depuis_resume, resume)
+            accords += resultat["offre_id"] == attendu
+            temps.append(ms)
+            methodes[resultat["methode"]] += 1
+        total = len(jeux.RECOMMANDATIONS)
+        self.stdout.write(
+            f"  Exemples : {total}   Accord avec le choix humain : {accords}/{total} ({accords / total:.0%})"
+        )
+        self.stdout.write(f"  Temps de réponse moyen : {mean(temps):.0f} ms")
+        self.stdout.write("  Méthode : " + ", ".join(f"{m} ({n})" for m, n in methodes.items()))
 
     def m5(self):
         from apps.tracking.ai import analyser_sentiment

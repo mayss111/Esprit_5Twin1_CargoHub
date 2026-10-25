@@ -9,6 +9,7 @@ from .roles import Role, est_admin
 
 MENU_PME = [
     ("Mes expéditions", "shipments:liste", "box-seam"),
+    ("Trouver un camion", "bookings:trouver", "search"),
     ("Entrepôts & points relais", "warehouses:liste", "shop"),
     ("Mes dépôts", "warehouses:mes_depots", "calendar-event"),
     ("Réservations", "bookings:liste", "calendar-check"),
@@ -24,6 +25,8 @@ MENU_PME = [
 MENU_TRANSPORTEUR = [
     ("Mes véhicules", "fleet:vehicules", "truck"),
     ("Mes trajets", "fleet:liste", "signpost-split"),
+    ("Demandes reçues", "bookings:demandes", "inbox"),
+    ("Planificateur IA", "fleet:planificateur", "stars"),
     ("Réservations", "bookings:liste", "calendar-check"),
     ("Appels d’offres", "tenders:liste", "megaphone"),
     ("Entretien", "maintenance:liste", "tools"),
@@ -64,7 +67,8 @@ MENU_BACKOFFICE = [
         "M3",
         "#D97706",
         [
-            ("Véhicules & trajets", "bo_fleet:liste", "truck"),
+            ("Véhicules", "bo_fleet:liste", "truck"),
+            ("Trajets", "bo_fleet:trajets", "signpost-split"),
             ("Conformité", "bo_maintenance:liste", "tools"),
             ("Écologie", "bo_ecology:liste", "tree"),
         ],

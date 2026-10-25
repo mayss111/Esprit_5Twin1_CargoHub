@@ -37,6 +37,10 @@ class Reservation(Horodate):
     def peut_passer_a(self, nouveau):
         return nouveau in self.TRANSITIONS.get(self.statut, set())
 
+    @property
+    def annulable(self):
+        return self.peut_passer_a(self.Statut.ANNULEE)
+
 
 class HistoriqueStatut(models.Model):
     reservation = models.ForeignKey(Reservation, on_delete=models.CASCADE, related_name="historique")
@@ -44,6 +48,10 @@ class HistoriqueStatut(models.Model):
     nouveau = models.CharField(max_length=12, choices=Reservation.Statut.choices)
     par = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
     date = models.DateTimeField(auto_now_add=True)
+    motif = models.CharField(max_length=255, blank=True)  # ex. annulation pour litige par un administrateur
+
+    class Meta:
+        ordering = ["date"]
 
     def __str__(self):
         return f"{self.ancien} → {self.nouveau}"

@@ -53,6 +53,33 @@ MODERATION = [
     ("Ferme-la et livre", True),
 ]
 
+# M4b — aide au choix d'une offre : (offres, n° de l'offre qu'une PME choisirait, en commençant à 1)
+# Chaque offre : (prix DT, prix juste estimé DT, note du transporteur /5 ou None, départ dans N jours)
+RECOMMANDATIONS = [
+    ([(90, 100, 4.5, 2), (120, 100, 4.6, 2)], 1),  # moins chère et aussi bien notée
+    ([(80, 100, 2.1, 2), (95, 100, 4.8, 2)], 2),  # 15 DT de plus pour un transporteur bien plus fiable
+    ([(150, 140, None, 1), (145, 140, None, 1)], 2),  # rien d'autre ne les distingue : la moins chère
+    ([(60, 100, 4.0, 2), (100, 100, 4.2, 2)], 1),  # 40 % moins cher, bonne note
+    ([(70, 100, 1.5, 2), (110, 100, 4.9, 2)], 2),  # note 1,5 : trop risqué
+    ([(200, 180, 4.7, 1), (185, 180, 4.6, 1), (240, 180, 5.0, 1)], 2),
+    ([(95, 100, 4.4, 1), (85, 100, 4.3, 9)], 1),  # la moins chère part 8 jours plus tard
+    ([(300, 250, 4.9, 3), (260, 250, 3.0, 3)], 2),  # 40 DT de plus ne valent pas l'écart de note
+    ([(50, 60, None, 2), (55, 60, 4.5, 2)], 2),  # 5 DT de plus pour un transporteur déjà bien noté
+    ([(120, 100, 4.0, 2), (118, 100, 4.1, 2), (119, 100, 3.9, 2)], 2),
+    ([(400, 420, 4.2, 2), (380, 420, 2.5, 2)], 1),  # note 2,5 : on paie 20 DT de plus
+    ([(75, 80, 4.6, 2), (75, 80, 4.1, 2)], 1),  # même prix, meilleure note
+    ([(130, 100, 4.8, 2), (100, 100, 4.5, 2)], 2),
+    ([(90, 90, None, 3), (90, 90, None, 1)], 2),  # même prix : celle qui part le plus tôt
+    ([(210, 200, 4.5, 2), (160, 200, 4.4, 2), (205, 200, 4.9, 2)], 2),
+    ([(65, 70, 3.5, 2), (72, 70, 4.9, 2)], 2),  # 7 DT de plus pour la meilleure note
+    ([(500, 450, 4.0, 2), (450, 450, None, 2), (470, 450, 4.7, 2)], 3),  # inconnu contre très bien noté
+    ([(100, 100, 3.0, 2), (98, 100, 3.0, 2)], 2),
+    ([(88, 95, 4.2, 2), (70, 95, None, 12)], 1),  # pas de note ET départ dans 12 jours
+    ([(140, 120, 4.9, 1), (125, 120, 4.8, 1)], 2),
+    ([(55, 60, 4.0, 2), (52, 60, 1.8, 2), (58, 60, 4.5, 2)], 1),
+    ([(320, 300, 4.3, 2), (310, 300, 4.2, 6)], 1),  # 10 DT de moins mais 4 jours de retard
+]
+
 # M2 — saisie intelligente : (description, type attendu, interdit ?)
 EXPEDITIONS = [
     ("12 cartons de vêtements, environ 300 kg", "TEXTILE", False),
