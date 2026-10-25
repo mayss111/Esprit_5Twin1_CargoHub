@@ -35,9 +35,10 @@ class ExpeditionAdmin(admin.ModelAdmin):
         "ville_depart",
         "ville_arrivee",
         "date_souhaitee",
+        "date_arrivee",
         "statut",
     )
-    list_filter = ("statut", "date_souhaitee")
+    list_filter = ("statut", "date_souhaitee", "date_arrivee")
     search_fields = (
         "reference",
         "pme__email",

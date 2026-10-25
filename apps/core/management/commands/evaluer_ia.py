@@ -142,6 +142,38 @@ class Command(BaseCommand):
         self.regression([prix for *_, prix in test], predits, [_formule(d, p) for d, p, _ in test], "Formule fixe")
         _, ms = ai.mesurer(suggerer_prix, distance_km=160, poids_kg=300)
         self.stdout.write(f"  Temps de réponse de suggerer_prix : {ms} ms")
+        self.m4b()
+
+    def m4b(self):
+        from collections import Counter
+
+        from apps.tenders.ai import recommander_depuis_resume
+
+        self.titre("M4b — Aide au choix d'une offre (accord avec le choix d'un humain)")
+        accords, temps, methodes = 0, [], Counter()
+        for offres, attendu in jeux.RECOMMANDATIONS:
+            resume = [
+                {
+                    "offre_id": numero,
+                    "transporteur": f"Transporteur {numero}",
+                    "prix": prix,
+                    "prix_juste": juste,
+                    "ecart_pct": round((prix - juste) / juste * 100, 1),
+                    "note": note,
+                    "depart": (date.today() + timedelta(days=jours)).isoformat(),
+                }
+                for numero, (prix, juste, note, jours) in enumerate(offres, start=1)
+            ]
+            resultat, ms = ai.mesurer(recommander_depuis_resume, resume)
+            accords += resultat["offre_id"] == attendu
+            temps.append(ms)
+            methodes[resultat["methode"]] += 1
+        total = len(jeux.RECOMMANDATIONS)
+        self.stdout.write(
+            f"  Exemples : {total}   Accord avec le choix humain : {accords}/{total} ({accords / total:.0%})"
+        )
+        self.stdout.write(f"  Temps de réponse moyen : {mean(temps):.0f} ms")
+        self.stdout.write("  Méthode : " + ", ".join(f"{m} ({n})" for m, n in methodes.items()))
 
     def m5(self):
         from apps.tracking.ai import analyser_sentiment

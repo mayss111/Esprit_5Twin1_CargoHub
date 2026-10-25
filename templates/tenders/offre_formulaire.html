@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags static %}
+{% block title %}{% if object %}Modifier mon offre{% else %}Faire une offre{% endif %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-lg-7">
+  <nav aria-label="Fil d’Ariane"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'tenders:liste' %}">Appels d’offres</a></li><li class="breadcrumb-item"><a href="{% url 'tenders:detail' appel.pk %}">{{ appel }}</a></li><li class="breadcrumb-item active" aria-current="page">{% if object %}Modifier{% else %}Offre{% endif %}</li></ol></nav>
+  <h1 class="page-title mb-3">{% if object %}Modifier mon offre{% else %}Faire une offre{% endif %}</h1>
+  <div class="card card-ch p-4 mb-3">{% include "tenders/_resume_appel.html" %}</div>
+  <div class="card card-ch p-4">
+    {% if not form.fields.trajet.queryset.exists %}
+      <div role="alert">
+      {% if form.a_des_trajets_ouverts %}
+        <p class="mb-2"><strong>Aucun de vos trajets ne convient à cette expédition.</strong></p>
+        <p class="mb-2">Il faut un trajet ouvert qui passe par <strong>{{ appel.expedition.adresse_depart.ville }}</strong> puis
+          <strong>{{ appel.expedition.adresse_arrivee.ville }}</strong>, qui part entre le {{ date_min|date:"d/m/Y" }} et le
+          {{ date_max|date:"d/m/Y" }}, avec assez de place ({{ appel.expedition.poids_total_kg|floatformat:0 }} kg).</p>
+        <p class="mb-0"><a href="{% url 'fleet:liste' %}">Créer ou modifier un trajet</a></p>
+      {% else %}
+        <p class="mb-0">Vous n’avez aucun trajet ouvert à venir. <a href="{% url 'fleet:liste' %}">Créez d’abord un trajet</a>.</p>
+      {% endif %}
+      </div>
+    {% else %}
+    <form method="post" id="form-offre" data-suggestion-url="{% url 'tenders:suggestion_prix' %}" data-appel="{{ appel.pk }}">{% csrf_token %}
+      {{ form|crispy }}
+      <div class="suggestion-prix mb-3">
+        <button class="btn btn-outline-primary btn-sm" type="button" id="btn-suggestion" aria-describedby="suggestion-aide">
+          <i class="bi bi-magic" aria-hidden="true"></i> Suggérer un prix
+        </button>
+        <p class="form-text mb-1" id="suggestion-aide">L’IA calcule un prix juste à partir des offres retenues par le passé (distance de votre trajet et poids).</p>
+        <p class="small mb-0" id="suggestion-resultat" role="status" aria-live="polite"></p>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-primary" type="submit">{% if object %}Enregistrer{% else %}Envoyer mon offre{% endif %}</button>
+        <a class="btn btn-outline-secondary" href="{% url 'tenders:detail' appel.pk %}">Annuler</a>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div></div>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/suggestion_prix.js' %}" defer></script>
+{% endblock %}

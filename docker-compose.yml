@@ -53,6 +53,7 @@ services:
     ports:
       - "6379:6379"
 
+  # SPA React de la flotte (M3) — http://localhost:5173, proxy /api → web
   frontend:
     image: node:22-alpine
     working_dir: /app

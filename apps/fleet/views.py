@@ -1,48 +1,231 @@
-"""Vues Django (serveur) du module Flotte & trajets — Membre 3.
+"""Vues du module Flotte & trajets — Membre 3.
 
-Ces pages complètent l'API REST (`api.py`) utilisée par le SPA React :
-listes du front/back-office, formulaires CRUD, téléversement de documents,
-annulation de trajet et téléchargement du certificat vert (session navigateur,
-sans jeton JWT).
+Transporteur : gérer ses véhicules (documents, conformité), publier / modifier / annuler ses trajets,
+               voir son impact CO₂, télécharger son certificat vert, utiliser le planificateur IA.
+Back-office  : tous les véhicules (valider / refuser) et tous les trajets.
 """
 
-from datetime import date
+from datetime import timedelta
 
 from django.contrib import messages
-from django.db.models import Max
-from django.db.models.deletion import ProtectedError
-from django.forms import Select
+from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, FormView, UpdateView
 
-from apps.core.mixins import RoleRequiredMixin
-from apps.core.roles import Role, est_admin
+from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
+from apps.core.roles import Role
 from apps.core.views import ListeBackofficeView, ListeFrontView
 
 from .ai import recommander_vehicules
-from .forms import PlanificationIAForm
+from .forms import DocumentVehiculeForm, PlanificationForm, TrajetForm, VehiculeForm
 from .models import DocumentVehicule, Trajet, Vehicule
 from .services import bilan_co2, generer_certificat_vert
-from .upload_validation import erreur_fichier_vehicule
+
+# ---------------------------------------------------------------- véhicules
 
 
-def _styliser_formulaire(form):
-    for champ in form.fields.values():
-        classe = "form-select" if isinstance(champ.widget, Select) else "form-control"
-        champ.widget.attrs["class"] = f"{champ.widget.attrs.get('class', '')} {classe}".strip()
-    return form
+class MesVehiculesView(ListeFrontView):
+    model = Vehicule
+    roles = [Role.TRANSPORTEUR]
+    titre = "Mes véhicules"
+    template_name = "fleet/vehicules.html"
+
+    def get_queryset(self):
+        return Vehicule.objects.filter(transporteur=self.request.user).prefetch_related("documents")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["types_documents"] = DocumentVehicule.Type.choices
+        ctx["demain"] = timezone.localdate() + timedelta(days=1)
+        return ctx
 
 
-# ----------------------------------------------------------------- front-office
-class OptimiseurIATransportView(RoleRequiredMixin, FormView):
-    """Classe les véhicules du transporteur pour une mission prévisionnelle."""
+class MesVehiculesMixin(RoleRequiredMixin):
+    """Un transporteur ne touche qu'à SES véhicules (404 sinon)."""
 
     roles = [Role.TRANSPORTEUR]
-    form_class = PlanificationIAForm
-    template_name = "fleet/optimiseur_ia.html"
+    model = Vehicule
+    context_object_name = "vehicule"
+    success_url = reverse_lazy("fleet:vehicules")
+
+    def get_queryset(self):
+        return Vehicule.objects.filter(transporteur=self.request.user)
+
+
+class VehiculeCreerView(MesVehiculesMixin, CreateView):
+    form_class = VehiculeForm
+    template_name = "fleet/vehicule_formulaire.html"
+
+    def form_valid(self, form):
+        form.instance.transporteur = self.request.user
+        messages.success(self.request, "Véhicule ajouté. Ajoutez sa carte grise et son assurance.")
+        return super().form_valid(form)
+
+
+class VehiculeModifierView(MesVehiculesMixin, UpdateView):
+    form_class = VehiculeForm
+    template_name = "fleet/vehicule_formulaire.html"
+
+    def form_valid(self, form):
+        messages.success(self.request, "Véhicule modifié.")
+        return super().form_valid(form)
+
+
+class VehiculeSupprimerView(MesVehiculesMixin, DeleteView):
+    template_name = "fleet/vehicule_supprimer.html"
+
+    def form_valid(self, form):
+        if self.object.trajets.exists():  # Trajet.vehicule est protégé (PROTECT)
+            messages.error(self.request, "Ce véhicule a des trajets : il ne peut pas être supprimé.")
+            return redirect(self.success_url)
+        messages.success(self.request, "Véhicule supprimé.")
+        return super().form_valid(form)
+
+
+class DocumentAjouterView(MesVehiculesMixin, View):
+    """Carte grise ou assurance : remplace l'ancien document du même type puis recalcule la conformité."""
+
+    def post(self, request, pk):
+        vehicule = get_object_or_404(self.get_queryset(), pk=pk)
+        form = DocumentVehiculeForm(request.POST, request.FILES, vehicule=vehicule)
+        if not form.is_valid():
+            for erreurs in form.errors.values():
+                for erreur in erreurs:
+                    messages.error(request, f"{vehicule.immatriculation} : {erreur}")
+            return redirect(self.success_url)
+        DocumentVehicule.objects.filter(vehicule=vehicule, type=form.cleaned_data["type"]).delete()
+        form.save()
+        vehicule.recalculer_conformite()
+        messages.success(request, f"{form.instance.get_type_display()} enregistrée, conformité mise à jour.")
+        return redirect(self.success_url)
+
+
+class CertificatVertView(MesVehiculesMixin, View):
+    """Certificat vert PDF du véhicule pour l'année en cours."""
+
+    def get(self, request, pk):
+        vehicule = get_object_or_404(self.get_queryset(), pk=pk)
+        fin = timezone.localdate()
+        contenu, _bilan = generer_certificat_vert(request.user, fin.replace(month=1, day=1), fin, vehicule=vehicule)
+        reponse = HttpResponse(contenu, content_type="application/pdf")
+        reponse["Content-Disposition"] = f'attachment; filename="certificat-vert-{vehicule.immatriculation}.pdf"'
+        return reponse
+
+
+# ---------------------------------------------------------------- trajets
+
+
+class MesTrajetsView(ListeFrontView):
+    model = Trajet
+    roles = [Role.TRANSPORTEUR]
+    titre = "Mes trajets"
+    template_name = "fleet/liste.html"  # tableau + carte Leaflet des itinéraires
+
+    def get_queryset(self):
+        return (
+            Trajet.objects.filter(transporteur=self.request.user).select_related("vehicule").prefetch_related("etapes")
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["trajets_carte"] = [
+            {
+                "id": t.pk,
+                "ville_depart": t.ville_depart,
+                "ville_arrivee": t.ville_arrivee,
+                "type_vehicule": t.vehicule.type,
+            }
+            for t in ctx["object_list"]
+        ]
+        return ctx
+
+
+class MesTrajetsMixin(RoleRequiredMixin):
+    """Un transporteur ne touche qu'à SES trajets (404 sinon)."""
+
+    roles = [Role.TRANSPORTEUR]
+    model = Trajet
+    form_class = TrajetForm
+    context_object_name = "trajet"
+    template_name = "fleet/trajet_formulaire.html"
+    success_url = reverse_lazy("fleet:liste")
+
+    def get_queryset(self):
+        return Trajet.objects.filter(transporteur=self.request.user)
+
+    def get_form_kwargs(self):
+        return {**super().get_form_kwargs(), "transporteur": self.request.user}
+
+
+class TrajetCreerView(MesTrajetsMixin, CreateView):
+    def form_valid(self, form):
+        messages.success(self.request, "Trajet publié : les PME peuvent maintenant le réserver.")
+        return super().form_valid(form)
+
+
+class TrajetModifierView(MesTrajetsMixin, UpdateView):
+    def dispatch(self, request, *args, **kwargs):
+        # Seulement si le rôle est bon : sinon RoleRequiredMixin répond 403 (ou redirige vers la connexion).
+        if request.user.is_authenticated and self.test_func():
+            trajet = get_object_or_404(self.get_queryset(), pk=kwargs["pk"])
+            if trajet.statut not in (Trajet.Statut.OUVERT, Trajet.Statut.COMPLET):
+                messages.error(request, "Ce trajet est parti, terminé ou annulé : il ne peut plus changer.")
+                return redirect(self.success_url)
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        messages.success(self.request, "Trajet modifié.")
+        return super().form_valid(form)
+
+
+class TrajetAnnulerView(MesTrajetsMixin, View):
+    """Annulation logique : le trajet reste visible, avec le statut « Annulé »."""
+
+    def post(self, request, pk):
+        trajet = get_object_or_404(self.get_queryset(), pk=pk)
+        if trajet.statut not in (Trajet.Statut.OUVERT, Trajet.Statut.COMPLET):
+            messages.error(request, "Seul un trajet qui n’est pas encore parti peut être annulé.")
+        elif trajet.reservations.filter(statut__in=Trajet.STATUTS_RESERVES).exists():
+            messages.error(request, "Ce trajet a des réservations acceptées : annulez-les d’abord.")
+        else:
+            trajet.statut = Trajet.Statut.ANNULE
+            trajet.save(update_fields=["statut", "updated_at"])
+            messages.success(request, "Trajet annulé.")
+        return redirect(self.success_url)
+
+
+# ---------------------------------------------------------------- impact & IA
+
+
+class ImpactView(ListeFrontView):
+    """Bilan CO₂ de chaque véhicule du transporteur (trajets terminés)."""
+
+    model = Vehicule
+    roles = [Role.TRANSPORTEUR]
+    titre = "Impact écologique"
+    template_name = "fleet/impact.html"
+
+    def get_queryset(self):
+        return Vehicule.objects.filter(transporteur=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        user = self.request.user
+        ctx["bilans"] = [(v, bilan_co2(user, vehicule=v)) for v in ctx["object_list"]]
+        ctx["total"] = bilan_co2(user)
+        return ctx
+
+
+class PlanificateurView(RoleRequiredMixin, FormView):
+    """IA (M3) : classe les véhicules du transporteur pour une mission prévisionnelle."""
+
+    roles = [Role.TRANSPORTEUR]
+    form_class = PlanificationForm
+    template_name = "fleet/planificateur.html"
 
     def form_valid(self, form):
         donnees = form.cleaned_data
@@ -53,332 +236,54 @@ class OptimiseurIATransportView(RoleRequiredMixin, FormView):
             distance_km=donnees["distance_km"],
             date_depart=donnees["date_depart"],
         )
-        contexte = self.get_context_data(form=form)
-        contexte.update(mission=donnees, recommandations=recommandations)
-        return self.render_to_response(contexte)
-
-
-class MesTrajetsView(ListeFrontView):
-    model = Trajet
-    roles = [Role.TRANSPORTEUR]
-    titre = "Mes trajets"
-    sous_titre = "Les trajets que vous proposez et leur place libre."
-    template_name = "fleet/liste_trajets.html"  # liste + carte Leaflet des itinéraires
-    colonnes = [
-        ("ville_depart", "Départ"),
-        ("ville_arrivee", "Arrivée"),
-        ("date_depart", "Date"),
-        ("capacite_dispo_kg", "Place libre (kg)"),
-        ("statut", "Statut"),
-    ]
-
-    def get_queryset(self):
-        return Trajet.objects.filter(transporteur=self.request.user).select_related("vehicule")
-
-    def get_context_data(self, **kwargs):
-        import json
-
-        contexte = super().get_context_data(**kwargs)
-        trajets = list(self.get_queryset())
-        contexte["trajets"] = trajets
-        # Sert la carte Leaflet (templates/fleet/liste_trajets.html)
-        contexte["trajets_json"] = json.dumps(
-            [
-                {
-                    "id": t.pk,
-                    "ville_depart": t.ville_depart,
-                    "ville_arrivee": t.ville_arrivee,
-                    "type_vehicule": t.vehicule.type,
-                }
-                for t in trajets
-            ],
-            ensure_ascii=False,
+        return self.render_to_response(
+            self.get_context_data(form=form, mission=donnees, recommandations=recommandations)
         )
-        return contexte
 
 
-class MesVehiculesView(ListeFrontView):
-    model = Vehicule
-    roles = [Role.TRANSPORTEUR]
-    titre = "Mes véhicules"
-    sous_titre = "Vos camions et leur capacité."
-    template_name = "fleet/liste_vehicules.html"  # documents + actions (certificat, suppression)
-    colonnes = [
-        ("immatriculation", "Immatriculation"),
-        ("type", "Type"),
-        ("capacite_kg", "Capacité (kg)"),
-        ("statut", "Statut"),
-        ("motif_non_conformite", "Conformité"),
-    ]
-
-    def get_queryset(self):
-        return Vehicule.objects.filter(transporteur=self.request.user).prefetch_related("documents")
-
-    def get_context_data(self, **kwargs):
-        contexte = super().get_context_data(**kwargs)
-        contexte["vehicules"] = self.get_queryset()
-        return contexte
+# ---------------------------------------------------------------- back-office
 
 
-class CreerVehiculeView(CreateView):
-    """Formulaire d'ajout d'un véhicule côté transporteur."""
-
-    model = Vehicule
-    fields = ["type", "immatriculation", "capacite_kg", "capacite_m3"]
-    template_name = "fleet/formulaire_vehicule.html"
-
-    def get_form(self, form_class=None):
-        return _styliser_formulaire(super().get_form(form_class))
-
-    def form_valid(self, form):
-        form.instance.transporteur = self.request.user
-        messages.success(self.request, "Véhicule ajouté. Il est en attente de validation par l'administrateur.")
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return "/flotte/vehicules/"
-
-
-class ModifierVehiculeView(UpdateView):
-    model = Vehicule
-    fields = ["type", "immatriculation", "capacite_kg", "capacite_m3"]
-    template_name = "fleet/formulaire_vehicule.html"
-
-    def get_form(self, form_class=None):
-        return _styliser_formulaire(super().get_form(form_class))
-
-    def form_valid(self, form):
-        vehicule = form.save(commit=False)
-        capacites_utilisees = vehicule.trajets.filter(
-            statut__in=[Trajet.Statut.PUBLIE, Trajet.Statut.COMPLET, Trajet.Statut.EN_COURS]
-        ).aggregate(poids=Max("capacite_totale_kg"), volume=Max("capacite_totale_m3"))
-        if capacites_utilisees["poids"] and vehicule.capacite_kg < capacites_utilisees["poids"]:
-            form.add_error("capacite_kg", "La capacité ne peut pas être inférieure à celle d'un trajet actif.")
-        if capacites_utilisees["volume"] and vehicule.capacite_m3 < capacites_utilisees["volume"]:
-            form.add_error("capacite_m3", "Le volume ne peut pas être inférieur à celui d'un trajet actif.")
-        if form.errors:
-            return self.form_invalid(form)
-        messages.success(self.request, "Véhicule modifié.")
-        return super().form_valid(form)
-
-    def get_queryset(self):
-        return Vehicule.objects.filter(transporteur=self.request.user)
-
-    def get_success_url(self):
-        return "/flotte/vehicules/"
-
-
-class SupprimerVehiculeView(DeleteView):
-    model = Vehicule
-    template_name = "fleet/confirmer_suppression.html"
-
-    def get_queryset(self):
-        return Vehicule.objects.filter(transporteur=self.request.user)
-
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        if self.object.trajets.exists():
-            messages.error(request, "Ce véhicule est lié à des trajets et ne peut pas être supprimé.")
-            return redirect(self.get_success_url())
-        try:
-            return super().post(request, *args, **kwargs)
-        except ProtectedError:
-            messages.error(request, "Ce véhicule est encore utilisé et ne peut pas être supprimé.")
-            return redirect(self.get_success_url())
-
-    def get_success_url(self):
-        return "/flotte/vehicules/"
-
-
-class AjouterDocumentView(View):
-    """Téléversement d'une carte grise ou d'une assurance (multipart)."""
-
-    def post(self, request, pk):
-        vehicule = get_object_or_404(Vehicule, pk=pk, transporteur=request.user)
-        fichier = request.FILES.get("fichier")
-        type_doc = request.POST.get("type")
-        expiration = request.POST.get("date_expiration")
-        try:
-            date_expiration = date.fromisoformat(expiration) if expiration else None
-        except ValueError:
-            date_expiration = None
-        if not fichier or not date_expiration or type_doc not in DocumentVehicule.Type.values:
-            messages.error(request, "Fichier, type et date d'expiration sont obligatoires.")
-            return redirect("/flotte/vehicules/")
-        if date_expiration <= timezone.localdate():
-            messages.error(request, "La date d'expiration du document doit être dans le futur.")
-            return redirect("/flotte/vehicules/")
-        erreur = erreur_fichier_vehicule(fichier)
-        if erreur:
-            messages.error(request, erreur)
-            return redirect("/flotte/vehicules/")
-        DocumentVehicule.objects.filter(vehicule=vehicule, type=type_doc).delete()
-        DocumentVehicule.objects.create(
-            vehicule=vehicule, type=type_doc, fichier=fichier, date_expiration=date_expiration
-        )
-        vehicule.recalculer_conformite()
-        messages.success(request, "Document enregistré, conformité mise à jour.")
-        return redirect("/flotte/vehicules/")
-
-
-class PublierTrajetView(CreateView):
-    """Publication d'un trajet : capacité plafonnée au véhicule, conformité exigée."""
-
-    model = Trajet
-    fields = [
-        "vehicule",
-        "ville_depart",
-        "ville_arrivee",
-        "date_depart",
-        "capacite_dispo_kg",
-        "capacite_dispo_m3",
-        "prix_indicatif",
-    ]
-    template_name = "fleet/formulaire_trajet.html"
-
-    def get_form(self, form_class=None):
-        form = _styliser_formulaire(super().get_form(form_class))
-        form.fields["vehicule"].queryset = Vehicule.objects.filter(
-            transporteur=self.request.user, statut=Vehicule.Statut.ACTIF, conforme=True
-        )
-        return form
-
-    def form_valid(self, form):
-        vehicule = form.cleaned_data["vehicule"]
-        if vehicule.transporteur != self.request.user:
-            messages.error(self.request, "Ce véhicule ne vous appartient pas.")
-            return redirect("/flotte/vehicules/")
-        if not vehicule.peut_publier_trajet():
-            messages.error(
-                self.request,
-                f"Impossible de publier : le véhicule {vehicule.immatriculation} est "
-                f"{vehicule.get_statut_display().lower()}.",
-            )
-            return redirect("/flotte/vehicules/")
-        if form.cleaned_data["capacite_dispo_kg"] > vehicule.capacite_kg:
-            form.add_error("capacite_dispo_kg", "La capacité dépasse celle du véhicule.")
-            return self.form_invalid(form)
-        form.instance.transporteur = self.request.user
-        form.instance.capacite_totale_kg = form.cleaned_data["capacite_dispo_kg"]
-        form.instance.capacite_totale_m3 = form.cleaned_data["capacite_dispo_m3"]
-        messages.success(self.request, "Trajet publié.")
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return "/flotte/"
-
-
-class ModifierTrajetView(UpdateView):
-    model = Trajet
-    fields = [
-        "vehicule",
-        "ville_depart",
-        "ville_arrivee",
-        "date_depart",
-        "capacite_dispo_kg",
-        "capacite_dispo_m3",
-        "prix_indicatif",
-    ]
-    template_name = "fleet/formulaire_trajet.html"
-
-    def get_form(self, form_class=None):
-        form = _styliser_formulaire(super().get_form(form_class))
-        form.fields["vehicule"].queryset = Vehicule.objects.filter(
-            transporteur=self.request.user,
-            statut=Vehicule.Statut.ACTIF,
-            conforme=True,
-        )
-        return form
-
-    def get_queryset(self):
-        return Trajet.objects.filter(transporteur=self.request.user)
-
-    def form_valid(self, form):
-        trajet = form.save(commit=False)
-        if trajet.vehicule.transporteur_id != self.request.user.pk or not trajet.vehicule.peut_publier_trajet():
-            form.add_error("vehicule", "Choisissez un véhicule actif et conforme qui vous appartient.")
-            return self.form_invalid(form)
-        if trajet.capacite_dispo_kg < trajet.capacite_reservee_kg:
-            form.add_error("capacite_dispo_kg", "Impossible de réduire la capacité sous la part déjà réservée.")
-            return self.form_invalid(form)
-        if trajet.capacite_dispo_m3 < trajet.capacite_reservee_m3:
-            form.add_error("capacite_dispo_m3", "Impossible de réduire le volume sous la part déjà réservée.")
-            return self.form_invalid(form)
-        messages.success(self.request, "Trajet modifié.")
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return "/flotte/"
-
-
-class AnnulerTrajetView(View):
-    """Annulation (logique) d'un trajet publié."""
-
-    def post(self, request, pk):
-        trajet = get_object_or_404(Trajet, pk=pk, transporteur=request.user)
-        if trajet.statut == Trajet.Statut.TERMINE:
-            messages.error(request, "Un trajet terminé ne peut pas être annulé.")
-        else:
-            trajet.statut = Trajet.Statut.ANNULE
-            trajet.save(update_fields=["statut"])
-            messages.success(request, "Trajet annulé.")
-        return redirect("/flotte/")
-
-
-class ImpactEcologiqueView(ListeFrontView):
-    """Bilan CO₂ par véhicule du transporteur connecté."""
-
-    model = Vehicule
-    roles = [Role.TRANSPORTEUR]
-    titre = "Impact écologique"
-    sous_titre = "Le CO₂ émis par vos trajets terminés et vos points éco."
-    template_name = "fleet/impact.html"
-    colonnes = []
-
-    def get_queryset(self):
-        return Vehicule.objects.filter(transporteur=self.request.user)
-
-    def get_context_data(self, **kwargs):
-
-        contexte = super().get_context_data(**kwargs)
-        contexte["bilans"] = [
-            {
-                "vehicule": str(vehicule),
-                "vehicule_id": vehicule.pk,
-                **bilan_co2(self.request.user),
-            }
-            for vehicule in self.get_queryset()
-        ]
-        return contexte
-
-
-class CertificatVertView(View):
-    """Téléchargement du certificat vert PDF (année en cours par défaut)."""
-
-    def get(self, request, pk):
-        vehicule = get_object_or_404(Vehicule, pk=pk, transporteur=request.user)
-        fin = timezone.localdate()
-        debut = fin.replace(month=1, day=1)
-        contenu, _bilan = generer_certificat_vert(vehicule.transporteur, debut, fin)
-        reponse = HttpResponse(contenu, content_type="application/pdf")
-        reponse["Content-Disposition"] = f'attachment; filename="certificat-vert-{vehicule.pk}.pdf"'
-        return reponse
-
-
-# ----------------------------------------------------------------- back-office
 class BackofficeVehiculeView(ListeBackofficeView):
     model = Vehicule
     titre = "Véhicules"
-    colonnes = [
-        ("immatriculation", "Immatriculation"),
-        ("transporteur", "Transporteur"),
-        ("type", "Type"),
-        ("statut", "Statut"),
-        ("motif_non_conformite", "Motif"),
-    ]
+    template_name = "fleet/backoffice/liste.html"
 
     def get_queryset(self):
-        return Vehicule.objects.select_related("transporteur").prefetch_related("documents")
+        qs = Vehicule.objects.select_related("transporteur").prefetch_related("documents")
+        statut = self.request.GET.get("statut")
+        return qs.filter(statut=statut) if statut in Vehicule.Statut.values else qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(
+            statuts=Vehicule.Statut.choices,
+            **Vehicule.objects.aggregate(
+                nb_vehicules=Count("pk"),
+                nb_non_conformes=Count("pk", filter=Q(statut=Vehicule.Statut.NON_CONFORME)),
+            ),
+            nb_trajets_ouverts=Trajet.objects.filter(statut=Trajet.Statut.OUVERT).count(),
+        )
+        return ctx
+
+
+class BackofficeVehiculeDecisionView(AdminRequiredMixin, View):
+    """Valider (ACTIF) ou refuser (NON_CONFORME, avec un motif) un véhicule."""
+
+    def post(self, request, pk):
+        vehicule = get_object_or_404(Vehicule, pk=pk)
+        if request.POST.get("decision") == "valider":
+            vehicule.statut, vehicule.conforme, vehicule.motif_non_conformite = Vehicule.Statut.ACTIF, True, ""
+        else:
+            motif = request.POST.get("motif", "").strip() or "Refusé par l’administrateur"
+            vehicule.statut, vehicule.conforme, vehicule.motif_non_conformite = (
+                Vehicule.Statut.NON_CONFORME,
+                False,
+                motif[:255],
+            )
+        vehicule.save(update_fields=["statut", "conforme", "motif_non_conformite", "updated_at"])
+        messages.success(request, f"Véhicule {vehicule.immatriculation} : {vehicule.get_statut_display()}.")
+        return redirect("bo_fleet:liste")
 
 
 class BackofficeTrajetView(ListeBackofficeView):
@@ -389,29 +294,10 @@ class BackofficeTrajetView(ListeBackofficeView):
         ("ville_arrivee", "Arrivée"),
         ("date_depart", "Date"),
         ("transporteur", "Transporteur"),
+        ("vehicule", "Véhicule"),
+        ("capacite_dispo_kg", "Place libre (kg)"),
         ("statut", "Statut"),
     ]
 
     def get_queryset(self):
         return Trajet.objects.select_related("vehicule", "transporteur")
-
-
-class ValiderVehiculeView(View):
-    """Admin : valide (ACTIF) ou refuse (NON_CONFORME) un véhicule."""
-
-    def post(self, request, pk, decision):
-        if not est_admin(request.user):
-            messages.error(request, "Action réservée aux administrateurs.")
-            return redirect("/backoffice/flotte/")
-        vehicule = get_object_or_404(Vehicule, pk=pk)
-        if decision == "valider":
-            vehicule.statut = Vehicule.Statut.ACTIF
-            vehicule.conforme = True
-            vehicule.motif_non_conformite = ""
-        else:
-            vehicule.statut = Vehicule.Statut.NON_CONFORME
-            vehicule.conforme = False
-            vehicule.motif_non_conformite = request.POST.get("motif", "Refusé par l'administrateur")
-        vehicule.save(update_fields=["statut", "conforme", "motif_non_conformite"])
-        messages.success(request, f"Véhicule {vehicule.immatriculation} : {vehicule.get_statut_display()}.")
-        return redirect("/backoffice/flotte/")

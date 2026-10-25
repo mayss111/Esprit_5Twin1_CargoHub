@@ -9,7 +9,7 @@ from apps.core.roles import est_admin
 from apps.maintenance.models import Entretien
 
 from .models import DocumentVehicule, FacteurEmission, Trajet, Vehicule
-from .upload_validation import erreur_fichier_vehicule
+from .validation import erreur_fichier_vehicule
 
 
 class DocumentVehiculeSerializer(serializers.ModelSerializer):
@@ -64,7 +64,7 @@ class VehiculeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"capacite_m3": "La capacité doit être supérieure à 0 m³."})
         if self.instance:
             capacites_utilisees = self.instance.trajets.filter(
-                statut__in=[Trajet.Statut.PUBLIE, Trajet.Statut.COMPLET, Trajet.Statut.EN_COURS]
+                statut__in=[Trajet.Statut.OUVERT, Trajet.Statut.COMPLET, Trajet.Statut.EN_COURS]
             ).aggregate(poids=Max("capacite_totale_kg"), volume=Max("capacite_totale_m3"))
             erreurs = {}
             if capacites_utilisees["poids"] and capacite_kg < capacites_utilisees["poids"]:
@@ -77,7 +77,11 @@ class VehiculeSerializer(serializers.ModelSerializer):
 
 
 class TrajetSerializer(serializers.ModelSerializer):
+    """Même règles que TrajetForm (pages Django). La place libre (capacite_dispo_*) diminue à chaque réservation
+    acceptée (module M4) ; on peut envoyer soit la place libre, soit la place proposée (capacite_totale_*)."""
+
     vehicule_immatriculation = serializers.CharField(source="vehicule.immatriculation", read_only=True)
+    etapes = serializers.SlugRelatedField(many=True, read_only=True, slug_field="ville")
     taux_remplissage = serializers.FloatField(read_only=True)
     capacite_reservee_kg = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
@@ -89,6 +93,7 @@ class TrajetSerializer(serializers.ModelSerializer):
             "vehicule_immatriculation",
             "ville_depart",
             "ville_arrivee",
+            "etapes",
             "date_depart",
             "capacite_dispo_kg",
             "capacite_dispo_m3",
@@ -104,20 +109,37 @@ class TrajetSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "statut", "created_at", "updated_at"]
+        read_only_fields = ["id", "statut", "co2_kg", "created_at", "updated_at"]
+        extra_kwargs = {"capacite_dispo_kg": {"required": False}, "capacite_dispo_m3": {"required": False}}
 
     def validate_date_depart(self, valeur):
         if valeur <= timezone.now():
             raise serializers.ValidationError("La date de départ doit être dans le futur.")
         return valeur
 
+    def _capacites(self, donnees, unite):
+        """Calcule (place proposée, place libre) pour 'kg' ou 'm3' à partir de ce que le client a envoyé."""
+        reserve = getattr(self.instance, f"capacite_reservee_{unite}", 0) if self.instance else 0
+        totale, dispo = donnees.get(f"capacite_totale_{unite}"), donnees.get(f"capacite_dispo_{unite}")
+        if totale is None and dispo is None:
+            if not self.instance:
+                raise serializers.ValidationError({f"capacite_dispo_{unite}": "Ce champ est obligatoire."})
+            return None
+        if totale is None:
+            if dispo <= 0:
+                raise serializers.ValidationError(
+                    {f"capacite_dispo_{unite}": "La capacité disponible doit être supérieure à 0."}
+                )
+            totale = dispo + reserve
+        elif totale <= 0:
+            raise serializers.ValidationError(
+                {f"capacite_totale_{unite}": "La capacité proposée doit être supérieure à 0."}
+            )
+        if totale < reserve:
+            raise serializers.ValidationError("Impossible de réduire la capacité sous la part déjà réservée.")
+        return totale, totale - reserve
+
     def validate(self, donnees):
-        capacite_kg = donnees.get("capacite_dispo_kg", self.instance.capacite_dispo_kg if self.instance else None)
-        capacite_m3 = donnees.get("capacite_dispo_m3", self.instance.capacite_dispo_m3 if self.instance else None)
-        if capacite_kg is not None and capacite_kg <= 0:
-            raise serializers.ValidationError({"capacite_dispo_kg": "La capacité disponible doit être supérieure à 0."})
-        if capacite_m3 is not None and capacite_m3 <= 0:
-            raise serializers.ValidationError({"capacite_dispo_m3": "La capacité disponible doit être supérieure à 0."})
         vehicule = donnees.get("vehicule") or (self.instance and self.instance.vehicule)
         request = self.context.get("request")
         if vehicule and request and not est_admin(request.user) and vehicule.transporteur_id != request.user.pk:
@@ -127,15 +149,25 @@ class TrajetSerializer(serializers.ModelSerializer):
                 f"Impossible de publier un trajet : le véhicule {vehicule.immatriculation} "
                 f"est {vehicule.get_statut_display().lower()} ({vehicule.motif_non_conformite or 'maintenance'})."
             )
-        if vehicule and capacite_kg and capacite_kg > vehicule.capacite_kg:
-            raise serializers.ValidationError({"capacite_dispo_kg": "La capacité dépasse celle du véhicule."})
-        if vehicule and capacite_m3 and capacite_m3 > vehicule.capacite_m3:
-            raise serializers.ValidationError({"capacite_dispo_m3": "La capacité dépasse celle du véhicule."})
+        depart = donnees.get("ville_depart", getattr(self.instance, "ville_depart", ""))
+        arrivee = donnees.get("ville_arrivee", getattr(self.instance, "ville_arrivee", ""))
+        if depart and arrivee and depart.strip().casefold() == arrivee.strip().casefold():
+            raise serializers.ValidationError(
+                {"ville_arrivee": "La ville d'arrivée doit être différente de la ville de départ."}
+            )
+        for unite, maximum in (("kg", vehicule and vehicule.capacite_kg), ("m3", vehicule and vehicule.capacite_m3)):
+            capacites = self._capacites(donnees, unite)
+            if capacites is None:
+                continue
+            totale, dispo = capacites
+            if maximum and totale > maximum:
+                raise serializers.ValidationError({f"capacite_dispo_{unite}": "La capacité dépasse celle du véhicule."})
+            donnees[f"capacite_totale_{unite}"], donnees[f"capacite_dispo_{unite}"] = totale, dispo
         return donnees
 
 
 class TrajetReduitSerializer(serializers.ModelSerializer):
-    """Version compacte pour la recherche des PME (module Matching M4)."""
+    """Version compacte pour la recherche des PME."""
 
     transporteur_nom = serializers.CharField(source="transporteur.get_full_name", read_only=True)
 

@@ -1,30 +1,36 @@
-"""Services du module Flotte — compatibilité, conformité, CO₂ et certificat vert.
+"""Logique métier du module Flotte — Membre 3 : compatibilité, conformité, CO₂ et certificat vert.
 
-Utilisés à la fois par les vues Django, l'API REST et les tâches Celery.
+Utilisée par les vues Django, l'API REST et les tâches Celery. La compatibilité trajet / expédition
+et les notifications sont celles du module Réservations (M4) : on les réutilise au lieu de les dupliquer.
 """
 
 import datetime
 import logging
 from decimal import Decimal
 
+from django.urls import reverse
 from django.utils import timezone
+
+from apps.bookings import services as reservations
+from apps.bookings.tasks import notifier as notifier_tache
 
 from .models import FacteurEmission, Trajet, Vehicule
 
 logger = logging.getLogger("cargohub.fleet")
 
-# Aire urbaine moyenne (km²) d'une ville tunisienne — sert quand la distance
-# exacte n'est pas connue. L'OSRM (M2) peut la remplacer plus tard.
+# Distance moyenne (km) d'un trajet entre deux villes tunisiennes — sert quand la distance
+# exacte n'est pas connue.
 DISTANCE_MOYENNE_KM = 150
 
 
 def trajets_compatibles(expedition):
-    """Tous les trajets publiés qui peuvent accueillir l'expédition (utilisé par M4)."""
-    return [
-        t
-        for t in Trajet.objects.filter(statut=Trajet.Statut.PUBLIE).select_related("vehicule")
-        if t.est_compatible(expedition)
-    ]
+    """Trajets ouverts qui peuvent accueillir l'expédition, du meilleur au moins bon (règle du module M4)."""
+    return [t for t, _score in reservations.trajets_compatibles(expedition) if t.est_compatible(expedition)]
+
+
+def notifier(destinataire, titre, message, lien=""):
+    """Notification dans l'application + email, envoyée par la tâche Celery partagée avec M4."""
+    notifier_tache.delay(destinataire.pk, titre, message, lien)
 
 
 def verifier_conformite_flotte():
@@ -42,7 +48,7 @@ def verifier_conformite_flotte():
                 vehicule.transporteur,
                 "Véhicule non conforme",
                 f"{vehicule} a été bloqué : {vehicule.motif_non_conformite}",
-                lien="/flotte/vehicules/",
+                reverse("fleet:vehicules"),
             )
             logger.info("Véhicule %s bloqué (non conforme)", vehicule.immatriculation)
         elif apres != Vehicule.Statut.NON_CONFORME and avant == Vehicule.Statut.NON_CONFORME:
@@ -51,16 +57,9 @@ def verifier_conformite_flotte():
                 vehicule.transporteur,
                 "Véhicule de nouveau conforme",
                 f"{vehicule} peut de nouveau publier des trajets.",
-                lien="/flotte/vehicules/",
+                reverse("fleet:vehicules"),
             )
     return bloques, reactives
-
-
-def notifier(destinataire, titre, message, lien=""):
-    """Notification in-app partagée avec le module Réservations (M4)."""
-    from apps.bookings.models import Notification
-
-    return Notification.objects.create(destinataire=destinataire, titre=titre, message=message, lien=lien)
 
 
 def calculer_co2_trajet(trajet, charge_kg):
@@ -79,9 +78,11 @@ def mettre_a_jour_co2_trajet(trajet):
     return trajet.co2_kg
 
 
-def bilan_co2(transporteur, periode_debut=None, periode_fin=None):
-    """Bilan cumulé d'un transporteur : trajets, CO₂ total, points éco (pour M5)."""
+def bilan_co2(transporteur, periode_debut=None, periode_fin=None, vehicule=None):
+    """Bilan cumulé d'un transporteur (ou d'un seul de ses véhicules) : trajets, CO₂ total, points éco (pour M5)."""
     trajets = Trajet.objects.filter(transporteur=transporteur, statut=Trajet.Statut.TERMINE)
+    if vehicule is not None:
+        trajets = trajets.filter(vehicule=vehicule)
     if periode_debut:
         debut = timezone.make_aware(datetime.datetime.combine(periode_debut, datetime.time.min))
         trajets = trajets.filter(date_depart__gte=debut)
@@ -95,15 +96,15 @@ def bilan_co2(transporteur, periode_debut=None, periode_fin=None):
 
 
 # --------------------------------------------------------------------- PDF
-def generer_certificat_vert(transporteur, periode_debut, periode_fin):
-    """Génère le certificat vert PDF (reportlab) et renvoie les octets du fichier."""
+def generer_certificat_vert(transporteur, periode_debut, periode_fin, vehicule=None):
+    """Génère le certificat vert PDF (reportlab) du transporteur, ou d'un seul véhicule. Renvoie (octets, bilan)."""
     from io import BytesIO
 
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import cm
     from reportlab.pdfgen import canvas
 
-    bilan = bilan_co2(transporteur, periode_debut, periode_fin)
+    bilan = bilan_co2(transporteur, periode_debut, periode_fin, vehicule=vehicule)
     tampon = BytesIO()
     pdf = canvas.Canvas(tampon, pagesize=A4)
     largeur, hauteur = A4
@@ -115,15 +116,16 @@ def generer_certificat_vert(transporteur, periode_debut, periode_fin):
     pdf.drawString(2 * cm, hauteur - 2.6 * cm, "CargoHub — Certificat vert")
     pdf.setFillColorRGB(1, 1, 1)
     pdf.setFont("Helvetica", 12)
-    pdf.drawString(2 * cm, hauteur - 3.5 * cm, f"Période : {periode_debut:%d/%m/%Y} → {periode_fin:%d/%m/%Y}")
+    pdf.drawString(2 * cm, hauteur - 3.5 * cm, f"Période : du {periode_debut:%d/%m/%Y} au {periode_fin:%d/%m/%Y}")
 
     pdf.setFillColorRGB(0, 0, 0)
     pdf.setFont("Helvetica", 14)
     y = hauteur - 7 * cm
     for ligne in (
         f"Transporteur : {transporteur.get_full_name() or transporteur.email}",
+        f"Véhicule : {vehicule}" if vehicule else "Véhicule : toute la flotte",
         f"Trajets terminés : {bilan['nb_trajets']}",
-        f"CO₂ émis (charge partagée) : {bilan['co2_total_kg']} kg",
+        f"CO2 émis (charge partagée) : {bilan['co2_total_kg']} kg",
         f"Points éco gagnés : {bilan['points_eco']}",
     ):
         pdf.drawString(2 * cm, y, ligne)

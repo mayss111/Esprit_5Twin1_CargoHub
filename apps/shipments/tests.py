@@ -33,7 +33,7 @@ def test_pme_ne_ouvre_pas_ladmin_des_expeditions(client, pme):
     assert "django-admin" in reponse.url
 
 
-def _donnees(date, articles, initial=0):
+def _donnees(date, articles, initial=0, arrivee=None):
     donnees = {
         "depart-ligne": "Zone industrielle",
         "depart-ville": "Monastir",
@@ -44,6 +44,7 @@ def _donnees(date, articles, initial=0):
         "arrivee-gouvernorat": "Tunis",
         "arrivee-code_postal": "1000",
         "generale-date_souhaitee": date.isoformat(),
+        "generale-date_arrivee": (arrivee or date).isoformat(),
         "generale-description": "Envoi textile",
         "articles-TOTAL_FORMS": str(len(articles)),
         "articles-INITIAL_FORMS": str(initial),
@@ -70,15 +71,36 @@ def _article(**extra):
     return article
 
 
-def test_brouillon_valide_sans_article(pme):
+def test_brouillon_valide_avec_un_article(pme):
     date = timezone.localdate() + timedelta(days=3)
-    saisie = SaisieExpedition(_donnees(date, []), pme=pme, publier=False)
+    saisie = SaisieExpedition(_donnees(date, [_article()]), pme=pme, publier=False)
     assert saisie.is_valid(), saisie.generale.errors
     expedition = saisie.save()
     assert expedition.statut == Expedition.Statut.BROUILLON
     assert expedition.reference.startswith("CH-")
-    assert expedition.articles.count() == 0
+    assert expedition.articles.count() == 1
     assert expedition.adresse_depart.gouvernorat == "Monastir"
+
+
+def test_creation_incomplete_refusee(pme):
+    date = timezone.localdate() + timedelta(days=3)
+    donnees = _donnees(date, [])
+    donnees["generale-date_souhaitee"] = ""
+    donnees["generale-date_arrivee"] = ""
+    donnees["depart-ligne"] = ""
+    donnees["depart-ville"] = ""
+    donnees["arrivee-ligne"] = ""
+    donnees["arrivee-ville"] = ""
+    saisie = SaisieExpedition(donnees, pme=pme, publier=False)
+    assert not saisie.is_valid()
+    assert "date de départ" in saisie.generale.errors["date_souhaitee"][0]
+    assert "date d'arrivée" in saisie.generale.errors["date_arrivee"][0]
+    assert "rue de départ" in saisie.depart.errors["ligne"][0]
+    assert "ville de départ" in saisie.depart.errors["ville"][0]
+    assert "rue d'arrivée" in saisie.arrivee.errors["ligne"][0]
+    assert "ville d'arrivée" in saisie.arrivee.errors["ville"][0]
+    assert "au moins un article" in saisie.generale.non_field_errors()[0]
+    assert not Expedition.objects.filter(pme=pme).exists()
 
 
 def test_publication_valide_avec_un_article(pme):
@@ -89,13 +111,16 @@ def test_publication_valide_avec_un_article(pme):
     assert expedition.statut == Expedition.Statut.PUBLIEE
     assert expedition.articles.count() == 1
     assert expedition.poids_total_kg == 20
+    assert expedition.date_souhaitee == date
+    assert expedition.date_arrivee == date
 
 
 def test_publication_sans_article_refusee(pme):
     date = timezone.localdate() + timedelta(days=3)
-    saisie = SaisieExpedition(_donnees(date, []), pme=pme, publier=True)
-    assert not saisie.is_valid()
-    assert "au moins un article" in saisie.generale.non_field_errors()[0]
+    for publier in (False, True):
+        saisie = SaisieExpedition(_donnees(date, []), pme=pme, publier=publier)
+        assert not saisie.is_valid()
+        assert "au moins un article" in saisie.generale.non_field_errors()[0]
 
 
 def test_poids_quantite_et_volume_invalides(pme):
@@ -121,6 +146,14 @@ def test_categorie_interdite_bloquee_a_la_publication(pme):
 
     brouillon = SaisieExpedition(_donnees(date, [article]), pme=pme, publier=False)
     assert brouillon.is_valid(), brouillon.generale.errors
+
+
+def test_date_arrivee_avant_depart_refusee(pme):
+    depart = timezone.localdate() + timedelta(days=5)
+    arrivee = depart - timedelta(days=1)
+    saisie = SaisieExpedition(_donnees(depart, [_article()], arrivee=arrivee), pme=pme, publier=True)
+    assert not saisie.is_valid()
+    assert "arrivée" in saisie.generale.errors["date_arrivee"][0].lower()
 
 
 def test_date_passee_refusee_a_la_creation(pme):

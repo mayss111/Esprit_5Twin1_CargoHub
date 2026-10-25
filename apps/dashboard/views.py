@@ -29,7 +29,7 @@ class AccueilBackofficeView(AdminRequiredMixin, TemplateView):
             ("Véhicules", nb_vehicules, "truck-front"),
             ("Taux de conformité (%)", taux_conformite, "shield-check"),
             ("Expéditions", Expedition.objects.count(), "box-seam"),
-            ("Trajets publiés", Trajet.objects.filter(statut=Trajet.Statut.PUBLIE).count(), "signpost-split"),
+            ("Trajets ouverts", Trajet.objects.filter(statut=Trajet.Statut.OUVERT).count(), "signpost-split"),
             ("Réservations", Reservation.objects.count(), "calendar-check"),
             (
                 "Chiffre d’affaires (DT)",

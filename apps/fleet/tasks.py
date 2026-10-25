@@ -1,13 +1,9 @@
-"""Tâches asynchrones du module Flotte (Celery) — M3.
-
-Remarque : la liste des entretiens vient du module « Entretien & conformité »
-(apps.maintenance, membre 3 également).
-"""
+"""Tâches Celery du module Flotte — Membre 3 (planifiées dans config/settings/base.py)."""
 
 from datetime import timedelta
 
 from celery import shared_task
-from django.core.mail import send_mail
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.maintenance.models import Entretien
@@ -53,33 +49,25 @@ def generer_trajets_recurrents():
 
 @shared_task
 def verifier_conformite_flotte():
-    """Tâche quotidienne (Celery Beat) : recalcule les statuts, bloque les véhicules non conformes."""
+    """Recalcule les statuts et bloque les véhicules non conformes (planifiée via apps.maintenance.tasks)."""
     bloques, reactives = services.verifier_conformite_flotte()
     return {"bloques": bloques, "reactives": reactives}
 
 
 @shared_task
 def notifier_alerte_documents():
-    """Alerte par email + notification in-app : documents qui expirent sous 30 jours."""
+    """Notification + email : documents qui expirent dans les 30 jours."""
     limite = timezone.localdate() + timedelta(days=JOURS_ALERTE_EXPIRATION)
     alertes = 0
     for doc in DocumentVehicule.objects.filter(
         date_expiration__lte=limite, date_expiration__gte=timezone.localdate()
     ).select_related("vehicule__transporteur"):
-        services.notifier(
+        services.notifier(  # notification dans l'application + email
             doc.vehicule.transporteur,
             "Document bientôt expiré",
             f"{doc.get_type_display()} du véhicule {doc.vehicule.immatriculation} "
-            f"expire le {doc.date_expiration:%d/%m/%Y}.",
-            lien="/flotte/vehicules/",
-        )
-        send_mail(
-            subject="CargoHub — document de véhicule bientôt expiré",
-            message=f"Le document {doc.get_type_display()} du véhicule {doc.vehicule.immatriculation} "
             f"expire le {doc.date_expiration:%d/%m/%Y}. Pensez à le renouveler.",
-            from_email=None,
-            recipient_list=[doc.vehicule.transporteur.email],
-            fail_silently=True,
+            reverse("fleet:vehicules"),
         )
         alertes += 1
     return alertes
@@ -96,7 +84,7 @@ def notifier_alerte_entretien():
             "Entretien à prévoir",
             f"{entretien.vehicule} : entretien « {entretien.type} » "
             f"à prévoir avant le {entretien.prochaine_echeance:%d/%m/%Y}.",
-            lien="/entretien/",
+            reverse("maintenance:liste"),
         )
         rappels += 1
     return rappels

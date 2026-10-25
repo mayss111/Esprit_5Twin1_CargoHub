@@ -4,13 +4,14 @@ Voir apps/fleet/README.md pour les exemples de requêtes.
 """
 
 import logging
+from datetime import date
 
 from django.db import transaction
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from apps.core.roles import est_admin
@@ -73,7 +74,7 @@ class VehiculeViewSet(viewsets.ModelViewSet):
         vehicule.motif_non_conformite = (
             "" if vehicule.conforme else request.data.get("motif", "Refusé par l'administrateur")
         )
-        vehicule.save(update_fields=["statut", "conforme", "motif_non_conformite"])
+        vehicule.save(update_fields=["statut", "conforme", "motif_non_conformite", "updated_at"])
         logger.info("Statut du véhicule %s changé en %s par %s", vehicule.immatriculation, nouveau, request.user.email)
         return Response(VehiculeSerializer(vehicule).data)
 
@@ -106,19 +107,15 @@ class VehiculeViewSet(viewsets.ModelViewSet):
     def impact(self, request, pk=None):
         """GET /api/fleet/vehicules/{id}/impact/ — bilan CO₂ (certificat via /certificat/)."""
         vehicule = self.get_object()
-        debut = request.query_params.get("debut")
-        fin = request.query_params.get("fin")
-        trajets = Trajet.objects.filter(vehicule=vehicule, statut=Trajet.Statut.TERMINE)
-        if debut:
-            trajets = trajets.filter(date_depart__date__gte=debut)
-        if fin:
-            trajets = trajets.filter(date_depart__date__lte=fin)
-        co2 = sum((t.co2_kg or 0) for t in trajets)
-        return Response(
-            ImpactSerializer(
-                {"nb_trajets": trajets.count(), "co2_total_kg": round(co2, 2), "points_eco": int(co2 // 100)}
-            ).data
-        )
+        try:
+            debut, fin = (
+                date.fromisoformat(valeur) if (valeur := request.query_params.get(nom)) else None
+                for nom in ("debut", "fin")
+            )
+        except ValueError:
+            raise ValidationError({"debut": ["Dates attendues au format AAAA-MM-JJ."]}) from None
+        bilan = services.bilan_co2(vehicule.transporteur, debut, fin, vehicule=vehicule)
+        return Response(ImpactSerializer(bilan).data)
 
     @action(detail=True, methods=["get"], permission_classes=[EstTransporteur, ProprietaireOuAdmin])
     def certificat(self, request, pk=None):
@@ -126,14 +123,14 @@ class VehiculeViewSet(viewsets.ModelViewSet):
         vehicule = self.get_object()
         fin = timezone.localdate()
         debut = fin.replace(month=1, day=1)
-        contenu, bilan = services.generer_certificat_vert(vehicule.transporteur, debut, fin)
+        contenu, _bilan = services.generer_certificat_vert(vehicule.transporteur, debut, fin, vehicule=vehicule)
         reponse = HttpResponse(contenu, content_type="application/pdf")
         reponse["Content-Disposition"] = f'attachment; filename="certificat-vert-{vehicule.pk}.pdf"'
         return reponse
 
 
 class TrajetViewSet(viewsets.ModelViewSet):
-    """CRUD des trajets + recherche compatible pour les PME (module Matching M4)."""
+    """CRUD des trajets + recherche de trajets ouverts pour les PME."""
 
     serializer_class = TrajetSerializer
     permission_classes = [EstTransporteur, ProprietaireOuAdmin]
@@ -146,7 +143,12 @@ class TrajetViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self._recherche_compatible():
-            return Trajet.objects.filter(statut=Trajet.Statut.PUBLIE).select_related("vehicule", "transporteur")
+            return Trajet.objects.filter(
+                statut=Trajet.Statut.OUVERT,
+                date_depart__gt=timezone.now(),
+                vehicule__conforme=True,
+                vehicule__statut=Vehicule.Statut.ACTIF,
+            ).select_related("vehicule", "transporteur")
         if est_admin(self.request.user) and self.action == "list":
             return Trajet.objects.select_related("vehicule", "transporteur")
         return Trajet.objects.filter(transporteur=self.request.user).select_related("vehicule")
@@ -164,44 +166,39 @@ class TrajetViewSet(viewsets.ModelViewSet):
             return self.compatibles(request)
         return super().list(request, *args, **kwargs)
 
-    @transaction.atomic
     def perform_create(self, serializer):
-        vehicule = serializer.validated_data["vehicule"]
-        if vehicule.transporteur != self.request.user:
-            raise PermissionDenied("Ce véhicule ne vous appartient pas.")
-        if not vehicule.peut_publier_trajet():
-            raise ValidationError("Véhicule non conforme ou en maintenance : publication impossible.")
-        trajet = serializer.save(
-            transporteur=self.request.user,
-            capacite_totale_kg=serializer.validated_data["capacite_dispo_kg"],
-            capacite_totale_m3=serializer.validated_data["capacite_dispo_m3"],
-        )
+        # Propriété du véhicule, conformité et capacités : vérifiées par TrajetSerializer.validate().
+        trajet = serializer.save(transporteur=self.request.user)
         logger.info("Trajet #%s publié par %s", trajet.pk, self.request.user.email)
 
-    @transaction.atomic
     def perform_update(self, serializer):
-        """Refuse de réduire la capacité sous la part déjà réservée."""
-        instance = serializer.save()
-        if instance.capacite_dispo_kg < instance.capacite_reservee_kg:
-            raise ValidationError("Impossible de réduire la capacité sous la part déjà réservée.")
-        if instance.capacite_dispo_m3 < instance.capacite_reservee_m3:
-            raise ValidationError("Impossible de réduire le volume sous la part déjà réservée.")
+        if serializer.instance.statut not in (Trajet.Statut.OUVERT, Trajet.Statut.COMPLET):
+            raise ValidationError("Ce trajet est parti, terminé ou annulé : il ne peut plus changer.")
+        serializer.save()
 
     def destroy(self, request, *args, **kwargs):
+        """Annulation logique (le trajet passe ANNULE) — mêmes règles que la page « Mes trajets »."""
         trajet = self.get_object()
-        if trajet.statut == Trajet.Statut.TERMINE:
+        if trajet.statut not in (Trajet.Statut.OUVERT, Trajet.Statut.COMPLET):
             return Response(
-                {"detail": "Un trajet terminé ne peut pas être annulé."}, status=status.HTTP_422_UNPROCESSABLE_ENTITY
+                {"detail": "Seul un trajet qui n'est pas encore parti peut être annulé."},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        if trajet.reservations.filter(statut__in=Trajet.STATUTS_RESERVES).exists():
+            return Response(
+                {"detail": "Ce trajet a des réservations acceptées : annulez-les d'abord."},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
         trajet.statut = Trajet.Statut.ANNULE
-        trajet.save(update_fields=["statut"])
+        trajet.save(update_fields=["statut", "updated_at"])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["get"], url_path="compatibles")
     def compatibles(self, request):
         """GET /api/fleet/trajets/compatibles/?ville_depart=&ville_arrivee=&date=&poids_kg=&volume_m3=
 
-        Recherche filtrée utilisée par le module Matching (Membre 4).
+        Recherche filtrée pour les PME. Le matching complet d'une expédition (étapes, ± 2 jours, score) reste
+        celui du module Réservations (M4) : apps.bookings.services.trajets_compatibles.
         """
         queryset = self.get_queryset()
         params = request.query_params
@@ -237,11 +234,8 @@ class EntretienViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def perform_create(self, serializer):
-        entretien = serializer.save()
-        vehicule = entretien.vehicule
-        if vehicule.statut == Vehicule.Statut.ACTIF and entretien.prochaine_echeance:
-            pass  # la mise en maintenance reste manuelle ; la conformité est recalculée par la tâche
-        vehicule.recalculer_conformite()
+        # La mise en maintenance reste manuelle ; on recalcule seulement la conformité du véhicule.
+        serializer.save().vehicule.recalculer_conformite()
 
 
 class FacteurEmissionViewSet(viewsets.ModelViewSet):

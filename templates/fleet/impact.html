@@ -1,33 +1,30 @@
 {% extends "base.html" %}
 {% block title %}Impact écologique{% endblock %}
 {% block content %}
-<div class="mb-4">
+<div class="mb-3">
   <h1 class="page-title mb-1">Impact écologique</h1>
-  <p class="text-muted mb-0">CO₂ émis par vos trajets terminés (charge partagée) et points éco — 1 point tous les 100 kg.</p>
+  <p class="text-muted mb-0">CO₂ émis par vos trajets terminés (au prorata de la charge) et points éco : 1 point tous les 100 kg.</p>
 </div>
-
-<div class="card card-ch p-3 mb-4">
-  <table class="table align-middle mb-0">
-    <thead>
-      <tr><th>Véhicule</th><th>Trajets terminés</th><th>CO₂ émis</th><th>Points éco</th><th></th></tr>
-    </thead>
-    <tbody>
-      {% for bilan in bilans %}
-      <tr>
-        <td class="fw-semibold">{{ bilan.vehicule }}</td>
-        <td>{{ bilan.nb_trajets }}</td>
-        <td>{{ bilan.co2_total_kg }} kg</td>
-        <td><span class="badge text-bg-success">{{ bilan.points_eco }} pts</span></td>
-        <td class="text-end">
-          <a class="btn btn-sm btn-outline-success" href="{% url 'fleet:vehicule-certificat' bilan.vehicule_id %}">
-            <i class="bi bi-download"></i> Certificat vert
-          </a>
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5" class="text-muted">Aucun véhicule — le bilan apparaîtra après vos premiers trajets terminés.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<section class="row g-3 mb-4" aria-label="Bilan de la flotte">
+  <div class="col-sm-4"><div class="kpi"><div class="small text-muted">Trajets terminés</div><div class="val">{{ total.nb_trajets }}</div></div></div>
+  <div class="col-sm-4"><div class="kpi"><div class="small text-muted">CO₂ émis</div><div class="val">{{ total.co2_total_kg|floatformat:0 }} kg</div></div></div>
+  <div class="col-sm-4"><div class="kpi"><div class="small text-muted">Points éco</div><div class="val">{{ total.points_eco }}</div></div></div>
+</section>
+{% if bilans %}
+<div class="table-responsive"><table class="table table-ch align-middle">
+  <caption class="visually-hidden">Bilan CO₂ par véhicule</caption>
+  <thead><tr><th scope="col">Véhicule</th><th scope="col">Trajets terminés</th><th scope="col">CO₂ émis</th><th scope="col">Points éco</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+  <tbody>{% for vehicule, bilan in bilans %}
+    <tr>
+      <td class="fw-semibold">{{ vehicule }}</td>
+      <td>{{ bilan.nb_trajets }}</td>
+      <td>{{ bilan.co2_total_kg }} kg</td>
+      <td><span class="badge text-bg-success">{{ bilan.points_eco }} pts</span></td>
+      <td class="text-end"><a class="btn btn-sm btn-outline-success" href="{% url 'fleet:certificat' vehicule.pk %}"><i class="bi bi-download" aria-hidden="true"></i> Certificat vert</a></td>
+    </tr>{% endfor %}
+  </tbody></table></div>
+{% include "core/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-tree fs-1 d-block mb-2" aria-hidden="true"></i>Aucun véhicule : le bilan apparaîtra après vos premiers trajets terminés.</div>
+{% endif %}
 {% endblock %}

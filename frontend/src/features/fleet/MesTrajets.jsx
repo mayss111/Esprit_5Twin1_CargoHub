@@ -6,6 +6,15 @@ import shadowUrl from "leaflet/dist/images/marker-shadow.png";
 import "leaflet/dist/leaflet.css";
 import { api, messageErreur } from "./api.js";
 
+// Libellés des statuts du modèle Trajet (apps/fleet/models.py).
+const STATUTS_TRAJET = {
+  OUVERT: "Ouvert aux réservations",
+  COMPLET: "Complet",
+  EN_COURS: "En cours",
+  TERMINE: "Terminé",
+  ANNULE: "Annulé",
+};
+
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconUrl, iconRetinaUrl, shadowUrl });
 
@@ -113,14 +122,17 @@ export default function MesTrajets() {
           <tbody>
             {trajets.map((t) => (
               <tr key={t.id}>
-                <td><strong>{t.ville_depart} → {t.ville_arrivee}</strong></td>
+                <td>
+                  <strong>{t.ville_depart} → {t.ville_arrivee}</strong>
+                  {t.etapes?.length > 0 && <div style={{ fontSize: "0.85em" }}>via {t.etapes.join(", ")}</div>}
+                </td>
                 <td>{new Date(t.date_depart).toLocaleString("fr-TN")}</td>
                 <td>{t.vehicule_immatriculation}</td>
                 <td>{t.capacite_dispo_kg} kg · {t.capacite_dispo_m3} m³</td>
                 <td>{Math.round((t.taux_remplissage || 0) * 100)} %</td>
-                <td>{t.statut}</td>
+                <td>{STATUTS_TRAJET[t.statut] || t.statut}</td>
                 <td>
-                  {t.statut === "PUBLIE" && (
+                  {(t.statut === "OUVERT" || t.statut === "COMPLET") && (
                     <button className="ch-bouton secondaire" style={{ padding: "0.3rem 0.7rem" }} onClick={() => annuler(t.id)}>
                       Annuler
                     </button>
@@ -148,6 +160,7 @@ function FormulaireTrajet({ vehicules, onPublier, onAnnuler }) {
     date_depart: "",
     capacite_dispo_kg: "",
     capacite_dispo_m3: "",
+    distance_km: "",
     prix_indicatif: "",
   });
   const [erreurs, setErreurs] = useState({});
@@ -174,6 +187,8 @@ function FormulaireTrajet({ vehicules, onPublier, onAnnuler }) {
       e.capacite_dispo_m3 = "Capacité (m³) requise.";
     if (vehiculeChoisi && Number(donnees.capacite_dispo_m3) > vehiculeChoisi.capacite_m3)
       e.capacite_dispo_m3 = `Maximum : ${vehiculeChoisi.capacite_m3} m³.`;
+    if (donnees.distance_km && Number(donnees.distance_km) <= 0)
+      e.distance_km = "La distance doit être supérieure à 0.";
     return e;
   };
 
@@ -188,6 +203,7 @@ function FormulaireTrajet({ vehicules, onPublier, onAnnuler }) {
         capacite_dispo_kg: Number(donnees.capacite_dispo_kg),
         capacite_dispo_m3: Number(donnees.capacite_dispo_m3),
         date_depart: new Date(donnees.date_depart).toISOString(),
+        distance_km: donnees.distance_km ? Number(donnees.distance_km) : null,
         prix_indicatif: donnees.prix_indicatif ? Number(donnees.prix_indicatif) : null,
       });
     } catch (erreurPublication) {
@@ -236,6 +252,11 @@ function FormulaireTrajet({ vehicules, onPublier, onAnnuler }) {
           <span>Capacité disponible (m³)</span>
           <input type="number" step="0.01" min="0.01" value={donnees.capacite_dispo_m3} onChange={(e) => setDonnees({ ...donnees, capacite_dispo_m3: e.target.value })} />
           {erreurs.capacite_dispo_m3 && <p className="ch-erreur">{erreurs.capacite_dispo_m3}</p>}
+        </label>
+        <label className="ch-champ">
+          <span>Distance (km) — CO₂ et suggestion de prix des appels d'offres</span>
+          <input type="number" min="1" value={donnees.distance_km} onChange={(e) => setDonnees({ ...donnees, distance_km: e.target.value })} />
+          {erreurs.distance_km && <p className="ch-erreur">{erreurs.distance_km}</p>}
         </label>
         <label className="ch-champ">
           <span>Prix indicatif (DT, optionnel)</span>

@@ -8,6 +8,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Utilisateur
+from apps.bookings import services as reservations
+from apps.bookings.models import Reservation
 from apps.core.roles import Role
 from apps.fleet.models import FacteurEmission, Trajet, Vehicule
 
@@ -141,7 +143,7 @@ class TestTrajetsAPI:
         reponse = client_api(transporteur).post("/api/fleet/trajets/", donnees_trajet(vehicule), format="json")
         assert reponse.status_code == 201
         trajet = Trajet.objects.get(pk=reponse.data["id"])
-        assert trajet.statut == Trajet.Statut.PUBLIE
+        assert trajet.statut == Trajet.Statut.OUVERT
         assert Decimal(trajet.capacite_totale_kg) == Decimal("1500")
 
     def test_vehicule_non_conforme_refuse(self, transporteur, vehicule):
@@ -169,34 +171,30 @@ class TestTrajetsAPI:
         reponse = client_api(transporteur).post("/api/fleet/trajets/", donnees, format="json")
         assert reponse.status_code == 422
 
-    def test_reduire_sous_reserve_refuse(self, transporteur, trajet, pme):
-        trajet.capacite_totale_kg = trajet.capacite_dispo_kg
-        trajet.save()
-        from apps.bookings.models import Reservation
-        from apps.shipments.models import Adresse, Expedition
-
-        exp = Expedition.objects.create(
-            pme=pme,
-            adresse_depart=Adresse.objects.create(ligne="a", ville="Sousse"),
-            adresse_arrivee=Adresse.objects.create(ligne="b", ville="Tunis"),
-            date_souhaitee=timezone.localdate(),
-        )
-        from apps.shipments.models import ArticleExpedie
-
-        ArticleExpedie.objects.create(
-            expedition=exp, designation="Cartons", quantite=10, poids_kg=Decimal("50"), volume_m3=Decimal("2")
-        )
-        Reservation.objects.create(expedition=exp, trajet=trajet, statut=Reservation.Statut.ACCEPTEE)
-        client = client_api(transporteur)
-        client.force_authenticate(user=transporteur)  # évite le re-log JWT ; PATCH avec réservation existante
-        url = f"/api/fleet/trajets/{trajet.pk}/"
-        reponse_poids = client.patch(url, {"capacite_dispo_kg": "10", "capacite_dispo_m3": "8"}, format="json")
-        assert reponse_poids.status_code == 422
-        reponse_volume = client.patch(url, {"capacite_dispo_kg": "1000", "capacite_dispo_m3": "1"}, format="json")
-        assert reponse_volume.status_code == 422
+    def test_capacite_tient_compte_de_la_place_reservee(self, transporteur, trajet, expedition):
+        # Une réservation acceptée par le module M4 retire sa place du trajet.
+        reservation = reservations.reserver(expedition, trajet)
+        reservations.changer_statut(reservation, Reservation.Statut.ACCEPTEE, par=transporteur)
         trajet.refresh_from_db()
-        assert trajet.capacite_dispo_kg == Decimal("1000")
-        assert trajet.capacite_dispo_m3 == Decimal("8")
+        reserve = expedition.poids_total_kg
+        client = client_api(transporteur)
+        url = f"/api/fleet/trajets/{trajet.pk}/"
+
+        assert client.patch(url, {"capacite_totale_kg": str(reserve - 1)}, format="json").status_code == 422
+        assert client.patch(url, {"capacite_dispo_kg": "2950"}, format="json").status_code == 422  # > 3000 kg
+
+        reponse = client.patch(url, {"capacite_dispo_kg": "1500"}, format="json")
+        assert reponse.status_code == 200
+        trajet.refresh_from_db()
+        assert trajet.capacite_dispo_kg == Decimal("1500")
+        assert trajet.capacite_totale_kg == Decimal("1500") + reserve
+
+    def test_trajet_avec_reservation_acceptee_non_annulable(self, transporteur, trajet, expedition):
+        reservation = reservations.reserver(expedition, trajet)
+        reservations.changer_statut(reservation, Reservation.Statut.ACCEPTEE, par=transporteur)
+        assert client_api(transporteur).delete(f"/api/fleet/trajets/{trajet.pk}/").status_code == 422
+        trajet.refresh_from_db()
+        assert trajet.statut == Trajet.Statut.OUVERT
 
     def test_annulation_trajet(self, transporteur, trajet):
         reponse = client_api(transporteur).delete(f"/api/fleet/trajets/{trajet.pk}/")
@@ -211,6 +209,11 @@ class TestTrajetsAPI:
         )
         assert reponse.status_code == 200
         assert reponse.data["count"] == 1
+
+    def test_compatibles_exclut_vehicule_non_conforme(self, pme, trajet):
+        Vehicule.objects.filter(pk=trajet.vehicule_id).update(conforme=False, statut=Vehicule.Statut.NON_CONFORME)
+        reponse = client_api(pme).get("/api/fleet/trajets/compatibles/", {"ville_depart": "Monastir"})
+        assert reponse.data["count"] == 0
 
     def test_compatibles_filtre_ville_sans_resultat(self, pme, trajet):
         reponse = client_api(pme).get("/api/fleet/trajets/compatibles/", {"ville_depart": "Gabès"})

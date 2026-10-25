@@ -41,7 +41,7 @@ THIRD_PARTY_APPS = [
     "channels",
     "crispy_forms",
     "crispy_bootstrap5",
-    "rest_framework",
+    "rest_framework",  # API REST de la flotte (M3), utilisée par le SPA React (frontend/)
     "rest_framework_simplejwt",
 ]
 # Une application = un module. Le commentaire indique le membre responsable.
@@ -119,6 +119,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # ---------------------------------------------------------------- langue et fuseau
 LANGUAGE_CODE = "fr"
+# Une seule langue : même si le navigateur est en anglais, les messages restent en français.
+LANGUAGES = [("fr", "Français")]
 TIME_ZONE = "Africa/Tunis"
 USE_I18N = True
 USE_TZ = True
@@ -137,7 +139,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-# ---------------------------------------------------------------- API REST (DRF)
+# ---------------------------------------------------------------- API REST (DRF) — /api/…
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
@@ -164,8 +166,7 @@ CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=not REDI
 CELERY_BEAT_SCHEDULE = {
     # M3 — recrée chaque jour les trajets récurrents de la semaine suivante
     "trajets-recurrents": {"task": "apps.fleet.tasks.generer_trajets_recurrents", "schedule": 60 * 60 * 24},
-    # M3 — conformité flotte + alertes documents et entretien
-    "verifier-conformite-flotte": {"task": "apps.fleet.tasks.verifier_conformite_flotte", "schedule": 60 * 60 * 24},
+    # M3 — alertes : documents de véhicule qui expirent (J-30) et entretiens à prévoir (J-7)
     "alerte-documents": {"task": "apps.fleet.tasks.notifier_alerte_documents", "schedule": 60 * 60 * 24},
     "alerte-entretien": {"task": "apps.fleet.tasks.notifier_alerte_entretien", "schedule": 60 * 60 * 24},
     # M3 — rappels d'entretien et blocage des véhicules non conformes
@@ -195,7 +196,7 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="CargoHub <no-reply@cargo
 # IA : n'importe quel fournisseur compatible avec l'API OpenAI (Groq, OpenRouter, Ollama…)
 AI_API_KEY = env("AI_API_KEY", default="")
 AI_BASE_URL = env("AI_BASE_URL", default="https://api.groq.com/openai/v1")
-AI_MODEL = env("AI_MODEL", default="llama-3.3-70b-versatile")
+AI_MODEL = env("AI_MODEL", default="openai/gpt-oss-120b")
 
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY", default="")

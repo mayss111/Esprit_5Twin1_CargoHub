@@ -12,6 +12,10 @@ db.sqlite3
 media/
 staticfiles/
 
+# Notes locales, à ne pas pousser
+/partie-3-imen-kh/
+/shipments*
+
 # Éditeurs / OS
 .vscode/
 .idea/

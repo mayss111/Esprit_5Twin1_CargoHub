@@ -1,31 +1,26 @@
-"""Routes Django (serveur) du module Flotte — front-office transporteur.
-
-Les routes API REST sont dans api_urls.py (préfixe /api/fleet/).
-"""
-
 from django.urls import path
 
 from . import views
 
-# Front-office (transporteur)
+# Front-office (transporteurs)
 urlpatterns = [
     path("", views.MesTrajetsView.as_view(), name="liste"),
-    path("assistant-ia/", views.OptimiseurIATransportView.as_view(), name="optimiseur-ia"),
+    path("trajets/nouveau/", views.TrajetCreerView.as_view(), name="trajet_creer"),
+    path("trajets/<int:pk>/modifier/", views.TrajetModifierView.as_view(), name="trajet_modifier"),
+    path("trajets/<int:pk>/annuler/", views.TrajetAnnulerView.as_view(), name="trajet_annuler"),
     path("vehicules/", views.MesVehiculesView.as_view(), name="vehicules"),
-    path("vehicules/ajouter/", views.CreerVehiculeView.as_view(), name="vehicule-creer"),
-    path("vehicules/<int:pk>/modifier/", views.ModifierVehiculeView.as_view(), name="vehicule-modifier"),
-    path("vehicules/<int:pk>/supprimer/", views.SupprimerVehiculeView.as_view(), name="vehicule-supprimer"),
-    path("vehicules/<int:pk>/documents/", views.AjouterDocumentView.as_view(), name="vehicule-document"),
-    path("vehicules/<int:pk>/certificat/", views.CertificatVertView.as_view(), name="vehicule-certificat"),
-    path("impact/", views.ImpactEcologiqueView.as_view(), name="impact"),
-    path("trajets/publier/", views.PublierTrajetView.as_view(), name="trajet-publier"),
-    path("trajets/<int:pk>/modifier/", views.ModifierTrajetView.as_view(), name="trajet-modifier"),
-    path("trajets/<int:pk>/annuler/", views.AnnulerTrajetView.as_view(), name="trajet-annuler"),
+    path("vehicules/nouveau/", views.VehiculeCreerView.as_view(), name="vehicule_creer"),
+    path("vehicules/<int:pk>/modifier/", views.VehiculeModifierView.as_view(), name="vehicule_modifier"),
+    path("vehicules/<int:pk>/supprimer/", views.VehiculeSupprimerView.as_view(), name="vehicule_supprimer"),
+    path("vehicules/<int:pk>/document/", views.DocumentAjouterView.as_view(), name="document_ajouter"),
+    path("vehicules/<int:pk>/certificat-vert/", views.CertificatVertView.as_view(), name="certificat"),
+    path("impact/", views.ImpactView.as_view(), name="impact"),
+    path("planificateur/", views.PlanificateurView.as_view(), name="planificateur"),
 ]
 
 # Back-office (administrateur) — préfixe /backoffice/… défini dans config/urls.py
 backoffice_urlpatterns = [
     path("", views.BackofficeVehiculeView.as_view(), name="liste"),
+    path("vehicules/<int:pk>/decision/", views.BackofficeVehiculeDecisionView.as_view(), name="decision"),
     path("trajets/", views.BackofficeTrajetView.as_view(), name="trajets"),
-    path("vehicules/<int:pk>/<str:decision>/", views.ValiderVehiculeView.as_view(), name="vehicule-valider"),
 ]

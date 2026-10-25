@@ -1,4 +1,4 @@
-"""Planification intelligente des affectations de véhicules du transporteur.
+"""Partie IA du Membre 3 (flotte) — planificateur : quel véhicule pour quelle mission ?
 
 Le classement combine adéquation de capacité, émissions estimées et
 disponibilité prédite par l'IA de maintenance. Il reste explicable et fonctionne
@@ -6,6 +6,8 @@ sans fournisseur externe ni clé API.
 """
 
 from decimal import Decimal
+
+from django.utils import timezone
 
 from apps.maintenance.ai import predire_prochain_entretien
 
@@ -20,8 +22,6 @@ FACTEUR_EMISSION_PAR_DEFAUT = Decimal("0.2500")
 
 def _score_maintenance(vehicule, date_depart):
     entretiens = list(vehicule.entretiens.order_by("date").values_list("date", "kilometrage"))
-    from django.utils import timezone
-
     prediction = predire_prochain_entretien(vehicule, timezone.localdate())
 
     # En l'absence d'au moins trois points, la prédiction est une règle de
@@ -77,9 +77,7 @@ def recommander_vehicules(transporteur, poids_kg, volume_m3, distance_km, date_d
             0,
             100
             * (
-                1
-                - 0.6 * abs(utilisation_poids - UTILISATION_CIBLE)
-                - 0.4 * abs(utilisation_volume - UTILISATION_CIBLE)
+                1 - 0.6 * abs(utilisation_poids - UTILISATION_CIBLE) - 0.4 * abs(utilisation_volume - UTILISATION_CIBLE)
             ),
         )
 

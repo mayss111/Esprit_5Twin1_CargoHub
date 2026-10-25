@@ -55,30 +55,42 @@ class AdresseForm(forms.ModelForm):
             "code_postal": forms.TextInput(attrs={"class": "form-control form-control-sm"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, role="de départ", **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["gouvernorat"].widget.attrs["class"] = "form-select form-select-sm"
         self.fields["ligne"].label = "Rue"
         self.fields["ville"].label = "Ville"
         self.fields["code_postal"].label = "Code postal"
         self.fields["code_postal"].required = False
+        self.fields["ligne"].error_messages["required"] = f"Indiquez la rue {role}."
+        self.fields["ville"].error_messages["required"] = f"Indiquez la ville {role}."
 
 
 class ExpeditionForm(forms.ModelForm):
     """Informations générales. Le statut est décidé au moment de l'enregistrement."""
 
     date_souhaitee = forms.DateField(
-        label="Date d'expédition",
+        label="Date de départ",
         input_formats=["%Y-%m-%d"],
         widget=forms.DateInput(
             format="%Y-%m-%d",
             attrs={"type": "date", "class": "form-control form-control-sm"},
         ),
+        error_messages={"required": "Indiquez la date de départ."},
+    )
+    date_arrivee = forms.DateField(
+        label="Date d'arrivée",
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(
+            format="%Y-%m-%d",
+            attrs={"type": "date", "class": "form-control form-control-sm"},
+        ),
+        error_messages={"required": "Indiquez la date d'arrivée."},
     )
 
     class Meta:
         model = Expedition
-        fields = ("date_souhaitee", "description")
+        fields = ("date_souhaitee", "date_arrivee", "description")
         widgets = {
             "description": forms.Textarea(attrs={"rows": 1, "class": "form-control form-control-sm"}),
         }
@@ -92,8 +104,16 @@ class ExpeditionForm(forms.ModelForm):
         date = self.cleaned_data["date_souhaitee"]
         creation = self.instance.pk is None
         if (creation or self.publier) and date < timezone.localdate():
-            raise forms.ValidationError("La date d'expédition ne peut pas être dans le passé.")
+            raise forms.ValidationError("La date de départ ne peut pas être dans le passé.")
         return date
+
+    def clean(self):
+        nettoye = super().clean()
+        depart = nettoye.get("date_souhaitee")
+        arrivee = nettoye.get("date_arrivee")
+        if depart and arrivee and arrivee < depart:
+            self.add_error("date_arrivee", "La date d'arrivée ne peut pas précéder la date de départ.")
+        return nettoye
 
 
 class ArticleExpedieForm(forms.ModelForm):
@@ -169,10 +189,8 @@ def articles_retenus(formset):
 
 
 def controler_publication(articles):
-    """Règles supplémentaires appliquées seulement au moment de publier."""
+    """Catégories refusées au moment de publier. L'article lui-même est toujours exigé."""
     erreurs = []
-    if not articles:
-        erreurs.append("Ajoutez au moins un article pour publier l'expédition.")
     for article in articles:
         if article.get("type_marchandise") in CATEGORIES_INTERDITES:
             nom = article.get("designation") or "cet article"
@@ -191,11 +209,13 @@ class SaisieExpedition:
         self.depart = AdresseForm(
             data,
             prefix="depart",
+            role="de départ",
             instance=None if expedition is None else expedition.adresse_depart,
         )
         self.arrivee = AdresseForm(
             data,
             prefix="arrivee",
+            role="d'arrivée",
             instance=None if expedition is None else expedition.adresse_arrivee,
         )
         self.generale = ExpeditionForm(data, prefix="generale", instance=expedition, publier=publier)
@@ -214,15 +234,18 @@ class SaisieExpedition:
         if self.expedition is not None and self.expedition.pk and not self.expedition.peut_etre_modifiee():
             self.generale.add_error(None, "Cette expédition ne peut plus être modifiée.")
             return False
-        if not formulaires_valides:
-            return False
-        if self.publier or (self.expedition is not None and self.expedition.statut == Expedition.Statut.PUBLIEE):
+        if self.articles.is_valid() and not articles_retenus(self.articles):
+            self.generale.add_error(None, "Ajoutez au moins un article.")
+            formulaires_valides = False
+        if formulaires_valides and (
+            self.publier or (self.expedition is not None and self.expedition.statut == Expedition.Statut.PUBLIEE)
+        ):
             try:
                 controler_publication(articles_retenus(self.articles))
             except forms.ValidationError as exc:
                 self.generale.add_error(None, exc)
                 return False
-        return True
+        return formulaires_valides
 
     def save(self):
         if not self.is_valid():
