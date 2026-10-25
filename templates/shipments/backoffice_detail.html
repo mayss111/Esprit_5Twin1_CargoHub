@@ -30,8 +30,9 @@
   </div>
   <div class="col-md-4">
     <section class="card card-ch p-3 h-100">
-      <h2 class="h6">Date prévue</h2>
-      <p class="mb-0">{{ expedition.date_souhaitee|date:"d/m/Y" }}</p>
+      <h2 class="h6">Dates</h2>
+      <p class="mb-1">Départ le {{ expedition.date_souhaitee|date:"d/m/Y" }}</p>
+      <p class="mb-0">Arrivée le {{ expedition.date_arrivee|date:"d/m/Y" }}</p>
     </section>
   </div>
 </div>

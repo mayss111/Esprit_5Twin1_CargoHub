@@ -67,7 +67,8 @@ class Expedition(Horodate):
     # related_name="+" : deux liens vers Adresse, sans nom inverse en double.
     adresse_depart = models.ForeignKey(Adresse, on_delete=models.PROTECT, related_name="+")
     adresse_arrivee = models.ForeignKey(Adresse, on_delete=models.PROTECT, related_name="+")
-    date_souhaitee = models.DateField("date d'expédition")
+    date_souhaitee = models.DateField("date de départ")
+    date_arrivee = models.DateField("date d'arrivée")
     description = models.TextField(blank=True)
     statut = models.CharField(max_length=20, choices=Statut.choices, default=Statut.BROUILLON)
     # Réservé à une estimation future. Cette version ne calcule pas de prix.

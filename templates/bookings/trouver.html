@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Trouver un camion{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">Trouver un camion</h1>
+<p class="text-muted">Choisissez une expédition publiée : CargoHub vous propose les trajets compatibles, classés par score.</p>
+{% if expeditions %}
+<div class="row g-3">
+  {% for e in expeditions %}
+  <div class="col-md-6 col-lg-4">
+    <article class="card card-ch h-100 p-3">
+      <h2 class="h6 mb-1">{{ e.reference }}</h2>
+      <p class="mb-1">{{ e.adresse_depart.ville }} <span aria-hidden="true">→</span><span class="visually-hidden">vers</span> {{ e.adresse_arrivee.ville }}</p>
+      <p class="small text-muted mb-2">Le {{ e.date_souhaitee|date:"d/m/Y" }} · {{ e.poids_total_kg|floatformat:0 }} kg
+        {% if e.demandes %}· {{ e.demandes }} demande{{ e.demandes|pluralize }} en cours{% endif %}</p>
+      <div class="mt-auto d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-accent" href="{% url 'bookings:camions' e.pk %}"><i class="bi bi-truck" aria-hidden="true"></i> Camions compatibles<span class="visually-hidden"> pour {{ e.reference }}</span></a>
+        {% if not e.appel_offre %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tenders:creer' %}?expedition={{ e.pk }}"><i class="bi bi-megaphone" aria-hidden="true"></i> Lancer un appel d’offres<span class="visually-hidden"> pour {{ e.reference }}</span></a>{% endif %}
+      </div>
+    </article>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-box-seam fs-1 d-block mb-2" aria-hidden="true"></i>
+  Aucune expédition publiée. <a href="{% url 'shipments:liste' %}">Publiez une expédition</a> pour chercher un camion.</div>
+{% endif %}
+{% endblock %}

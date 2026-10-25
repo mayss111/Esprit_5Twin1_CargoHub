@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from apps.core.models import Horodate
 
@@ -21,6 +22,16 @@ class AppelOffre(Horodate):
     def __str__(self):
         return f"Appel d’offres #{self.pk}"
 
+    @property
+    def est_ouvert(self):
+        """Ouvert ET date limite pas encore passée (la tâche Celery de clôture peut avoir du retard)."""
+        return self.statut == self.Statut.OUVERT and self.date_cloture > timezone.now()
+
+    @property
+    def modifiable(self):
+        """La PME peut modifier ou supprimer son appel tant qu'aucun transporteur n'a répondu."""
+        return self.statut == self.Statut.OUVERT and not self.offres.exists()
+
 
 class Offre(Horodate):
     class Statut(models.TextChoices):
@@ -37,6 +48,16 @@ class Offre(Horodate):
 
     class Meta:
         ordering = ["prix"]
+        constraints = [
+            models.UniqueConstraint(fields=["appel", "transporteur"], name="une_offre_par_transporteur_et_par_appel")
+        ]
+
+    def __str__(self):
+        return f"Offre de {self.transporteur} : {self.prix} DT"
+
+    @property
+    def modifiable(self):
+        return self.statut == self.Statut.PROPOSEE and self.appel.est_ouvert
 
 
 class ContreProposition(Horodate):
