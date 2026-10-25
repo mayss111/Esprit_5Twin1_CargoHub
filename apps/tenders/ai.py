@@ -36,6 +36,11 @@ def entrainer(historique: list) -> object:
     return LinearRegression().fit([caracteristiques(d, p) for d, p, _ in historique], [prix for *_, prix in historique])
 
 
+def chauffer_modele():
+    """Importe scikit-learn et fait un entraînement de chauffe sur 2 points fictifs (appelé au démarrage)."""
+    return entrainer([(100.0, 1000.0, 55.0), (200.0, 2000.0, 160.0)])
+
+
 def estimateur():
     """Renvoie (fonction distance, poids → prix, méthode). Le modèle est entraîné une seule fois."""
     historique = [
