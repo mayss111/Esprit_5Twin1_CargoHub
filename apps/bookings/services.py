@@ -51,6 +51,10 @@ def trajets_compatibles(expedition, score_minimum=60):
 
 def reserver(expedition, trajet, prix=None) -> Reservation:
     """Crée une réservation EN_ATTENTE et prévient le transporteur."""
+    from apps.shipments.models import Expedition
+
+    if expedition.statut != Expedition.Statut.PUBLIEE:
+        raise ReservationImpossible("Seule une expédition publiée peut être mise en relation.")
     reservation = Reservation.objects.create(
         expedition=expedition,
         trajet=trajet,

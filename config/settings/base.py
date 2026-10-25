@@ -143,6 +143,8 @@ CELERY_BEAT_SCHEDULE = {
     "verifier-conformite": {"task": "apps.maintenance.tasks.verifier_conformite", "schedule": 60 * 60 * 24},
     # M4 — clôture automatique des appels d'offres
     "cloturer-appels-offres": {"task": "apps.tenders.tasks.cloturer_appels_offres", "schedule": 60 * 5},
+    # M2 — clôture des réservations d'entrepôt dont la fin est atteinte
+    "suivre-depots": {"task": "apps.warehouses.tasks.suivre_depots", "schedule": 60 * 5},
 }
 
 CHANNEL_LAYERS = {
@@ -167,6 +169,8 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="CargoHub <no-reply@cargo
 AI_API_KEY = env("AI_API_KEY", default="")
 AI_BASE_URL = env("AI_BASE_URL", default="https://api.groq.com/openai/v1")
 AI_MODEL = env("AI_MODEL", default="llama-3.3-70b-versatile")
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+GEMINI_MODEL = env("GEMINI_MODEL", default="gemini-3.5-flash-lite")
 
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY", default="")
