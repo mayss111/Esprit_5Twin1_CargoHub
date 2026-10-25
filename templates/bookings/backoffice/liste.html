@@ -1,0 +1,40 @@
+{% extends "backoffice/base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Réservations{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">Réservations</h1>
+<p class="text-muted">{{ page_obj.paginator.count }} réservation(s)</p>
+<form method="get" class="card card-ch p-3 mb-3" role="search" aria-label="Filtrer les réservations">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-4">{{ filtres.q|as_crispy_field }}</div>
+    <div class="col-md-2">{{ filtres.statut|as_crispy_field }}</div>
+    <div class="col-md-3">{{ filtres.pme|as_crispy_field }}</div>
+    <div class="col-md-3">{{ filtres.transporteur|as_crispy_field }}</div>
+    <div class="col-md-3">{{ filtres.du|as_crispy_field }}</div>
+    <div class="col-md-3">{{ filtres.au|as_crispy_field }}</div>
+    <div class="col-md-6 d-flex gap-2 mb-3">
+      <button class="btn btn-primary" type="submit">Filtrer</button>
+      <a class="btn btn-outline-secondary" href="?">Effacer</a>
+    </div>
+  </div>
+</form>
+{% if object_list %}
+<div class="table-responsive"><table class="table table-ch align-middle">
+  <caption class="visually-hidden">Liste des réservations</caption>
+  <thead><tr><th scope="col">N°</th><th scope="col">PME</th><th scope="col">Transporteur</th><th scope="col">Trajet</th><th scope="col">Prix</th><th scope="col">Statut</th><th scope="col">Créée le</th></tr></thead>
+  <tbody>{% for r in object_list %}
+    <tr>
+      <td><a href="{% url 'bo_bookings:detail' r.pk %}">#{{ r.pk }}</a></td>
+      <td>{{ r.expedition.pme }}</td>
+      <td>{{ r.trajet.transporteur }}</td>
+      <td>{{ r.trajet.ville_depart }} → {{ r.trajet.ville_arrivee }}</td>
+      <td>{% if r.prix_convenu %}{{ r.prix_convenu }} DT{% else %}—{% endif %}</td>
+      <td>{% include "bookings/_statut.html" with statut=r.statut libelle=r.get_statut_display %}</td>
+      <td>{{ r.created_at|date:"d/m/Y" }}</td>
+    </tr>{% endfor %}
+  </tbody></table></div>
+{% include "core/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5">Aucune réservation ne correspond.</div>
+{% endif %}
+{% endblock %}
