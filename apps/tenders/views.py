@@ -27,6 +27,7 @@ from .ai import suggerer_prix
 from .forms import AppelOffreForm, OffreForm
 from .models import AppelOffre, Offre
 from .services import retenir_offre
+from .tasks import calculer_recommandation
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +146,9 @@ class AppelDetailView(RoleRequiredMixin, DetailView):
         if user.role == Role.PME:
             ctx["offres"] = offres
             ctx["prix_moyen"] = offres.aggregate(m=Avg("prix"))["m"]
+            ctx["nb_proposees"] = sum(o.statut == Offre.Statut.PROPOSEE for o in offres)
+            reco = self.object.recommandation_ia or {}
+            ctx["offre_recommandee"] = next((o for o in offres if o.pk == reco.get("offre_id")), None)
         else:
             ctx["mon_offre"] = offres.filter(transporteur=user).first()
             ctx["nb_offres"] = offres.count()
@@ -165,6 +169,52 @@ class RetenirOffreView(RoleRequiredMixin, View):
             request, f"Offre de {offre.transporteur} retenue. {reservation} créée et acceptée : le contrat est prêt."
         )
         return redirect("bookings:detail", pk=reservation.pk)
+
+
+class LancerRecommandationView(RoleRequiredMixin, View):
+    """« Aide au choix » : la PME lance l'analyse IA des offres, calculée en arrière-plan par Celery."""
+
+    roles = [Role.PME]
+
+    def post(self, request, pk):
+        appel = get_object_or_404(AppelOffre, pk=pk, expedition__pme=request.user)
+        if appel.statut != AppelOffre.Statut.OUVERT:
+            messages.error(request, "Cet appel d’offres n’est plus ouvert : il n’y a plus d’offre à comparer.")
+        elif appel.offres.filter(statut=Offre.Statut.PROPOSEE).count() < 2:
+            messages.error(request, "L’aide au choix compare au moins 2 offres : attendez d’autres propositions.")
+        elif appel.recommandation_statut == AppelOffre.Recommandation.EN_COURS:
+            messages.info(request, "Analyse déjà en cours…")
+        else:
+            AppelOffre.objects.filter(pk=appel.pk).update(
+                recommandation_statut=AppelOffre.Recommandation.EN_COURS,
+                recommandation_ia=None,
+                recommandation_duree_ms=None,
+            )
+            try:
+                calculer_recommandation.delay(appel.pk)
+            except Exception:  # file Celery (Redis) indisponible
+                logger.exception("Impossible de lancer l’aide au choix pour l’appel %s", appel.pk)
+                AppelOffre.objects.filter(pk=appel.pk).update(recommandation_statut=AppelOffre.Recommandation.ERREUR)
+                messages.error(request, "L’analyse n’a pas pu démarrer. Réessayez dans un instant.")
+            else:
+                messages.info(request, "Analyse en cours…")
+        return redirect("tenders:detail", pk=pk)
+
+
+class StatutRecommandationView(RoleRequiredMixin, View):
+    """Interrogé toutes les 2 s par le navigateur tant que l'analyse est en cours (JSON)."""
+
+    roles = [Role.PME]
+
+    def get(self, request, pk):
+        appel = get_object_or_404(AppelOffre, pk=pk, expedition__pme=request.user)
+        return JsonResponse(
+            {
+                "statut": appel.recommandation_statut,
+                "recommandation": appel.recommandation_ia,
+                "duree_ms": appel.recommandation_duree_ms,
+            }
+        )
 
 
 # ---------------------------------------------------------------- offres des transporteurs
@@ -195,6 +245,7 @@ class OffreCreerView(RoleRequiredMixin, CreateView):
         return {**super().get_context_data(**kwargs), "appel": self.appel}
 
     def form_valid(self, form):
+        self.appel.effacer_recommandation()  # nouvelle offre : l'aide au choix doit être refaite
         messages.success(self.request, "Offre envoyée. La PME est prévenue quand elle choisit.")
         return super().form_valid(form)
 
@@ -232,6 +283,7 @@ class OffreModifierView(MesOffresMixin, UpdateView):
         return {**super().get_context_data(**kwargs), "appel": self.object.appel}
 
     def form_valid(self, form):
+        self.object.appel.effacer_recommandation()
         messages.success(self.request, "Offre modifiée.")
         return super().form_valid(form)
 
@@ -243,6 +295,7 @@ class OffreRetirerView(MesOffresMixin, DeleteView):
     template_name = "tenders/offre_retirer.html"
 
     def form_valid(self, form):
+        self.object.appel.effacer_recommandation()
         messages.success(self.request, "Offre retirée.")
         return super().form_valid(form)
 

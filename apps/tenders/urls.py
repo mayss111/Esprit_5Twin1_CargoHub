@@ -13,6 +13,8 @@ urlpatterns = [
     path("offre/<int:pk>/modifier/", views.OffreModifierView.as_view(), name="offre_modifier"),
     path("offre/<int:pk>/retirer/", views.OffreRetirerView.as_view(), name="offre_retirer"),
     path("offre/<int:pk>/retenir/", views.RetenirOffreView.as_view(), name="retenir"),
+    path("<int:pk>/aide-au-choix/", views.LancerRecommandationView.as_view(), name="recommander"),
+    path("<int:pk>/aide-au-choix/statut/", views.StatutRecommandationView.as_view(), name="recommandation_statut"),
     path("suggestion-prix/", views.SuggestionPrixView.as_view(), name="suggestion_prix"),
 ]
 
