@@ -19,7 +19,8 @@
   <h2 class="h6 mb-2">Expédition</h2>
   <div class="row g-2">
     <div class="col-md-3">{% include "shipments/_champ.html" with champ=saisie.generale.date_souhaitee %}</div>
-    <div class="col-md-9">{% include "shipments/_champ.html" with champ=saisie.generale.description %}</div>
+    <div class="col-md-3">{% include "shipments/_champ.html" with champ=saisie.generale.date_arrivee %}</div>
+    <div class="col-md-6">{% include "shipments/_champ.html" with champ=saisie.generale.description %}</div>
   </div>
 
   <div class="row g-3">

@@ -64,6 +64,7 @@ def expedition(pme):
         adresse_depart=Adresse.objects.create(ligne="Zone industrielle", ville="Monastir"),
         adresse_arrivee=Adresse.objects.create(ligne="Rue de Marseille", ville="Tunis"),
         date_souhaitee=(timezone.now() + timedelta(days=2)).date(),
+        date_arrivee=(timezone.now() + timedelta(days=3)).date(),
         statut=Expedition.Statut.PUBLIEE,
     )
     ArticleExpedie.objects.create(

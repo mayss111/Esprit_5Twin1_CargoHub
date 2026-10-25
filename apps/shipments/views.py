@@ -37,7 +37,8 @@ def filtrer_expeditions(queryset, request):
     date_brute = request.GET.get("date", "").strip()
     if date_brute:
         try:
-            queryset = queryset.filter(date_souhaitee=date.fromisoformat(date_brute))
+            jour = date.fromisoformat(date_brute)
+            queryset = queryset.filter(Q(date_souhaitee=jour) | Q(date_arrivee=jour))
         except ValueError:
             pass
     return queryset
@@ -73,7 +74,7 @@ class MesExpeditionsView(ExpeditionAccesMixin, ListView):
             aujourdhui = timezone.localdate()
             queryset = queryset.filter(
                 Q(statut__in=[Expedition.Statut.RESERVEE, Expedition.Statut.LIVREE, Expedition.Statut.ANNULEE])
-                | Q(date_souhaitee__lt=aujourdhui)
+                | Q(date_arrivee__lt=aujourdhui)
             )
         return filtrer_expeditions(queryset, self.request)
 
