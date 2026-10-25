@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Avis, Incident, PreuveLivraison, SuiviPosition
+from .models import Avis, Incident, PreuveLivraison, ResumeTransporteur, SuiviPosition
 
 
 @admin.register(SuiviPosition)
@@ -20,4 +20,9 @@ class IncidentAdmin(admin.ModelAdmin):
 
 @admin.register(Avis)
 class AvisAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(ResumeTransporteur)
+class ResumeTransporteurAdmin(admin.ModelAdmin):
     pass
