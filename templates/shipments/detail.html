@@ -39,7 +39,8 @@
   <div class="col-md-4">
     <section class="card card-ch p-3 h-100">
       <h2 class="h6">Dates</h2>
-      <p class="mb-1">Expédition le {{ expedition.date_souhaitee|date:"d/m/Y" }}</p>
+      <p class="mb-1">Départ le {{ expedition.date_souhaitee|date:"d/m/Y" }}</p>
+      <p class="mb-1">Arrivée le {{ expedition.date_arrivee|date:"d/m/Y" }}</p>
       <p class="mb-0 small text-muted">Créée le {{ expedition.created_at|date:"d/m/Y H:i" }} · modifiée le {{ expedition.updated_at|date:"d/m/Y H:i" }}</p>
     </section>
   </div>

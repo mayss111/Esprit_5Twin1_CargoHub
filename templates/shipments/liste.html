@@ -56,7 +56,7 @@
           <th>Référence</th>
           <th>Départ</th>
           <th>Arrivée</th>
-          <th>Date</th>
+          <th>Dates</th>
           <th>Poids total</th>
           <th>Statut</th>
           <th>Actions</th>
@@ -68,7 +68,10 @@
             <td>{{ expedition.reference }}</td>
             <td>{{ expedition.adresse_depart.ville }}</td>
             <td>{{ expedition.adresse_arrivee.ville }}</td>
-            <td>{{ expedition.date_souhaitee|date:"d/m/Y" }}</td>
+            <td>
+              <div>Départ {{ expedition.date_souhaitee|date:"d/m/Y" }}</div>
+              <div class="small text-muted">Arrivée {{ expedition.date_arrivee|date:"d/m/Y" }}</div>
+            </td>
             <td>{{ expedition.poids_total_kg }} kg</td>
             <td><span class="badge-statut badge-{{ expedition.statut }}">{{ expedition.get_statut_display }}</span></td>
             <td class="text-nowrap">

@@ -68,6 +68,7 @@ class Command(BaseCommand):
             adresse_depart=Adresse.objects.create(ligne="Zone industrielle", ville="Monastir"),
             adresse_arrivee=Adresse.objects.create(ligne="Rue de Marseille", ville="Tunis"),
             date_souhaitee=demain.date(),
+            date_arrivee=(demain + timedelta(days=1)).date(),
             statut=Expedition.Statut.PUBLIEE,
             prix_estime=Decimal("85"),
         )
