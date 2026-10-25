@@ -15,6 +15,7 @@
   <div class="col-lg-5"><div class="card card-ch p-4"><h2 class="h5 mb-3">L’appel d’offres</h2>{% include "tenders/_resume_appel.html" %}</div></div>
   <div class="col-lg-7">
     {% if user.role == "PME" %}
+    {% if appel.statut == "OUVERT" and nb_proposees >= 2 %}{% include "tenders/_aide_au_choix.html" %}{% endif %}
     <section class="card card-ch p-4" aria-labelledby="titre-offres">
       <h2 class="h5" id="titre-offres">Offres reçues ({{ offres|length }})</h2>
       {% if offres %}
@@ -24,7 +25,7 @@
         <thead><tr><th scope="col">Transporteur</th><th scope="col">Trajet</th><th scope="col">Prix</th><th scope="col">Statut</th><th scope="col"><span class="visually-hidden">Action</span></th></tr></thead>
         <tbody>{% for o in offres %}
           <tr>
-            <td>{{ o.transporteur }}{% if o.message %}<div class="small text-muted">« {{ o.message|truncatechars:80 }} »</div>{% endif %}</td>
+            <td>{{ o.transporteur }}{% if o == offre_recommandee %} <span class="badge text-bg-info"><i class="bi bi-stars" aria-hidden="true"></i> Recommandée par l’aide au choix</span>{% endif %}{% if o.message %}<div class="small text-muted">« {{ o.message|truncatechars:80 }} »</div>{% endif %}</td>
             <td>{% if o.trajet %}{{ o.trajet.ville_depart }} → {{ o.trajet.ville_arrivee }}<div class="small text-muted">{{ o.trajet.date_depart|date:"d/m H:i" }}</div>{% else %}—{% endif %}</td>
             <td class="fw-semibold">{{ o.prix }} DT</td>
             <td>{% include "tenders/_statut.html" with statut=o.statut libelle=o.get_statut_display %}</td>

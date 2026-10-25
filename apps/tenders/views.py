@@ -146,6 +146,9 @@ class AppelDetailView(RoleRequiredMixin, DetailView):
         if user.role == Role.PME:
             ctx["offres"] = offres
             ctx["prix_moyen"] = offres.aggregate(m=Avg("prix"))["m"]
+            ctx["nb_proposees"] = sum(o.statut == Offre.Statut.PROPOSEE for o in offres)
+            reco = self.object.recommandation_ia or {}
+            ctx["offre_recommandee"] = next((o for o in offres if o.pk == reco.get("offre_id")), None)
         else:
             ctx["mon_offre"] = offres.filter(transporteur=user).first()
             ctx["nb_offres"] = offres.count()
