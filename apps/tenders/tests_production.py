@@ -227,3 +227,14 @@ def test_notes_des_avis_envoyees_au_llm(settings, pme, autre_pme, appel_offre, o
     assert "nom de son transporteur" in llm.call_args.kwargs["systeme"]
     assert resultat["explication"] == "L’offre de Karim est la mieux notée."
     assert str(offre.pk) not in resultat["explication"] and concurrente.pk != offre.pk
+
+
+# ---------------------------------------------------------------- 7. site toujours en français
+
+
+def test_messages_en_francais_meme_si_le_navigateur_est_en_anglais(client, pme, expedition, appel_offre):
+    appel_offre.delete()
+    client.force_login(pme)
+    reponse = client.post(reverse("tenders:creer"), {}, HTTP_ACCEPT_LANGUAGE="en-US,en;q=0.9")
+    html = reponse.content.decode()
+    assert "Ce champ est obligatoire" in html and "This field is required" not in html
