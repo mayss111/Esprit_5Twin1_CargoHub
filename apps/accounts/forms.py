@@ -71,15 +71,24 @@ class ConnexionForm(AuthenticationForm):
 class ProfilUtilisateurForm(forms.ModelForm):
     class Meta:
         model = Utilisateur
-        fields = ("first_name", "last_name", "telephone")
-        labels = {"first_name": "Prénom", "last_name": "Nom", "telephone": "Téléphone"}
-        widgets = {"telephone": forms.TextInput(attrs={"inputmode": "tel", "autocomplete": "tel"})}
+        fields = ("first_name", "last_name", "telephone", "photo_profil")
+        labels = {
+            "first_name": "Prénom",
+            "last_name": "Nom",
+            "telephone": "Téléphone",
+            "photo_profil": "Photo de profil",
+        }
+        widgets = {
+            "telephone": forms.TextInput(attrs={"inputmode": "tel", "autocomplete": "tel"}),
+            "photo_profil": forms.ClearableFileInput(attrs={"accept": ".jpg,.jpeg,.png"}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["first_name"].required = True
         self.fields["last_name"].required = True
         self.fields["telephone"].validators.append(TELEPHONE_TN)
+        self.fields["photo_profil"].validators += [FileExtensionValidator(["jpg", "jpeg", "png"]), valider_document]
 
 
 class ProfilPMEForm(forms.ModelForm):

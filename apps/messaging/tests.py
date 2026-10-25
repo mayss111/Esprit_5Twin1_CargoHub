@@ -7,9 +7,10 @@ from asgiref.sync import async_to_sync
 from channels.routing import URLRouter
 from channels.testing import WebsocketCommunicator
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from apps.accounts.models import Utilisateur
-from apps.bookings.models import Reservation
+from apps.bookings.models import Notification, Reservation
 from apps.core import ai
 from apps.core.roles import Role
 from apps.messaging.ai import REPONSE_PAR_DEFAUT, moderer, moderer_par_regles, repondre_support
@@ -97,6 +98,13 @@ def test_envoyer_message_signale_et_masque(conversation, pme, transporteur):
     assert texte_visible(message, transporteur) == TEXTE_MASQUE
 
 
+def test_envoyer_message_notifie_les_autres_participants(conversation, pme, transporteur):
+    envoyer_message(conversation, pme, "Le colis est prêt")
+    notification = Notification.objects.get(destinataire=transporteur, titre="Nouveau message")
+    assert notification.lien == reverse("messaging:conversation", args=[conversation.pk])
+    assert "Le colis est prêt" in notification.message
+
+
 def test_envoyer_message_si_la_moderation_plante(conversation, pme):
     with mock.patch("apps.messaging.services.moderer", side_effect=RuntimeError("panne")):
         message = envoyer_message(conversation, pme, "Bonjour")
@@ -162,6 +170,19 @@ def test_message_vide_refuse(client, conversation, pme):
     assert not conversation.messages.exists()
 
 
+def test_piece_jointe_sans_texte_acceptee(client, conversation, pme):
+    client.force_login(pme)
+    fichier = SimpleUploadedFile("preuve.pdf", b"%PDF-1.4", content_type="application/pdf")
+    reponse = client.post(
+        reverse("messaging:conversation", args=[conversation.pk]),
+        {"contenu": "", "piece_jointe": fichier},
+    )
+    assert reponse.status_code == 302
+    message = conversation.messages.get()
+    assert message.contenu == ""
+    assert message.piece_jointe.name.endswith("preuve.pdf")
+
+
 def test_message_signale_masque_pour_l_interlocuteur(client, conversation, pme, transporteur):
     client.force_login(pme)
     reponse = client.post(
@@ -196,6 +217,42 @@ def test_nouvelle_conversation_reservation_d_un_autre_refusee(client, reservatio
     assert not Conversation.objects.exists()
 
 
+def test_demarrer_conversation_sans_reservation(client, pme, transporteur):
+    client.force_login(pme)
+    response = client.post(
+        reverse("messaging:nouvelle"),
+        {"interlocuteur": transporteur.pk, "reservation": "", "contenu": "Bonjour, pouvons-nous échanger ?"},
+    )
+    assert response.status_code == 302
+    conversation = Conversation.objects.get()
+    assert conversation.reservation_id is None
+    assert set(conversation.participants.all()) == {pme, transporteur}
+    assert conversation.messages.get().contenu == "Bonjour, pouvons-nous échanger ?"
+
+
+def test_conversation_sans_reservation_reutilisee(client, pme, transporteur):
+    conversation = Conversation.objects.create()
+    conversation.participants.add(pme, transporteur)
+    client.force_login(transporteur)
+    response = client.post(
+        reverse("messaging:nouvelle"),
+        {"interlocuteur": pme.pk, "reservation": "", "contenu": "Je poursuis notre échange."},
+    )
+    assert response.url == reverse("messaging:conversation", args=[conversation.pk])
+    assert Conversation.objects.count() == 1
+    assert conversation.messages.get().auteur == transporteur
+
+
+def test_conversation_sans_reservation_refuse_un_role_incompatible(client, pme, autre_pme):
+    client.force_login(pme)
+    response = client.post(
+        reverse("messaging:nouvelle"),
+        {"interlocuteur": autre_pme.pk, "reservation": "", "contenu": "Bonjour"},
+    )
+    assert response.status_code == 200
+    assert not Conversation.objects.exists()
+
+
 def test_supprimer_son_message(client, conversation, pme, transporteur):
     mien = Message.objects.create(conversation=conversation, auteur=pme, contenu="Erreur")
     sien = Message.objects.create(conversation=conversation, auteur=transporteur, contenu="Bonjour")
@@ -203,6 +260,20 @@ def test_supprimer_son_message(client, conversation, pme, transporteur):
     assert client.post(reverse("messaging:message_supprimer", args=[sien.pk])).status_code == 404
     client.post(reverse("messaging:message_supprimer", args=[mien.pk]))
     assert list(conversation.messages.all()) == [sien]
+
+
+def test_participant_peut_bloquer_une_conversation(client, conversation, pme, transporteur):
+    client.force_login(pme)
+    assert client.post(reverse("messaging:conversation_bloquer", args=[conversation.pk])).status_code == 302
+    conversation.refresh_from_db()
+    assert conversation.est_bloquee_pour(pme)
+    assert client.post(reverse("messaging:conversation", args=[conversation.pk]), {"contenu": "Encore un message"}).status_code == 302
+    assert conversation.messages.count() == 0
+    client.force_login(transporteur)
+    assert client.get(reverse("messaging:conversation", args=[conversation.pk])).status_code == 200
+    client.force_login(pme)
+    client.post(reverse("messaging:conversation_debloquer", args=[conversation.pk]))
+    assert not conversation.bloquee_par.exists()
 
 
 def test_chat_websocket(transactional_db, conversation, pme):

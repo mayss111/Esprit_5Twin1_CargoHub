@@ -75,7 +75,7 @@ class ModifierProfilView(LoginRequiredMixin, View):
             form_profil = ProfilPMEForm(data, instance=profil, prefix="profil")
         elif isinstance(profil, ProfilTransporteur):
             form_profil = ProfilTransporteurForm(data, files, instance=profil, prefix="profil")
-        return ProfilUtilisateurForm(data, instance=user, prefix="compte"), form_profil
+        return ProfilUtilisateurForm(data, files, instance=user, prefix="compte"), form_profil
 
     def get(self, request):
         form, form_profil = self.formulaires()

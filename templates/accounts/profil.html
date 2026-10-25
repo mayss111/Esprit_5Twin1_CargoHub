@@ -6,6 +6,7 @@
   <a class="btn btn-primary" href="{% url 'accounts:profil_modifier' %}"><i class="bi bi-pencil" aria-hidden="true"></i> Modifier mon profil</a>
 </div>
 <div class="card card-ch p-4 mb-3">
+  <div class="profil-avatar mb-3">{% if user.photo_profil %}<img src="{{ user.photo_profil.url }}" alt="Photo de {{ user }}">{% else %}<i class="bi bi-person-fill" aria-hidden="true"></i>{% endif %}</div>
   <h2 class="h5 mb-3">Compte</h2>
   <dl class="row mb-0">
     <dt class="col-sm-3">Nom</dt><dd class="col-sm-9">{{ user.get_full_name|default:"—" }}</dd>

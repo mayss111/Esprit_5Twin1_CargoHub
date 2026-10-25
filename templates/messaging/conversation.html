@@ -10,7 +10,7 @@
   <ol class="list-unstyled mb-0" id="fil" data-conversation="{{ conversation.pk }}" data-moi="{{ user.pk }}" aria-live="polite" aria-label="Messages de la conversation">
     {% for m, texte in fil %}
     <li class="chat-message {% if m.auteur_id == user.pk %}chat-moi{% endif %}"{% if forloop.last %} id="dernier"{% endif %}>
-      <div class="small text-muted">{{ m.auteur }} · {{ m.created_at|date:"d/m H:i" }}
+      <div class="chat-auteur"><span class="profil-avatar profil-avatar-sm">{% if m.auteur.photo_profil %}<img src="{{ m.auteur.photo_profil.url }}" alt="Photo de {{ m.auteur }}">{% else %}<i class="bi bi-person-fill" aria-hidden="true"></i>{% endif %}</span><span class="small text-muted">{{ m.auteur }} · {{ m.created_at|date:"d/m H:i" }}{% if m.auteur_id == user.pk %}<span class="message-etat ms-2">{% if m.lu %}Lu{% else %}Envoyé{% endif %}</span>{% endif %}</span>
         {% if m.signale and m.auteur_id == user.pk %}<span class="badge text-bg-danger ms-1">Signalé : {{ m.raison_signalement|default:"modération" }}</span>{% endif %}</div>
       <div class="chat-bulle {% if m.signale %}fst-italic{% endif %}">{{ texte|linebreaksbr }}</div>
       {% if m.piece_jointe and not m.signale %}<a class="small" href="{{ m.piece_jointe.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip" aria-hidden="true"></i> Pièce jointe<span class="visually-hidden"> (nouvel onglet)</span></a>{% endif %}
@@ -26,11 +26,13 @@
   </ol>
 </div>
 
-<form method="post" enctype="multipart/form-data" class="card card-ch p-3">{% csrf_token %}
+{% if conversation.est_bloquee %}<div class="alert alert-warning"><i class="bi bi-slash-circle me-1" aria-hidden="true"></i>Cette conversation est bloquée. Aucun nouveau message ne peut être envoyé.</div>{% endif %}
+<form method="post" enctype="multipart/form-data" class="card card-ch p-3" data-envoi-message>{% csrf_token %}
   {{ form|crispy }}
   <p class="small text-muted">Les messages sont vérifiés automatiquement : pas de numéro de téléphone ni de paiement en dehors de CargoHub.</p>
-  <button class="btn btn-primary" type="submit"><i class="bi bi-send" aria-hidden="true"></i> Envoyer</button>
+  <button class="btn btn-primary" type="submit"{% if conversation.est_bloquee %} disabled{% endif %}><i class="bi bi-send" aria-hidden="true"></i> Envoyer</button>
 </form>
+<div class="d-flex justify-content-end mt-3">{% if bloquee_par_moi %}<form method="post" action="{% url 'messaging:conversation_debloquer' conversation.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success" type="submit"><i class="bi bi-unlock me-1" aria-hidden="true"></i>Débloquer</button></form>{% elif not conversation.est_bloquee %}<form method="post" action="{% url 'messaging:conversation_bloquer' conversation.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-slash-circle me-1" aria-hidden="true"></i>Bloquer la conversation</button></form>{% endif %}</div>
 {% endblock %}
 {% block extra_js %}
 <script src="{% static 'js/messagerie.js' %}" defer></script>

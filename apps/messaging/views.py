@@ -23,7 +23,7 @@ from apps.core.views import ListeBackofficeView, ListeFrontView
 from .ai import REPONSE_PAR_DEFAUT, repondre_support
 from .forms import MessageForm, NouvelleConversationForm, QuestionSupportForm, TicketForm, TraitementTicketForm
 from .models import Conversation, Message, TicketSupport
-from .services import TEXTE_MASQUE, envoyer_message, texte_visible
+from .services import ConversationBloquee, TEXTE_MASQUE, envoyer_message, texte_visible
 from .tasks import repondre_ticket
 
 logger = logging.getLogger(__name__)
@@ -87,6 +87,7 @@ class ConversationDetailView(RoleRequiredMixin, View):
                 "fil": fil,
                 "form": form,
                 "interlocuteurs": conversation.interlocuteurs(user),
+                "bloquee_par_moi": conversation.est_bloquee_pour(user),
             },
         )
 
@@ -97,12 +98,19 @@ class ConversationDetailView(RoleRequiredMixin, View):
 
     def post(self, request, pk):
         conversation = self.get_conversation()
+        if conversation.est_bloquee():
+            messages.error(request, "Cette conversation est bloquée : aucun nouveau message ne peut être envoyé.")
+            return redirect("messaging:conversation", pk=pk)
         form = MessageForm(request.POST, request.FILES)
         if not form.is_valid():
             return self.afficher(conversation, form)
-        message = envoyer_message(
-            conversation, request.user, form.cleaned_data["contenu"], form.cleaned_data.get("piece_jointe")
-        )
+        try:
+            message = envoyer_message(
+                conversation, request.user, form.cleaned_data["contenu"], form.cleaned_data.get("piece_jointe")
+            )
+        except ConversationBloquee:
+            messages.error(request, "Cette conversation est bloquée.")
+            return redirect("messaging:conversation", pk=pk)
         diffuser(message)
         if message.signale:
             messages.warning(
@@ -111,6 +119,22 @@ class ConversationDetailView(RoleRequiredMixin, View):
                 "il ne sera pas montré à votre interlocuteur. Les échanges et paiements se font sur CargoHub.",
             )
         return redirect(f"{reverse('messaging:conversation', args=[pk])}#dernier")
+
+
+class ConversationBloquerView(RoleRequiredMixin, View):
+    def post(self, request, pk):
+        conversation = get_object_or_404(Conversation.objects.filter(participants=request.user), pk=pk)
+        conversation.bloquee_par.add(request.user)
+        messages.success(request, "Conversation bloquée.")
+        return redirect("messaging:conversation", pk=pk)
+
+
+class ConversationDebloquerView(RoleRequiredMixin, View):
+    def post(self, request, pk):
+        conversation = get_object_or_404(Conversation.objects.filter(participants=request.user), pk=pk)
+        conversation.bloquee_par.remove(request.user)
+        messages.success(request, "Conversation débloquée.")
+        return redirect("messaging:conversation", pk=pk)
 
 
 class NouvelleConversationView(RoleRequiredMixin, FormView):
@@ -127,10 +151,21 @@ class NouvelleConversationView(RoleRequiredMixin, FormView):
 
     def form_valid(self, form):
         reservation = form.cleaned_data["reservation"]
-        conversation = Conversation.objects.filter(reservation=reservation).first()
-        if conversation is None:
-            conversation = Conversation.objects.create(reservation=reservation)
-        conversation.participants.add(reservation.expedition.pme, reservation.trajet.transporteur, self.request.user)
+        interlocuteur = form.cleaned_data["interlocuteur"]
+        if reservation:
+            conversation = Conversation.objects.filter(reservation=reservation).first()
+            if conversation is None:
+                conversation = Conversation.objects.create(reservation=reservation)
+            conversation.participants.add(reservation.expedition.pme, reservation.trajet.transporteur, self.request.user)
+        else:
+            conversation = (
+                Conversation.objects.filter(reservation__isnull=True, participants=self.request.user)
+                .filter(participants=interlocuteur)
+                .first()
+            )
+            if conversation is None:
+                conversation = Conversation.objects.create()
+                conversation.participants.add(self.request.user, interlocuteur)
         message = envoyer_message(conversation, self.request.user, form.cleaned_data["contenu"])
         diffuser(message)
         if message.signale:

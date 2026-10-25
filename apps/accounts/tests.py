@@ -158,6 +158,23 @@ def test_modifier_profil_pme(client, pme):
     assert pme.profil_pme.ville == "Monastir"
 
 
+def test_modifier_photo_profil(client, pme):
+    client.force_login(pme)
+    reponse = client.post(
+        reverse("accounts:profil_modifier"),
+        {
+            "compte-first_name": "Sami",
+            "compte-last_name": "Ben Ali",
+            "compte-telephone": "22 123 456",
+            "compte-photo_profil": SimpleUploadedFile("profil.jpg", b"fake-image", content_type="image/jpeg"),
+            **_profil_pme(),
+        },
+    )
+    assert reponse.status_code == 302
+    pme.refresh_from_db()
+    assert pme.photo_profil.name.endswith("profil.jpg")
+
+
 @pytest.mark.parametrize(
     "champ, valeur",
     [("compte-telephone", "123"), ("profil-matricule_fiscal", "ABC"), ("compte-first_name", "")],

@@ -4,6 +4,16 @@
  */
 (() => {
   const fil = document.getElementById("fil");
+  const formulaire = document.querySelector("[data-envoi-message]");
+  if (formulaire) {
+    formulaire.addEventListener("submit", (event) => {
+      const bouton = event.submitter || formulaire.querySelector("button[type=submit]");
+      if (!bouton) return;
+      bouton.disabled = true;
+      bouton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Envoi…';
+      bouton.setAttribute("aria-busy", "true");
+    });
+  }
   if (!fil || !("WebSocket" in window)) return;
 
   const protocole = location.protocol === "https:" ? "wss" : "ws";

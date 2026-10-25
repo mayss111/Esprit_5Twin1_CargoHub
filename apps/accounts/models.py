@@ -35,6 +35,7 @@ class Utilisateur(AbstractUser):
     email = models.EmailField("email", unique=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.PME)
     telephone = models.CharField(max_length=20, blank=True)
+    photo_profil = models.FileField(upload_to="profils/", blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

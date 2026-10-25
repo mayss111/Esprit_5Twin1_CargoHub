@@ -121,3 +121,13 @@ a { color: var(--ch-navy); }
 .chat-bulle { display: inline-block; background: var(--ch-panel); border: 1px solid var(--ch-border);
   border-radius: .8rem; padding: .5rem .8rem; text-align: left; overflow-wrap: anywhere; }
 .chat-moi .chat-bulle { background: #FFF4DE; border-color: #F5D08A; }
+.message-etat { color: #067647; font-weight: 600; }
+.chat-auteur { display: flex; align-items: center; gap: .45rem; }
+.profil-avatar { display: inline-flex; align-items: center; justify-content: center; width: 2.6rem; height: 2.6rem; overflow: hidden; color: var(--ch-navy); background: #E8EEF7; border: 2px solid var(--ch-border); border-radius: 50%; font-size: 1.35rem; }
+.profil-avatar img { width: 100% !important; height: 100% !important; max-width: 100% !important; object-fit: cover; }
+.profil-avatar-sm { width: 1.8rem !important; height: 1.8rem !important; max-width: 1.8rem !important; font-size: 1rem; flex: 0 0 1.8rem; }
+.nav-avatar { width: 1.8rem !important; height: 1.8rem !important; max-width: 1.8rem !important; object-fit: cover; border-radius: 50%; border: 2px solid var(--ch-amber); }
+
+.notification-menu { width: min(24rem, calc(100vw - 2rem)); max-height: 26rem; overflow-y: auto; }
+.notification-menu .dropdown-item { white-space: normal; }
+.messagerie-toast { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 1080; max-width: min(24rem, calc(100vw - 2rem)); padding: .8rem 1rem; color: #fff; background: var(--ch-navy); border-left: .3rem solid var(--ch-amber); border-radius: .6rem; }

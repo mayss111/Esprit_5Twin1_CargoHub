@@ -8,6 +8,9 @@ from apps.core.models import Horodate
 
 class Conversation(Horodate):
     participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="conversations")
+    bloquee_par = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="conversations_bloquees"
+    )
     reservation = models.ForeignKey(
         "bookings.Reservation", null=True, blank=True, on_delete=models.SET_NULL, related_name="conversations"
     )
@@ -18,6 +21,12 @@ class Conversation(Horodate):
     def interlocuteurs(self, user):
         """Les autres participants, vus par `user`."""
         return [p for p in self.participants.all() if p != user]
+
+    def est_bloquee(self):
+        return self.bloquee_par.exists()
+
+    def est_bloquee_pour(self, user):
+        return self.bloquee_par.filter(pk=user.pk).exists()
 
 
 class Message(Horodate):

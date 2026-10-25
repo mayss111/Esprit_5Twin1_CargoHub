@@ -7,6 +7,7 @@ apparaisse dans le menu. Format : (libellé, nom d'URL, icône Bootstrap Icons).
 
 from .roles import Role, est_admin
 from apps.bookings.models import Notification
+from apps.messaging.models import Message
 
 MENU_PME = [
     ("Mes expéditions", "shipments:liste", "box-seam"),
@@ -106,5 +107,22 @@ def navigation(request):
         "est_admin": est_admin(user),
         "notifications_non_lues": (
             Notification.objects.filter(destinataire=user, lu=False).count() if user.is_authenticated else 0
+        ),
+        "notifications_recentes": (
+            Notification.objects.filter(destinataire=user).order_by("-created_at")[:5]
+            if user.is_authenticated
+            else []
+        ),
+        "messages_non_lus": (
+            Message.objects.filter(conversation__participants=user, lu=False).exclude(auteur=user)
+            .select_related("auteur", "conversation")
+            .order_by("-created_at")[:5]
+            if user.is_authenticated
+            else []
+        ),
+        "messageries_non_lues": (
+            Message.objects.filter(conversation__participants=user, lu=False).exclude(auteur=user).count()
+            if user.is_authenticated
+            else 0
         ),
     }
