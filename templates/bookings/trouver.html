@@ -10,12 +10,17 @@
     <article class="card card-ch h-100 p-3">
       <h2 class="h6 mb-1">{{ e.reference }}</h2>
       <p class="mb-1">{{ e.adresse_depart.ville }} <span aria-hidden="true">→</span><span class="visually-hidden">vers</span> {{ e.adresse_arrivee.ville }}</p>
-      <p class="small text-muted mb-2">Le {{ e.date_souhaitee|date:"d/m/Y" }} · {% if e.poids_total_kg %}{{ e.poids_total_kg|floatformat:0 }} kg{% else %}<strong>0 kg : ajoutez des articles</strong>{% endif %}
+      <p class="small text-muted mb-2">Le {{ e.date_souhaitee|date:"d/m/Y" }} · {{ e.poids_total_kg|floatformat:"-2" }} kg
         {% if e.demandes %}· {{ e.demandes }} demande{{ e.demandes|pluralize }} en cours{% endif %}</p>
+      {% if e.poids_total_kg <= 0 %}
+      <p class="small text-danger mb-0 mt-auto" role="note"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ message_vide }}
+        <a href="{% url 'shipments:detail' e.pk %}">Ajouter des articles<span class="visually-hidden"> à {{ e.reference }}</span></a></p>
+      {% else %}
       <div class="mt-auto d-flex flex-wrap gap-2">
         <a class="btn btn-sm btn-accent" href="{% url 'bookings:camions' e.pk %}"><i class="bi bi-truck" aria-hidden="true"></i> Camions compatibles<span class="visually-hidden"> pour {{ e.reference }}</span></a>
         {% if not e.appel_offre %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tenders:creer' %}?expedition={{ e.pk }}"><i class="bi bi-megaphone" aria-hidden="true"></i> Lancer un appel d’offres<span class="visually-hidden"> pour {{ e.reference }}</span></a>{% endif %}
       </div>
+      {% endif %}
     </article>
   </div>
   {% endfor %}

@@ -85,4 +85,21 @@ def test_reserver_une_expedition_vide_est_refuse(client, pme, expedition_vide, t
     reponse = client.post(reverse("bookings:reserver", args=[expedition_vide.pk, trajet.pk]), follow=True)
     assert services.EXPEDITION_VIDE in reponse.content.decode()
     assert not expedition_vide.reservations.exists()
-    assert "0 kg : ajoutez des articles" in client.get(reverse("bookings:trouver")).content.decode()
+    trouver = client.get(reverse("bookings:trouver")).content.decode()
+    assert services.EXPEDITION_VIDE in trouver
+    assert "Camions compatibles<span" not in trouver and "Lancer un appel d’offres" not in trouver
+
+
+def test_le_service_refuse_une_expedition_vide(expedition_vide, trajet):
+    with pytest.raises(services.ReservationImpossible, match=r"aucune marchandise \(0 kg\)"):
+        services.reserver(expedition_vide, trajet)
+    assert not expedition_vide.reservations.exists()
+
+
+def test_petit_poids_pas_arrondi_a_zero(client, pme, expedition, trajet):
+    expedition.articles.update(quantite=1, poids_kg="0.40")
+    client.force_login(pme)
+    html = client.get(reverse("bookings:trouver")).content.decode()
+    assert "0,40 kg" in html and services.EXPEDITION_VIDE not in html  # 0,40 kg n’est pas « 0 kg »
+    client.post(reverse("bookings:reserver", args=[expedition.pk, trajet.pk]))
+    assert expedition.reservations.exists()

@@ -59,6 +59,9 @@ class ExpeditionsAReserverView(RoleRequiredMixin, ListView):
             .order_by("date_souhaitee")
         )
 
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), "message_vide": EXPEDITION_VIDE}
+
 
 class CamionsCompatiblesView(RoleRequiredMixin, TemplateView):
     roles = [Role.PME]
@@ -92,16 +95,18 @@ class ReserverView(RoleRequiredMixin, View):
         trajet = get_object_or_404(Trajet, pk=trajet_id, statut=Trajet.Statut.OUVERT)
         if expedition.statut != Expedition.Statut.PUBLIEE:
             messages.error(request, "Seule une expédition publiée peut être réservée.")
-        elif expedition.poids_total_kg <= 0:
-            messages.error(request, EXPEDITION_VIDE)
         elif expedition.reservations.filter(trajet=trajet, statut__in=EN_COURS).exists():
             messages.warning(request, "Vous avez déjà demandé une place sur ce trajet.")
         else:
-            reservation = reserver(expedition, trajet)
-            messages.success(
-                request, f"Demande envoyée au transporteur ({reservation}). Vous serez prévenu de sa réponse."
-            )
-            return redirect("bookings:detail", pk=reservation.pk)
+            try:
+                reservation = reserver(expedition, trajet)
+            except ReservationImpossible as erreur:  # ex. expédition de 0 kg
+                messages.error(request, str(erreur))
+            else:
+                messages.success(
+                    request, f"Demande envoyée au transporteur ({reservation}). Vous serez prévenu de sa réponse."
+                )
+                return redirect("bookings:detail", pk=reservation.pk)
         return redirect("bookings:camions", pk=pk)
 
 
