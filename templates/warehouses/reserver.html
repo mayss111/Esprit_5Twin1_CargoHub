@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Réserver un créneau de dépôt{% endblock %}
+{% block content %}
+<p class="mb-2"><a href="{% url 'warehouses:detail' entrepot.pk %}">Retour à {{ entrepot.nom }}</a></p>
+<h1 class="page-title mb-3">Réserver un créneau de dépôt</h1>
+{% if erreur %}<div class="alert alert-danger" role="alert">{{ erreur }}</div>{% endif %}
+{% if depot_existant %}
+  <p><a href="{% url 'warehouses:depot' depot_existant.pk %}">Voir le dépôt {{ depot_existant.reference }}</a></p>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <section class="card card-ch p-3 h-100">
+      <h2 class="h6">Point relais</h2>
+      <p class="mb-1"><strong>{{ entrepot.nom }}</strong></p>
+      <p class="mb-1">{{ entrepot.adresse }}, {{ entrepot.ville }}{% if entrepot.gouvernorat %} ({{ entrepot.gouvernorat }}){% endif %}</p>
+      <p class="mb-1">Ouvert de {{ entrepot.horaire_ouverture|time:"H:i" }} à {{ entrepot.horaire_fermeture|time:"H:i" }}, tous les jours.</p>
+      <p class="mb-1">Capacité maximale : {{ entrepot.capacite_max_m3 }} m³</p>
+      <p class="mb-1">Créneaux de dépôt de 2 heures. La fin de réservation est choisie à part et libère le volume à cette date.</p>
+      <p class="mb-0 text-muted">Dès la confirmation, le volume est ajouté à la capacité réservée, même si le dépôt a lieu plus tard.</p>
+    </section>
+  </div>
+  <div class="col-lg-7">
+    {% if not expeditions %}
+      {% if not depot_existant %}<p>Aucune expédition publiée ne peut être déposée pour le moment.</p>{% endif %}
+    {% else %}
+      <form method="get" class="card card-ch p-3 mb-3" role="search">
+        <div class="mb-3">
+          <label class="form-label" for="reservation-expedition">Expédition</label>
+          <select class="form-select" id="reservation-expedition" name="expedition" required>
+            <option value="">Choisir une expédition</option>
+            {% for item in expeditions %}
+              <option value="{{ item.pk }}" {% if expedition.pk == item.pk %}selected{% endif %}>
+                {{ item.reference }} — {{ item.adresse_depart.ville }} → {{ item.adresse_arrivee.ville }} — départ {{ item.date_souhaitee|date:"d/m/Y" }} — {{ item.volume_total_m3 }} m³ — {{ item.get_statut_display }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="reservation-date">Date du dépôt</label>
+          <input class="form-control" id="reservation-date" type="date" name="date" required
+                 min="{{ aujourd_hui|date:'Y-m-d' }}"
+                 {% if expedition %}max="{{ expedition.date_souhaitee|date:'Y-m-d' }}"{% endif %}
+                 {% if jour %}value="{{ jour|date:'Y-m-d' }}"{% endif %}>
+        </div>
+        <button class="btn btn-outline-secondary" type="submit">Afficher les créneaux</button>
+      </form>
+
+      {% if expedition and jour and not depot_existant %}
+        <form method="post" class="card card-ch p-3">
+          {% csrf_token %}
+          <input type="hidden" name="expedition" value="{{ expedition.pk }}">
+          <input type="hidden" name="date" value="{{ jour|date:'Y-m-d' }}">
+          <h2 class="h6">Récapitulatif</h2>
+          <p class="mb-1">Expédition : {{ expedition.reference }}</p>
+          <p class="mb-1">Entrepôt : {{ entrepot.nom }}</p>
+          <p class="mb-1">Adresse : {{ entrepot.adresse }}, {{ entrepot.ville }}</p>
+          <p class="mb-1">Date : {{ jour|date:"d/m/Y" }}</p>
+          <p class="mb-1">Volume à réserver : {{ volume }} m³</p>
+          <div class="mb-3">
+            <label class="form-label" for="fin-reservation">Fin de réservation</label>
+            <input class="form-control" id="fin-reservation" type="datetime-local" name="fin_reservation" required
+                   value="{{ fin_reservation }}">
+            <p class="form-text mb-0">Doit être après le début du créneau de dépôt. Le volume est libéré à cette date.</p>
+          </div>
+          {% if creneaux %}
+            <fieldset class="mb-3">
+              <legend class="col-form-label pt-0">Créneau</legend>
+              {% for creneau in creneaux %}
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="creneau" id="creneau-{{ forloop.counter }}"
+                         value="{{ creneau.valeur }}" required {% if creneau_choisi == creneau.valeur %}checked{% endif %}>
+                  <label class="form-check-label" for="creneau-{{ forloop.counter }}">
+                    {{ creneau.debut|time:"H:i" }} – {{ creneau.fin|time:"H:i" }}
+                    <span class="text-muted">— {{ creneau.reserve }} m³ déjà réservés, {{ creneau.disponible }} m³ disponibles</span>
+                  </label>
+                </div>
+              {% endfor %}
+            </fieldset>
+            <button class="btn btn-accent" type="submit">Confirmer ma réservation</button>
+          {% else %}
+            <p class="mb-0">Aucun créneau ne peut être confirmé pour cette date.</p>
+          {% endif %}
+        </form>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+.carte-relais {
+  height: 28rem;
+  min-height: 16rem;
+  border-radius: 1rem;
+  background: #eef2f6;
+}
+.carte-relais-petite { height: 18rem; }
+.carte-relais-liste { height: 22rem; }
+.relais-carte { border-left: 4px solid var(--ch-navy); }
+.relais-lieu { color: var(--ch-navy); font-weight: 700; }
+.relais-adresse { color: #475569; font-size: .92rem; }
+.relais-meta { color: #334155; font-size: .92rem; }
+.relais-distance:empty { display: none; }
+.entrepot-faits { display: grid; gap: .85rem; margin: 0; }
+.entrepot-faits dt {
+  margin: 0 0 .15rem;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ch-muted);
+}
+.entrepot-faits dd { margin: 0; }
+.entrepot-barre { height: .55rem; background: var(--ch-panel); }
+.entrepot-barre .progress-bar { background: var(--ch-navy); }
+.badge-RESERVE { background: #e0f2fe; color: #075985; }
+.badge-DEPOT_DECLARE { background: #ffedd5; color: #9a3412; }
+.badge-EFFECTUE { background: #dcfce7; color: #166534; }
+.badge-TERMINE { background: var(--ch-panel); color: var(--ch-ink); }
+.badge-ANNULE, .badge-NO_SHOW { background: #fee2e2; color: #991b1b; }
+.entrepots-table .col-nom { white-space: nowrap; }
+.entrepots-table .col-adresse { max-width: 16rem; }
+.entrepots-table .col-chiffre { white-space: nowrap; }
+@media (max-width: 768px) {
+  .carte-relais { height: 18rem; }
+}

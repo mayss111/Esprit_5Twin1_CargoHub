@@ -1,0 +1,29 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Annuler {{ reservation.reference }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card card-ch p-4">
+      <h1 class="page-title h3 mb-3">Annuler {{ reservation.reference }}</h1>
+      {% if reservation.statut != "RESERVE" %}
+        <p>Ce dépôt ne peut plus être annulé.</p>
+        <a class="btn btn-outline-secondary" href="{% url 'bo_warehouses:reservation' reservation.pk %}">Retour</a>
+      {% else %}
+        <p>{{ reservation.nom_pme }} — {{ reservation.entrepot.nom }} — {{ reservation.debut|date:"d/m/Y" }} {{ reservation.debut|time:"H:i" }}.</p>
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label" for="id_motif">{{ formulaire.motif.label }}</label>
+            {{ formulaire.motif }}
+            {% for message in formulaire.motif.errors %}<div class="text-danger small">{{ message }}</div>{% endfor %}
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-accent" type="submit">Confirmer l'annulation</button>
+            <a class="btn btn-outline-secondary" href="{% url 'bo_warehouses:reservation' reservation.pk %}">Retour</a>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Mes dépôts{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+  <div>
+    <h1 class="page-title mb-1">Mes dépôts</h1>
+    <p class="text-muted mb-0">Réservations de créneaux de dépôt. Une annulation reste dans l'historique.</p>
+  </div>
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'warehouses:liste' %}">Trouver un point relais</a>
+</div>
+
+<form method="get" class="card card-ch p-3 mb-3" role="search">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-reference">Référence</label>
+      <input class="form-control form-control-sm" id="filtre-reference" name="q" value="{{ filtre.q }}" maxlength="40">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="filtre-statut">Statut</label>
+      <select class="form-select form-select-sm" id="filtre-statut" name="statut">
+        <option value="">Tous</option>
+        {% for valeur, libelle in statuts %}
+          <option value="{{ valeur }}" {% if filtre.statut == valeur %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="filtre-date">Date du dépôt</label>
+      <input class="form-control form-control-sm" id="filtre-date" type="date" name="date" value="{{ filtre.date }}">
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-accent btn-sm w-100" type="submit">Filtrer</button>
+    </div>
+  </div>
+</form>
+
+{% if reservations %}
+  <div class="table-responsive">
+    <table class="table table-ch align-middle">
+      <caption class="visually-hidden">Liste de vos réservations de dépôt</caption>
+      <thead>
+        <tr>
+          <th>Réservation</th>
+          <th>Expédition</th>
+          <th>Entrepôt</th>
+          <th>Date</th>
+          <th>Créneau</th>
+          <th>Volume</th>
+          <th>Fin de réservation</th>
+          <th>Entrée</th>
+          <th>Sortie</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for reservation in reservations %}
+          <tr>
+            <td>{{ reservation.reference }}</td>
+            <td>{{ reservation.expedition.reference }}</td>
+            <td>{{ reservation.entrepot.nom }}</td>
+            <td>{{ reservation.debut|date:"d/m/Y" }}</td>
+            <td>{{ reservation.debut|time:"H:i" }} – {{ reservation.fin|time:"H:i" }}</td>
+            <td>{{ reservation.volume_reserve|default:reservation.volume_m3 }} m³</td>
+            <td>{% if reservation.fin_stockage_prevue %}{{ reservation.fin_stockage_prevue|date:"d/m/Y H:i" }}{% else %}{{ reservation.entrepot.duree_stockage_max_heures }} h{% endif %}</td>
+            <td>{% if reservation.entree_le %}{{ reservation.entree_le|date:"d/m/Y H:i" }}{% else %}—{% endif %}</td>
+            <td>{% if reservation.sortie_le %}{{ reservation.sortie_le|date:"d/m/Y H:i" }}{% else %}—{% endif %}</td>
+            <td><span class="badge-statut {% if reservation.statut == 'RESERVE' %}badge-PUBLIEE{% elif reservation.statut == 'ANNULE' %}badge-ANNULEE{% else %}badge-LIVREE{% endif %}">{{ reservation.get_statut_display }}</span></td>
+            <td class="d-flex flex-wrap gap-2">
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'warehouses:depot' reservation.pk %}">Voir les détails</a>
+              {% if reservation.annulable_par_pme %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'warehouses:depot_annuler' reservation.pk %}">Annuler</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "core/_pagination.html" %}
+{% elif filtre.q or filtre.statut or filtre.date %}
+  <p>Aucune réservation ne correspond à cette recherche.</p>
+{% else %}
+  <p>Vous n'avez pas encore de dépôt réservé.</p>
+{% endif %}
+{% endblock %}

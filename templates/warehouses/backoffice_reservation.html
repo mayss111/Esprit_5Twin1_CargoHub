@@ -1,0 +1,91 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+{% block title %}{{ reservation.reference }}{% endblock %}
+{% block extra_head %}<link href="{% static 'warehouses/css/relais.css' %}?v=20261025g" rel="stylesheet">{% endblock %}
+{% block content %}
+<p class="mb-2"><a href="{% url 'bo_warehouses:reservations' %}">Toutes les réservations</a></p>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <h1 class="page-title mb-1">{{ reservation.reference }}</h1>
+    <span class="badge-statut badge-{{ reservation.statut }}">{{ reservation.get_statut_display }}</span>
+  </div>
+  {% if reservation.statut == "RESERVE" or reservation.statut == "DEPOT_DECLARE" %}
+    <a class="btn btn-outline-secondary" href="{% url 'bo_warehouses:reservation_annuler' reservation.pk %}">Annuler</a>
+  {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <section class="card card-ch p-3 h-100">
+      <h2 class="h6">PME et expédition</h2>
+      <dl class="entrepot-faits">
+        <div>
+          <dt>PME</dt>
+          <dd>{{ reservation.nom_pme }}</dd>
+        </div>
+        <div>
+          <dt>E-mail</dt>
+          <dd>{{ reservation.expedition.pme.email }}</dd>
+        </div>
+        <div>
+          <dt>Expédition</dt>
+          <dd>
+            <a href="{% url 'bo_shipments:detail' reservation.expedition.pk %}">{{ reservation.expedition.reference }}</a><br>
+            {{ reservation.expedition.adresse_depart.ville }} → {{ reservation.expedition.adresse_arrivee.ville }}
+          </dd>
+        </div>
+        <div>
+          <dt>Volume prévu</dt>
+          <dd>
+            {% if reservation.volume_reserve is not None %}{{ reservation.volume_reserve }}{% else %}{{ reservation.volume_m3 }}{% endif %} m³.
+            Ce volume est prévisionnel, pas un stock physique.
+          </dd>
+        </div>
+      </dl>
+    </section>
+  </div>
+  <div class="col-lg-6">
+    <section class="card card-ch p-3 h-100">
+      <h2 class="h6">Créneau</h2>
+      <dl class="entrepot-faits">
+        <div>
+          <dt>Entrepôt</dt>
+          <dd>
+            <a href="{% url 'bo_warehouses:detail' reservation.entrepot.pk %}">{{ reservation.entrepot.nom }}</a><br>
+            {{ reservation.entrepot.adresse }}, {{ reservation.entrepot.ville }}
+          </dd>
+        </div>
+        <div>
+          <dt>Créneau</dt>
+          <dd>{{ reservation.debut|date:"d/m/Y" }} · {{ reservation.debut|time:"H:i" }} – {{ reservation.fin|time:"H:i" }}</dd>
+        </div>
+        <div>
+          <dt>Ouverture</dt>
+          <dd>{{ reservation.entrepot.horaire_ouverture|time:"H:i" }} – {{ reservation.entrepot.horaire_fermeture|time:"H:i" }}</dd>
+        </div>
+        {% if reservation.fin_stockage_prevue %}
+          <div>
+            <dt>Fin de réservation</dt>
+            <dd>{{ reservation.fin_stockage_prevue|date:"d/m/Y H:i" }}</dd>
+          </div>
+        {% endif %}
+        {% if reservation.declare_le %}
+          <div>
+            <dt>Dépôt déclaré le</dt>
+            <dd>{{ reservation.declare_le|date:"d/m/Y H:i" }}</dd>
+          </div>
+        {% endif %}
+      </dl>
+    </section>
+  </div>
+</div>
+
+{% if reservation.motif_annulation %}
+  <section class="card card-ch p-3 mb-4">
+    <h2 class="h6">Motif d'annulation</h2>
+    <p class="mb-0">{{ reservation.motif_annulation }}</p>
+  </section>
+{% endif %}
+
+<p class="text-muted mb-0">Créée le {{ reservation.created_at|date:"d/m/Y H:i" }} · modifiée le {{ reservation.updated_at|date:"d/m/Y H:i" }}.</p>
+{% endblock %}
