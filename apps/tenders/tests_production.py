@@ -181,3 +181,49 @@ def test_page_nouvel_appel_a_un_min(client, pme, expedition, appel_offre):
     appel_offre.delete()
     html = client.get(reverse("tenders:creer")).content.decode()
     assert f'min="{timezone.localtime():%Y-%m-%d}' in html
+
+
+# ---------------------------------------------------------------- 6. aide au choix : noms et notes des avis
+
+
+@pytest.mark.parametrize(
+    "texte, attendu",
+    [
+        (
+            "Je recommande l'offre 63 car elle est moins chère.",
+            "Je recommande l’offre de Karim car elle est moins chère.",
+        ),
+        ("L’offre n° 63 est la meilleure.", "L’offre de Karim est la meilleure."),
+        ("La meilleure offre #63, devant offre_id 64.", "La meilleure offre de Karim, devant offre de Nabil."),
+        ("L'offre 999 n'existe pas.", "L'offre 999 n'existe pas."),  # numéro inconnu : inchangé
+    ],
+)
+def test_identifiants_remplaces_par_les_noms(texte, attendu):
+    from apps.tenders.ai import sans_identifiants
+
+    assert sans_identifiants(texte, {63: "Karim", 64: "Nabil"}) == attendu
+
+
+def test_notes_des_avis_envoyees_au_llm(settings, pme, autre_pme, appel_offre, offre, trajet, autre_transporteur):
+    import json as json_
+
+    from apps.bookings import services
+    from apps.tenders.ai import SANS_AVIS, recommander_offre
+    from apps.tracking.models import Avis
+
+    concurrente = Offre.objects.create(appel=appel_offre, transporteur=autre_transporteur, prix=Decimal("120"))
+    passee = services.reserver(appel_offre.expedition, trajet)
+    Avis.objects.create(reservation=passee, auteur=pme, cible=offre.transporteur, note=4)
+    Avis.objects.create(reservation=passee, auteur=autre_pme, cible=offre.transporteur, note=5)
+
+    settings.AI_API_KEY = "cle-de-test"
+    reponse = json_.dumps({"offre_id": offre.pk, "explication": f"L'offre {offre.pk} est la mieux notée."})
+    with mock.patch("apps.core.ai.demander", return_value=reponse) as llm:
+        resultat = recommander_offre(appel_offre)
+
+    envoye = llm.call_args.args[0]
+    assert '"note": 4.5' in envoye and f'"note": "{SANS_AVIS}"' in envoye
+    assert '"transporteur": "Karim"' in envoye and '"transporteur": "Nabil"' in envoye
+    assert "nom de son transporteur" in llm.call_args.kwargs["systeme"]
+    assert resultat["explication"] == "L’offre de Karim est la mieux notée."
+    assert str(offre.pk) not in resultat["explication"] and concurrente.pk != offre.pk
