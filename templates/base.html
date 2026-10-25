@@ -38,6 +38,7 @@
       <ul class="navbar-nav">
         {% if user.is_authenticated %}
           {% if est_admin %}<li class="nav-item"><a class="nav-link" href="{% url 'dashboard:accueil' %}"><i class="bi bi-speedometer2" aria-hidden="true"></i> Back-office</a></li>{% endif %}
+          <li class="nav-item"><a class="nav-link position-relative" href="{% url 'bookings:notifications' %}" aria-label="Notifications"><i class="bi bi-bell" aria-hidden="true"></i>{% if notifications_non_lues %}<span class="badge rounded-pill text-bg-danger">{{ notifications_non_lues }}</span>{% endif %}</a></li>
           <li class="nav-item"><a class="nav-link" href="{% url 'accounts:profil' %}"><i class="bi bi-person-circle" aria-hidden="true"></i> {{ user }}</a></li>
           <li class="nav-item">
             <form method="post" action="{% url 'accounts:deconnexion' %}">{% csrf_token %}

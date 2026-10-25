@@ -50,7 +50,7 @@ class SinistreForm(forms.ModelForm):
             "titre": forms.TextInput(attrs={"class": "form-control", "minlength": 5, "maxlength": 150}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 6, "minlength": 20, "maxlength": 5000}),
             "type_sinistre": forms.Select(attrs={"class": "form-select"}),
-            "date_incident": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "date_incident": forms.DateInput(format="%Y-%m-%d", attrs={"class": "form-control", "type": "date"}),
             "montant_estime": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.01"}),
         }
 
@@ -65,6 +65,7 @@ class SinistreForm(forms.ModelForm):
             queryset = Expedition.objects.filter(reservations__trajet__transporteur=user).distinct()
         self.fields["expedition"].queryset = queryset.select_related("pme", "adresse_depart", "adresse_arrivee").order_by("-created_at")
         self.fields["expedition"].required = True
+        self.fields["date_incident"].input_formats = ["%Y-%m-%d"]
         self.fields["expedition"].label_from_instance = lambda expedition: (
             f"{expedition.reference} — PME : {expedition.pme} — "
             f"{expedition.adresse_depart.ville} → {expedition.adresse_arrivee.ville}"

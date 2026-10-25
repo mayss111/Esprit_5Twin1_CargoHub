@@ -13,6 +13,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
 from apps.core.roles import Role
+from apps.bookings.notification_service import notifier_dossier
 
 from .forms import PieceJustificativeForm, SinistreForm, TraitementSinistreForm
 from .models import PieceJustificative, Sinistre
@@ -58,6 +59,15 @@ class SinistreCreerView(RoleRequiredMixin, CreateView):
         response = super().form_valid(form)
         for fichier in form.cleaned_data.get("justificatifs", []):
             PieceJustificative.objects.create(sinistre=self.object, fichier=fichier)
+        notifier_dossier(
+            self.object,
+            "Nouveau sinistre déclaré",
+            f"Un nouveau sinistre concerne l’expédition {self.object.expedition_effective.reference}.",
+            reverse("insurance:detail", args=[self.object.pk]),
+            lien_admin=reverse("bo_insurance:detail", args=[self.object.pk]),
+            administrateurs=True,
+            exclure=[self.request.user.pk],
+        )
         messages.success(self.request, "Votre sinistre a été déclaré et transmis pour vérification.")
         return response
 
@@ -104,6 +114,15 @@ class SinistreModifierView(MesSinistresMixin, UpdateView):
         response = super().form_valid(form)
         for fichier in form.cleaned_data.get("justificatifs", []):
             PieceJustificative.objects.create(sinistre=self.object, fichier=fichier)
+        notifier_dossier(
+            self.object,
+            "Sinistre mis à jour",
+            f"Le sinistre {self.object.reference} a été modifié par son auteur.",
+            reverse("insurance:detail", args=[self.object.pk]),
+            lien_admin=reverse("bo_insurance:detail", args=[self.object.pk]),
+            administrateurs=True,
+            exclure=[self.request.user.pk],
+        )
         messages.success(self.request, "Votre sinistre a été mis à jour.")
         return response
 
@@ -175,11 +194,31 @@ class BackofficeSinistreDetailView(AdminRequiredMixin, UpdateView):
         return Sinistre.objects.select_related("auteur", "expedition", "police", "assigne_a").prefetch_related("pieces")
 
     def form_valid(self, form):
+        ancienne_version = Sinistre.objects.get(pk=self.object.pk)
+        ancien_statut = ancienne_version.statut
+        ancienne_decision = ancienne_version.decision_admin
         if form.cleaned_data.get("statut") in {Sinistre.Statut.ACCEPTE, Sinistre.Statut.REFUSE, Sinistre.Statut.CLOTURE}:
             form.instance.resolu_le = form.instance.resolu_le or timezone.now()
         if not form.instance.assigne_a_id and form.cleaned_data.get("statut") != Sinistre.Statut.A_VERIFIER:
             form.instance.assigne_a = self.request.user
         response = super().form_valid(form)
+        nouveau_statut = self.object.statut
+        if nouveau_statut != ancien_statut or self.object.decision_admin != ancienne_decision:
+            if nouveau_statut == Sinistre.Statut.DOCUMENTS:
+                titre = "Justificatifs complémentaires demandés"
+                message = f"Des justificatifs complémentaires sont demandés pour le sinistre {self.object.reference}."
+            elif nouveau_statut in {Sinistre.Statut.ACCEPTE, Sinistre.Statut.REFUSE, Sinistre.Statut.CLOTURE}:
+                titre = "Décision concernant votre sinistre"
+                message = f"Le sinistre {self.object.reference} a été traité : {self.object.get_statut_display()}."
+            else:
+                titre = "Statut de votre sinistre mis à jour"
+                message = f"Le sinistre {self.object.reference} est maintenant « {self.object.get_statut_display()} »."
+            notifier_dossier(
+                self.object,
+                titre,
+                message,
+                reverse("insurance:detail", args=[self.object.pk]),
+            )
         messages.success(self.request, "Le sinistre a été mis à jour.")
         return response
 

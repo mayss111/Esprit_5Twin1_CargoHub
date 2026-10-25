@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.bookings.models import Reservation
+from apps.bookings.models import Notification
 
 from .forms import SinistreForm, TraitementSinistreForm
 from .models import PieceJustificative, Sinistre
@@ -155,3 +156,59 @@ def test_admin_accepte_un_sinistre(client, admin_user, pme, expedition):
     sinistre.refresh_from_db()
     assert sinistre.statut == Sinistre.Statut.ACCEPTE
     assert sinistre.assigne_a == admin_user
+
+
+def test_creation_sinistre_notifie_admin(client, pme, admin_user, expedition):
+    client.force_login(pme)
+    client.post(reverse("insurance:creer"), donnees(expedition))
+    assert Notification.objects.filter(destinataire=admin_user, titre="Nouveau sinistre déclaré").exists()
+
+
+def test_demande_documents_notifie_auteur(client, admin_user, pme, expedition):
+    sinistre = Sinistre.objects.create(
+        auteur=pme,
+        expedition=expedition,
+        titre="Perte totale",
+        description="La marchandise est introuvable après le transport.",
+        type_sinistre=Sinistre.Type.PERTE_TOTALE,
+        statut=Sinistre.Statut.EN_COURS,
+    )
+    client.force_login(admin_user)
+    response = client.post(
+        reverse("bo_insurance:detail", args=[sinistre.pk]),
+        {"statut": Sinistre.Statut.DOCUMENTS, "assigne_a": admin_user.pk, "decision_admin": "", "justification_decision": "", "montant_rembourse": ""},
+    )
+    assert response.status_code == 302
+    sinistre.refresh_from_db()
+    assert sinistre.statut == Sinistre.Statut.DOCUMENTS
+    assert Notification.objects.filter(destinataire=pme, titre="Justificatifs complémentaires demandés").exists()
+
+
+def test_modification_sinistre_notifie_admin(client, admin_user, pme, expedition):
+    sinistre = Sinistre.objects.create(
+        auteur=pme,
+        expedition=expedition,
+        titre="Perte initiale",
+        description="La marchandise est introuvable après le transport.",
+        type_sinistre=Sinistre.Type.PERTE_TOTALE,
+    )
+    client.force_login(pme)
+    client.post(
+        reverse("insurance:modifier", args=[sinistre.pk]),
+        donnees(expedition, titre="Perte mise à jour"),
+    )
+    assert Notification.objects.filter(destinataire=admin_user, titre="Sinistre mis à jour").exists()
+
+
+def test_date_incident_presente_dans_le_formulaire_de_modification(client, pme, expedition):
+    sinistre = Sinistre.objects.create(
+        auteur=pme,
+        expedition=expedition,
+        titre="Perte initiale",
+        description="La marchandise est introuvable après le transport.",
+        type_sinistre=Sinistre.Type.PERTE_TOTALE,
+        date_incident=timezone.datetime(2026, 10, 16).date(),
+    )
+    client.force_login(pme)
+    page = client.get(reverse("insurance:modifier", args=[sinistre.pk]))
+    assert 'value="2026-10-16"' in page.content.decode()

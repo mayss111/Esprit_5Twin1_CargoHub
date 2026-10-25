@@ -1,9 +1,17 @@
 from django.urls import path
 
 from . import views
+from .notification_views import (
+    NotificationMarquerLueView,
+    NotificationsMarquerToutesLuesView,
+    NotificationsView,
+)
 
 # Front-office (PME et transporteurs)
 urlpatterns = [
+    path("notifications/", NotificationsView.as_view(), name="notifications"),
+    path("notifications/<int:pk>/lue/", NotificationMarquerLueView.as_view(), name="notification_lue"),
+    path("notifications/lire-tout/", NotificationsMarquerToutesLuesView.as_view(), name="notifications_lire_tout"),
     path("", views.MesReservationsView.as_view(), name="liste"),
     path("<int:pk>/", views.ReservationDetailView.as_view(), name="detail"),
     path("<int:pk>/annuler/", views.AnnulerReservationView.as_view(), name="annuler"),

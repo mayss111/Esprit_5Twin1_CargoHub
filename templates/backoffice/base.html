@@ -34,6 +34,7 @@
         <span class="kicker">Back-office administrateur</span>
       </div>
       <form method="post" action="{% url 'accounts:deconnexion' %}" class="d-flex align-items-center gap-3">{% csrf_token %}
+        <a class="small text-muted text-decoration-none" href="{% url 'bookings:notifications' %}"><i class="bi bi-bell" aria-hidden="true"></i> Notifications{% if notifications_non_lues %} <span class="badge text-bg-danger">{{ notifications_non_lues }}</span>{% endif %}</a>
         <span class="small text-muted"><i class="bi bi-shield-lock" aria-hidden="true"></i> {{ user }}</span>
         <button class="btn btn-sm btn-outline-secondary" type="submit">Déconnexion</button>
       </form>

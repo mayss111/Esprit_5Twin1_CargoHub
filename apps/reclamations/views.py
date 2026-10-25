@@ -11,6 +11,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
 from apps.core.roles import Role
+from apps.bookings.notification_service import notifier_dossier
 
 from .forms import ReclamationForm, TraitementReclamationForm
 from .models import Reclamation
@@ -71,6 +72,15 @@ class ReclamationCreerView(RoleRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.auteur = self.request.user
         response = super().form_valid(form)
+        notifier_dossier(
+            self.object,
+            "Nouvelle réclamation",
+            f"Une nouvelle réclamation concerne l’expédition {self.object.expedition.reference}.",
+            reverse("reclamations:detail", args=[self.object.pk]),
+            lien_admin=reverse("bo_reclamations:detail", args=[self.object.pk]),
+            administrateurs=True,
+            exclure=[self.request.user.pk],
+        )
         messages.success(self.request, "Votre réclamation a été enregistrée et est en attente de traitement.")
         return response
 
@@ -109,8 +119,18 @@ class ReclamationModifierView(MesReclamationsMixin, UpdateView):
         return kwargs
 
     def form_valid(self, form):
+        response = super().form_valid(form)
+        notifier_dossier(
+            self.object,
+            "Réclamation mise à jour",
+            f"La réclamation {self.object.reference} a été modifiée par son auteur.",
+            reverse("reclamations:detail", args=[self.object.pk]),
+            lien_admin=reverse("bo_reclamations:detail", args=[self.object.pk]),
+            administrateurs=True,
+            exclure=[self.request.user.pk],
+        )
         messages.success(self.request, "Votre réclamation a été mise à jour.")
-        return super().form_valid(form)
+        return response
 
     def get_success_url(self):
         return reverse("reclamations:detail", args=[self.object.pk])
@@ -170,6 +190,9 @@ class BackofficeReclamationDetailView(AdminRequiredMixin, UpdateView):
         return Reclamation.objects.select_related("auteur", "expedition", "assigne_a")
 
     def form_valid(self, form):
+        ancienne_version = Reclamation.objects.get(pk=self.object.pk)
+        ancien_statut = ancienne_version.statut
+        ancien_reponse = ancienne_version.reponse_admin
         if form.cleaned_data.get("statut") == Reclamation.Statut.RESOLUE:
             form.instance.resolue_le = timezone.now()
         elif form.cleaned_data.get("statut") not in {Reclamation.Statut.RESOLUE, Reclamation.Statut.REJETEE}:
@@ -177,6 +200,23 @@ class BackofficeReclamationDetailView(AdminRequiredMixin, UpdateView):
         if not form.instance.assigne_a_id and form.cleaned_data.get("statut") != Reclamation.Statut.EN_ATTENTE:
             form.instance.assigne_a = self.request.user
         response = super().form_valid(form)
+        nouveau_statut = self.object.statut
+        if nouveau_statut != ancien_statut or self.object.reponse_admin != ancien_reponse:
+            if nouveau_statut == Reclamation.Statut.INFOS:
+                titre = "Informations complémentaires demandées"
+                message = f"Des informations complémentaires sont demandées pour la réclamation {self.object.reference}."
+            elif nouveau_statut in {Reclamation.Statut.RESOLUE, Reclamation.Statut.REJETEE}:
+                titre = "Décision concernant votre réclamation"
+                message = f"La réclamation {self.object.reference} a été traitée : {self.object.get_statut_display()}."
+            else:
+                titre = "Statut de votre réclamation mis à jour"
+                message = f"La réclamation {self.object.reference} est maintenant « {self.object.get_statut_display()} »."
+            notifier_dossier(
+                self.object,
+                titre,
+                message,
+                reverse("reclamations:detail", args=[self.object.pk]),
+            )
         messages.success(self.request, "La réclamation a été mise à jour.")
         return response
 

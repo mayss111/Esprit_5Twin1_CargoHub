@@ -1,6 +1,7 @@
 from django.urls import reverse
 
 from apps.bookings.models import Reservation
+from apps.bookings.models import Notification
 
 from .forms import ReclamationForm, TraitementReclamationForm
 from .models import Reclamation
@@ -123,3 +124,45 @@ def test_admin_traite_une_reclamation(client, admin_user, pme, expedition):
     reclamation.refresh_from_db()
     assert reclamation.statut == Reclamation.Statut.EN_COURS
     assert reclamation.assigne_a == admin_user
+
+
+def test_creation_reclamation_notifie_admin(client, pme, admin_user, expedition):
+    client.force_login(pme)
+    client.post(reverse("reclamations:creer"), donnees(expedition))
+    assert Notification.objects.filter(destinataire=admin_user, titre="Nouvelle réclamation").exists()
+
+
+def test_decision_reclamation_notifie_auteur(client, admin_user, pme, expedition):
+    reclamation = Reclamation.objects.create(
+        auteur=pme,
+        expedition=expedition,
+        titre="Retard important",
+        description="La livraison présente un retard important et documenté.",
+        type_reclamation=Reclamation.Type.RETARD,
+        statut=Reclamation.Statut.EN_COURS,
+    )
+    client.force_login(admin_user)
+    response = client.post(
+        reverse("bo_reclamations:detail", args=[reclamation.pk]),
+        {"statut": Reclamation.Statut.RESOLUE, "assigne_a": admin_user.pk, "reponse_admin": "Dossier traité.", "justification_decision": "Analyse terminée."},
+    )
+    assert response.status_code == 302
+    reclamation.refresh_from_db()
+    assert reclamation.statut == Reclamation.Statut.RESOLUE
+    assert Notification.objects.filter(destinataire=pme, titre="Décision concernant votre réclamation").exists()
+
+
+def test_modification_reclamation_notifie_admin(client, admin_user, pme, expedition):
+    reclamation = Reclamation.objects.create(
+        auteur=pme,
+        expedition=expedition,
+        titre="Retard initial",
+        description="La livraison présente un retard important et documenté.",
+        type_reclamation=Reclamation.Type.RETARD,
+    )
+    client.force_login(pme)
+    client.post(
+        reverse("reclamations:modifier", args=[reclamation.pk]),
+        donnees(expedition, titre="Retard modifié"),
+    )
+    assert Notification.objects.filter(destinataire=admin_user, titre="Réclamation mise à jour").exists()
