@@ -379,3 +379,26 @@ def test_lancer_aide_au_choix_compte_seulement_les_offres_compatibles(
     assert "au moins 2 offres compatibles" in reponse.content.decode()
     appel_offre.refresh_from_db()
     assert appel_offre.recommandation_statut == ""
+
+
+def test_donnees_demo_se_reparent(db):
+    from apps.accounts.models import Utilisateur
+
+    call_command("donnees_demo", stdout=StringIO())
+    appel = AppelOffre.objects.get(expedition__description="[démo soutenance]")
+    karim = appel.offres.get(transporteur__email="karim@transport.tn")
+    # Ce qui a pu arriver en production pendant les essais :
+    Vehicule.objects.filter(immatriculation="214 TU 3381").update(conforme=False)
+    Utilisateur.objects.filter(email="mohamed@transport.tn").update(is_active=False)
+    karim.trajet.etapes.create(ordre=3, ville="Hammamet")
+    karim.trajet.etapes.filter(ordre=1).update(ville="Kairouan")
+
+    sortie = StringIO()
+    call_command("donnees_demo", stdout=sortie)
+    texte = sortie.getvalue()
+    assert texte.count("-> compatible") == 2 and "INCOMPATIBLE" not in texte
+    assert "Sfax - Tunis, via Monastir, Sousse, score 100/100, note 4.7/5" in texte
+    assert Utilisateur.objects.get(email="mohamed@transport.tn").is_active
+    karim.trajet.refresh_from_db()
+    assert [e.ville for e in karim.trajet.etapes.all()] == ["Monastir", "Sousse"]
+    assert est_compatible(appel.expedition, karim.trajet)
