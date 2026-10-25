@@ -8,7 +8,7 @@ configuration (clé, fournisseur, modèle) soit la même pour tout le monde.
 Fournisseur : n'importe quelle API compatible OpenAI, réglée dans .env
     AI_BASE_URL=https://api.groq.com/openai/v1   (Groq, offre gratuite)
     AI_BASE_URL=http://localhost:11434/v1        (Ollama, en local)
-    AI_MODEL=llama-3.3-70b-versatile
+    AI_MODEL=openai/gpt-oss-120b
 
 Sans AI_API_KEY, `disponible()` renvoie False : chaque fonction IA doit
 alors prévoir un comportement de repli, pour que l'application marche
