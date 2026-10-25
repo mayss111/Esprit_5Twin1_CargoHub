@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Mes véhicules{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-end mb-4">
+  <div>
+    <h1 class="page-title mb-1">Mes véhicules</h1>
+    <p class="text-muted mb-0">Vos camions, leurs documents et leur conformité.</p>
+  </div>
+  <a href="{% url 'fleet:vehicule-creer' %}" class="btn btn-accent"><i class="bi bi-plus-lg"></i> Ajouter un véhicule</a>
+</div>
+
+<div class="card card-ch p-3 mb-4" style="overflow-x:auto;">
+  <table class="table align-middle mb-0">
+    <thead>
+      <tr>
+        <th scope="col">Immatriculation</th><th scope="col">Type</th><th scope="col">Capacité</th><th scope="col">Statut</th><th scope="col">Documents</th><th scope="col"><span class="visually-hidden">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for vehicule in vehicules %}
+      <tr>
+        <td class="fw-semibold">{{ vehicule.immatriculation }}</td>
+        <td>{{ vehicule.get_type_display }}</td>
+        <td>{{ vehicule.capacite_kg }} kg · {{ vehicule.capacite_m3|floatformat:1 }} m³</td>
+        <td>
+          <span class="badge
+            {% if vehicule.statut == 'ACTIF' %}text-bg-success
+            {% elif vehicule.statut == 'NON_CONFORME' %}text-bg-danger
+            {% else %}text-bg-warning{% endif %}">{{ vehicule.get_statut_display }}</span>
+          {% if vehicule.motif_non_conformite %}<div class="text-danger small">{{ vehicule.motif_non_conformite }}</div>{% endif %}
+        </td>
+        <td>
+          {% for doc in vehicule.documents.all %}
+            <span class="badge text-bg-light border">{{ doc.get_type_display }} · {{ doc.date_expiration|date:"d/m/Y" }}</span>
+          {% empty %}
+            <span class="text-muted small">Aucun document</span>
+          {% endfor %}
+          <form method="post" enctype="multipart/form-data" action="{% url 'fleet:vehicule-document' vehicule.pk %}"
+                class="d-flex gap-1 mt-1 flex-wrap">
+            {% csrf_token %}
+            <label class="visually-hidden" for="type-document-{{ vehicule.pk }}">Type de document pour {{ vehicule.immatriculation }}</label>
+            <select id="type-document-{{ vehicule.pk }}" name="type" class="form-select form-select-sm" style="max-width:140px;">
+              <option value="CARTE_GRISE">Carte grise</option>
+              <option value="ASSURANCE">Assurance</option>
+            </select>
+            <label class="visually-hidden" for="expiration-document-{{ vehicule.pk }}">Date d'expiration du document pour {{ vehicule.immatriculation }}</label>
+            <input id="expiration-document-{{ vehicule.pk }}" type="date" name="date_expiration" class="form-control form-control-sm" style="max-width:150px;" required>
+            <label class="visually-hidden" for="fichier-document-{{ vehicule.pk }}">Fichier du document pour {{ vehicule.immatriculation }}</label>
+            <input id="fichier-document-{{ vehicule.pk }}" type="file" name="fichier" class="form-control form-control-sm" accept=".pdf,image/jpeg,image/png" required>
+            <button class="btn btn-sm btn-outline-primary">Envoyer</button>
+          </form>
+        </td>
+        <td class="text-end text-nowrap">
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'fleet:vehicule-modifier' vehicule.pk %}">Modifier</a>
+          <a class="btn btn-sm btn-outline-success" href="{% url 'fleet:vehicule-certificat' vehicule.pk %}"
+             title="Télécharger le certificat vert"><i class="bi bi-download"></i> Certificat</a>
+          <a class="btn btn-sm btn-outline-danger" href="{% url 'fleet:vehicule-supprimer' vehicule.pk %}">Supprimer</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-muted">Aucun véhicule pour le moment.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -23,6 +23,7 @@ MENU_PME = [
 MENU_TRANSPORTEUR = [
     ("Mes véhicules", "fleet:vehicules", "truck"),
     ("Mes trajets", "fleet:liste", "signpost-split"),
+    ("Planificateur IA", "fleet:optimiseur-ia", "stars"),
     ("Réservations", "bookings:liste", "calendar-check"),
     ("Appels d’offres", "tenders:liste", "megaphone"),
     ("Entretien", "maintenance:liste", "tools"),

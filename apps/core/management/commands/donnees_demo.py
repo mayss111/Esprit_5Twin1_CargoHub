@@ -16,7 +16,7 @@ from apps.accounts.models import ProfilPME, ProfilTransporteur, Utilisateur
 from apps.bookings import services
 from apps.bookings.models import Reservation
 from apps.core.roles import Role
-from apps.fleet.models import Trajet, Vehicule
+from apps.fleet.models import DocumentVehicule, FacteurEmission, Trajet, Vehicule
 from apps.shipments.models import Adresse, ArticleExpedie, Expedition
 from apps.warehouses.models import Entrepot
 
@@ -46,6 +46,27 @@ class Command(BaseCommand):
             capacite_kg=3000,
             capacite_m3=Decimal("22"),
         )
+        DocumentVehicule.objects.create(
+            vehicule=camion,
+            type=DocumentVehicule.Type.CARTE_GRISE,
+            fichier="demo/carte-grise-214.pdf",
+            date_expiration=(timezone.now() + timedelta(days=200)).date(),
+        )
+        DocumentVehicule.objects.create(
+            vehicule=camion,
+            type=DocumentVehicule.Type.ASSURANCE,
+            fichier="demo/assurance-214.pdf",
+            date_expiration=(timezone.now() + timedelta(days=20)).date(),
+        )
+
+        # Facteurs d'émission par défaut (modifiables dans le back-office)
+        for type_vehicule, facteur in (
+            (Vehicule.Type.CAMIONNETTE, "0.1800"),
+            (Vehicule.Type.CAMION, "0.2500"),
+            (Vehicule.Type.SEMI_REMORQUE, "0.4100"),
+            (Vehicule.Type.FRIGORIFIQUE, "0.3300"),
+        ):
+            FacteurEmission.objects.create(type_vehicule=type_vehicule, kg_co2_par_km=Decimal(facteur))
 
         demain = timezone.now() + timedelta(days=1)
         trajet = Trajet.objects.create(
@@ -56,6 +77,8 @@ class Command(BaseCommand):
             date_depart=demain,
             capacite_dispo_kg=Decimal("1000"),
             capacite_dispo_m3=Decimal("8"),
+            capacite_totale_kg=Decimal("3000"),
+            capacite_totale_m3=Decimal("22"),
             prix_indicatif=Decimal("85"),
             distance_km=270,
             recurrent=True,

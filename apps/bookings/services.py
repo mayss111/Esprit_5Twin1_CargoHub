@@ -41,7 +41,7 @@ def trajets_compatibles(expedition, score_minimum=60):
     """Trajets ouverts autour de la date souhaitée, classés du meilleur au moins bon."""
     date = expedition.date_souhaitee
     candidats = Trajet.objects.filter(
-        statut=Trajet.Statut.OUVERT,
+        statut=Trajet.Statut.PUBLIE,
         vehicule__conforme=True,
         date_depart__date__range=(date - timedelta(days=2), date + timedelta(days=2)),
     ).prefetch_related("etapes")
@@ -81,15 +81,12 @@ def changer_statut(reservation: Reservation, nouveau: str, par=None) -> Reservat
     volume = Decimal(reservation.expedition.volume_total_m3)
 
     if nouveau == Reservation.Statut.ACCEPTEE:
-        if trajet.capacite_dispo_kg < poids or trajet.capacite_dispo_m3 < volume:
-            raise ReservationImpossible("Plus assez de place dans ce camion")
-        trajet.capacite_dispo_kg -= poids
-        trajet.capacite_dispo_m3 -= volume
-        trajet.save(update_fields=["capacite_dispo_kg", "capacite_dispo_m3"])
+        try:
+            trajet.reserver_capacite(poids, volume)
+        except ValueError as exc:
+            raise ReservationImpossible(str(exc)) from exc
     elif nouveau == Reservation.Statut.ANNULEE and reservation.statut == Reservation.Statut.ACCEPTEE:
-        trajet.capacite_dispo_kg += poids
-        trajet.capacite_dispo_m3 += volume
-        trajet.save(update_fields=["capacite_dispo_kg", "capacite_dispo_m3"])
+        trajet.liberer_capacite(poids, volume)
 
     HistoriqueStatut.objects.create(reservation=reservation, ancien=reservation.statut, nouveau=nouveau, par=par)
     reservation.statut = nouveau
