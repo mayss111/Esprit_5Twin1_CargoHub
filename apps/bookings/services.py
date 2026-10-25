@@ -66,7 +66,7 @@ def reserver(expedition, trajet, prix=None) -> Reservation:
 
 
 @transaction.atomic
-def changer_statut(reservation: Reservation, nouveau: str, par=None) -> Reservation:
+def changer_statut(reservation: Reservation, nouveau: str, par=None, motif: str = "") -> Reservation:
     """
     Fait passer une réservation d'un statut à un autre en respectant le diagramme d'états.
     À l'acceptation, la place du trajet est retirée de façon sûre (verrou sur la ligne),
@@ -91,7 +91,9 @@ def changer_statut(reservation: Reservation, nouveau: str, par=None) -> Reservat
         trajet.capacite_dispo_m3 += volume
         trajet.save(update_fields=["capacite_dispo_kg", "capacite_dispo_m3"])
 
-    HistoriqueStatut.objects.create(reservation=reservation, ancien=reservation.statut, nouveau=nouveau, par=par)
+    HistoriqueStatut.objects.create(
+        reservation=reservation, ancien=reservation.statut, nouveau=nouveau, par=par, motif=motif
+    )
     reservation.statut = nouveau
     reservation.save(update_fields=["statut", "updated_at"])
 
