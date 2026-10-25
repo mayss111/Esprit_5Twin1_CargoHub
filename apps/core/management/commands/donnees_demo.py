@@ -107,18 +107,11 @@ class Command(BaseCommand):
         Les dates sont recalées à J+7 tant que l'appel d'offres n'a pas été attribué.
         """
         sami = Utilisateur.objects.get(email="sami@atelier.tn")
-        karim = Utilisateur.objects.get(email="karim@transport.tn")
-        camion_karim = Vehicule.objects.filter(transporteur=karim).first()
+        karim = self.transporteur("karim@transport.tn", "Karim")
         mohamed = self.transporteur("mohamed@transport.tn", "Mohamed")
-        camion_mohamed, _ = Vehicule.objects.get_or_create(
-            immatriculation="318 TU 7720",
-            defaults={
-                "transporteur": mohamed,
-                "type": Vehicule.Type.CAMION,
-                "capacite_kg": 3500,
-                "capacite_m3": Decimal("20"),
-            },
-        )
+        # Camions de démo, toujours conformes (un camion non conforme rend tous ses trajets incompatibles).
+        camion_karim = self.camion_demo(karim, "214 TU 3381", 3000, "22")
+        camion_mohamed = self.camion_demo(mohamed, "318 TU 7720", 3500, "20")
 
         depart = (timezone.localtime() + timedelta(days=7)).replace(hour=8, minute=0, second=0, microsecond=0)
         expedition = Expedition.objects.filter(pme=sami, description=SOUTENANCE).first()
@@ -166,14 +159,52 @@ class Command(BaseCommand):
             )
             appel.effacer_recommandation()
 
+        else:
+            self.stdout.write(
+                self.style.WARNING(f"Appel d’offres #{appel.pk} déjà {appel.get_statut_display().lower()} : inchangé.")
+            )
+
         self.avis_passes(sami, karim, camion_karim, [5, 5, 4], "Livraison à l’heure, très soigneux.")
         self.avis_passes(sami, mohamed, camion_mohamed, [3, 2], "Retard à la livraison, cartons abîmés.")
+        self.verifier(appel, expedition)
+
+    def verifier(self, appel, expedition):
+        """Affiche l'état réel du scénario : chaque offre doit être compatible, sinon on le dit clairement."""
+        from apps.bookings.services import est_compatible, score_compatibilite
+        from apps.bookings.templatetags.trajets import itineraire
+        from apps.tenders.ai import notes_des_avis
+
+        expedition.refresh_from_db()
+        offres = appel.offres.select_related("transporteur", "trajet__vehicule").prefetch_related("trajet__etapes")
+        notes = notes_des_avis([o.transporteur_id for o in offres])
         self.stdout.write(
-            self.style.SUCCESS(
-                f"Scénario de soutenance prêt : appel d’offres #{appel.pk} (Monastir - Tunis, 300 kg) avec les offres "
-                f"de Mohamed (95 DT) et Karim (110 DT). Nouveau compte : mohamed@transport.tn / {MDP}"
-            )
+            f"Appel d’offres #{appel.pk} ({appel.get_statut_display()}) : {expedition.reference}, Monastir - Tunis, "
+            f"{expedition.poids_total_kg:g} kg, le {expedition.date_souhaitee:%d/%m/%Y}"
         )
+        toutes_ok = True
+        for o in offres:
+            ok = o.trajet is not None and est_compatible(expedition, o.trajet)
+            toutes_ok &= ok
+            trajet = itineraire(o.trajet).replace("→", "-") if o.trajet else "sans trajet"
+            score = score_compatibilite(expedition, o.trajet) if o.trajet else 0
+            note = f"{notes[o.transporteur_id]:g}/5" if o.transporteur_id in notes else "pas d’avis"
+            etat = "compatible" if ok else "INCOMPATIBLE"
+            self.stdout.write(f"  - {o.transporteur} : {o.prix} DT, {trajet}, score {score}/100, note {note} -> {etat}")
+        message = f"Scénario de soutenance prêt. Nouveau compte : mohamed@transport.tn / {MDP}"
+        self.stdout.write(self.style.SUCCESS(message) if toutes_ok else self.style.ERROR("Offre incompatible !"))
+
+    def camion_demo(self, transporteur, immatriculation, capacite_kg, capacite_m3):
+        camion, _ = Vehicule.objects.update_or_create(
+            immatriculation=immatriculation,
+            defaults={
+                "transporteur": transporteur,
+                "type": Vehicule.Type.CAMION,
+                "capacite_kg": capacite_kg,
+                "capacite_m3": Decimal(capacite_m3),
+                "conforme": True,
+            },
+        )
+        return camion
 
     def offre_demo(self, appel, transporteur, camion, ville_depart, etapes, date, distance, prix, message):
         """Le trajet de démo est retrouvé par son offre : aucun risque de confondre avec un trajet créé à la main."""
@@ -184,6 +215,7 @@ class Command(BaseCommand):
         trajet.capacite_dispo_kg, trajet.capacite_dispo_m3 = Decimal("1500"), Decimal("10")
         trajet.statut = Trajet.Statut.OUVERT
         trajet.save()
+        trajet.etapes.filter(ordre__gt=len(etapes)).delete()  # étapes ajoutées à la main : on repart propre
         for ordre, ville in enumerate(etapes, start=1):
             trajet.etapes.update_or_create(ordre=ordre, defaults={"ville": ville})
         Offre.objects.update_or_create(
@@ -199,7 +231,10 @@ class Command(BaseCommand):
         if cree:
             user.set_password(MDP)
             user.save(update_fields=["password"])
-        ProfilTransporteur.objects.get_or_create(
+        elif not user.is_active:  # compte désactivé pendant une répétition : on le réactive
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+        ProfilTransporteur.objects.update_or_create(
             utilisateur=user, defaults={"statut_validation": ProfilTransporteur.Statut.VALIDE}
         )
         return user
