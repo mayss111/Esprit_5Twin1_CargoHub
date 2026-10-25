@@ -22,6 +22,38 @@ MENU_PME = [
     ("Aide et support", "messaging:assistant", "life-preserver"),
     ("Fidélité", "loyalty:liste", "gift"),
 ]
+GROUPES_PME = [
+    ("Expéditions", ["shipments:liste", "bookings:trouver"]),
+    ("Entrepôts", ["warehouses:liste", "warehouses:mes_depots"]),
+    ("Transport", ["bookings:liste", "tenders:liste", "tracking:liste"]),
+    ("Services", ["payments:liste", "insurance:liste", "messaging:liste", "contracts:liste", "messaging:assistant", "loyalty:liste"]),
+]
+GROUPES_TRANSPORTEUR = [
+    ("Flotte", ["fleet:vehicules", "fleet:liste", "fleet:planificateur", "maintenance:liste"]),
+    ("Activité", ["bookings:demandes", "bookings:liste", "tenders:liste", "tracking:liste"]),
+    ("Services", ["payments:liste", "messaging:liste", "contracts:liste", "messaging:assistant", "ecology:liste"]),
+]
+
+
+def _menus_groupes(menu, groupes):
+    """Regroupe les liens connus. Un lien nouveau reste visible dans Plus."""
+    par_url = {url: (libelle, url, icone) for libelle, url, icone in menu}
+    utilises = set()
+    resultat = []
+    for titre, urls in groupes:
+        liens = [par_url[url] for url in urls if url in par_url]
+        utilises.update(url for _libelle, url, _icone in liens)
+        if len(liens) == 1:
+            libelle, url, icone = liens[0]
+            resultat.append({"titre": libelle, "url": url, "icone": icone, "liens": []})
+        elif liens:
+            resultat.append({"titre": titre, "url": "", "icone": "", "liens": liens})
+    reste = [entree for entree in menu if entree[1] not in utilises]
+    if reste:
+        resultat.append({"titre": "Plus", "url": "", "icone": "", "liens": reste})
+    return resultat
+
+
 MENU_TRANSPORTEUR = [
     ("Mes véhicules", "fleet:vehicules", "truck"),
     ("Mes trajets", "fleet:liste", "signpost-split"),
@@ -99,13 +131,18 @@ def navigation(request):
     if user.is_authenticated:
         if user.role == Role.PME:
             menu = MENU_PME
+            groupes = GROUPES_PME
         elif user.role == Role.TRANSPORTEUR:
             menu = MENU_TRANSPORTEUR
+            groupes = GROUPES_TRANSPORTEUR
+        else:
+            groupes = []
     notifications = []
     if user.is_authenticated:
         notifications = list(user.notifications.filter(lu=False)[:5])
     return {
         "menu_front": menu,
+        "menu_groupes": _menus_groupes(menu, groupes) if menu else [],
         "menu_backoffice": MENU_BACKOFFICE,
         "est_admin": est_admin(user),
         "notifications_non_lues": notifications,

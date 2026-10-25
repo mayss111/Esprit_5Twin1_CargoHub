@@ -22,8 +22,15 @@ a { color: var(--ch-navy); }
   --bs-btn-hover-bg: #E08E00; --bs-btn-hover-border-color: #E08E00; --bs-btn-font-weight: 700; }
 
 .navbar-ch { background: var(--ch-navy); }
-.navbar-ch .nav-link { color: #DCE4F4; white-space: nowrap; }
-.navbar-ch .nav-link:hover, .navbar-ch .nav-link.active { color: var(--ch-amber); }
+.navbar-ch .navbar-nav { gap: .15rem; }
+.navbar-ch .nav-link { color: #DCE4F4; white-space: nowrap; font-size: .92rem; padding: .4rem .6rem; }
+.navbar-ch .nav-link:hover, .navbar-ch .nav-link.active, .navbar-ch .nav-link.show { color: var(--ch-amber); }
+.navbar-ch .dropdown-menu { font-size: .92rem; }
+.navbar-ch .dropdown-item { display: flex; align-items: center; gap: .45rem; }
+.navbar-compte { align-items: center; }
+.nav-cloche { position: relative; }
+.nav-cloche .badge { position: absolute; top: .15rem; right: .05rem; font-size: .65rem; }
+.nav-identite { max-width: 12rem; overflow: hidden; text-overflow: ellipsis; }
 
 .kicker { font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ch-amber-dark); }
 .page-title { font-weight: 800; color: var(--ch-navy); letter-spacing: -.02em; }
