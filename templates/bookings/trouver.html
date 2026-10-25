@@ -10,7 +10,7 @@
     <article class="card card-ch h-100 p-3">
       <h2 class="h6 mb-1">{{ e.reference }}</h2>
       <p class="mb-1">{{ e.adresse_depart.ville }} <span aria-hidden="true">→</span><span class="visually-hidden">vers</span> {{ e.adresse_arrivee.ville }}</p>
-      <p class="small text-muted mb-2">Le {{ e.date_souhaitee|date:"d/m/Y" }} · {{ e.poids_total_kg|floatformat:0 }} kg
+      <p class="small text-muted mb-2">Le {{ e.date_souhaitee|date:"d/m/Y" }} · {% if e.poids_total_kg %}{{ e.poids_total_kg|floatformat:0 }} kg{% else %}<strong>0 kg : ajoutez des articles</strong>{% endif %}
         {% if e.demandes %}· {{ e.demandes }} demande{{ e.demandes|pluralize }} en cours{% endif %}</p>
       <div class="mt-auto d-flex flex-wrap gap-2">
         <a class="btn btn-sm btn-accent" href="{% url 'bookings:camions' e.pk %}"><i class="bi bi-truck" aria-hidden="true"></i> Camions compatibles<span class="visually-hidden"> pour {{ e.reference }}</span></a>

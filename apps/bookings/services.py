@@ -43,6 +43,10 @@ def score_compatibilite(expedition, trajet) -> int:
 
 ECART_MAX_JOURS = 2
 
+EXPEDITION_VIDE = (
+    "Cette expédition ne contient aucune marchandise (0 kg) : ajoutez des articles avant de chercher un transporteur."
+)
+
 
 def est_compatible(expedition, trajet) -> bool:
     """Même règle que « Camions compatibles » : camion conforme, départ à ± 2 jours, score ≥ 60 (bonnes villes)."""

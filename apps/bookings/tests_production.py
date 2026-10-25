@@ -67,3 +67,22 @@ def test_pas_de_requete_par_etape(client, django_assert_max_num_queries, pme, ex
     client.force_login(trajet_via_monastir.transporteur)
     with django_assert_max_num_queries(15):
         client.get(reverse("bookings:demandes"))
+
+
+# ---------------------------------------------------------------- 4. expédition de 0 kg
+
+
+@pytest.fixture
+def expedition_vide(expedition):
+    expedition.articles.all().delete()
+    return expedition
+
+
+def test_reserver_une_expedition_vide_est_refuse(client, pme, expedition_vide, trajet):
+    client.force_login(pme)
+    html = client.get(reverse("bookings:camions", args=[expedition_vide.pk])).content.decode()
+    assert services.EXPEDITION_VIDE in html and "Réserver" not in html
+    reponse = client.post(reverse("bookings:reserver", args=[expedition_vide.pk, trajet.pk]), follow=True)
+    assert services.EXPEDITION_VIDE in reponse.content.decode()
+    assert not expedition_vide.reservations.exists()
+    assert "0 kg : ajoutez des articles" in client.get(reverse("bookings:trouver")).content.decode()

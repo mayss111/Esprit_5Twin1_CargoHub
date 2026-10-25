@@ -21,7 +21,7 @@ from apps.shipments.models import Expedition
 
 from .forms import AnnulationLitigeForm, FiltreReservationsForm
 from .models import Reservation
-from .services import ReservationImpossible, changer_statut, reserver, trajets_compatibles
+from .services import EXPEDITION_VIDE, ReservationImpossible, changer_statut, reserver, trajets_compatibles
 
 EN_COURS = [Reservation.Statut.EN_ATTENTE, Reservation.Statut.ACCEPTEE]
 
@@ -72,10 +72,13 @@ class CamionsCompatiblesView(RoleRequiredMixin, TemplateView):
             pme=self.request.user,
         )
         publiee = expedition.statut == Expedition.Statut.PUBLIEE
+        vide = expedition.poids_total_kg <= 0
         ctx.update(
             expedition=expedition,
             publiee=publiee,
-            resultats=trajets_compatibles(expedition) if publiee else [],
+            vide=vide,
+            message_vide=EXPEDITION_VIDE,
+            resultats=trajets_compatibles(expedition) if publiee and not vide else [],
             deja_demandes=set(expedition.reservations.filter(statut__in=EN_COURS).values_list("trajet_id", flat=True)),
         )
         return ctx
@@ -89,6 +92,8 @@ class ReserverView(RoleRequiredMixin, View):
         trajet = get_object_or_404(Trajet, pk=trajet_id, statut=Trajet.Statut.OUVERT)
         if expedition.statut != Expedition.Statut.PUBLIEE:
             messages.error(request, "Seule une expédition publiée peut être réservée.")
+        elif expedition.poids_total_kg <= 0:
+            messages.error(request, EXPEDITION_VIDE)
         elif expedition.reservations.filter(trajet=trajet, statut__in=EN_COURS).exists():
             messages.warning(request, "Vous avez déjà demandé une place sur ce trajet.")
         else:

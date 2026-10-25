@@ -3,7 +3,7 @@ from decimal import Decimal
 from django import forms
 from django.utils import timezone
 
-from apps.bookings.services import est_compatible
+from apps.bookings.services import EXPEDITION_VIDE, est_compatible
 from apps.fleet.models import Trajet
 from apps.shipments.models import Expedition
 
@@ -57,6 +57,8 @@ class AppelOffreForm(forms.ModelForm):
         data = super().clean()
         expedition = data.get("expedition") or getattr(self.instance, "expedition", None)
         date = data.get("date_cloture")
+        if expedition and expedition.poids_total_kg <= 0:
+            self.add_error("expedition" if "expedition" in self.fields else None, EXPEDITION_VIDE)
         if expedition and date and date.date() > expedition.date_souhaitee:
             self.add_error("date_cloture", "La date limite doit être avant la date d’expédition.")
         return data

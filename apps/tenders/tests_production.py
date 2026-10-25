@@ -134,3 +134,18 @@ def test_retenir_reverifie_le_trajet(pme, appel_offre, offre, trajet):
         retenir_offre(offre, par=pme)
     appel_offre.refresh_from_db()
     assert appel_offre.statut == AppelOffre.Statut.OUVERT and not Reservation.objects.exists()
+
+
+# ---------------------------------------------------------------- 4. expédition de 0 kg
+
+
+def test_appel_d_offres_sur_une_expedition_vide(pme, expedition, appel_offre):
+    from apps.bookings.services import EXPEDITION_VIDE
+    from apps.tenders.forms import AppelOffreForm
+
+    expedition.articles.all().delete()
+    appel_offre.delete()  # l'expédition redevient disponible pour un appel
+    expedition.refresh_from_db()
+    date = (expedition.date_souhaitee - timedelta(days=1)).strftime("%Y-%m-%dT18:00")
+    form = AppelOffreForm({"expedition": expedition.pk, "date_cloture": date, "prix_max": "150"}, pme=pme)
+    assert form.errors["expedition"] == [EXPEDITION_VIDE]
