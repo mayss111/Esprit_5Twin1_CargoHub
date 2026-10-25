@@ -11,7 +11,7 @@
   <div class="form-text mt-2">Les résultats se mettent à jour automatiquement.</div>
 </form>
 {% if reclamations %}
-<div class="table-responsive"><table class="table table-ch align-middle">
+<div class="table-responsive"><table class="table table-ch align-middle"><caption class="visually-hidden">Mes réclamations</caption>
   <thead><tr><th>Référence</th><th>Titre</th><th>Expédition</th><th>Type</th><th>Statut</th><th>Créée le</th><th></th></tr></thead>
   <tbody>{% for reclamation in reclamations %}<tr>
     <td class="fw-semibold">{{ reclamation.reference }}</td><td>{{ reclamation.titre }}</td><td>{{ reclamation.expedition.reference }}</td>

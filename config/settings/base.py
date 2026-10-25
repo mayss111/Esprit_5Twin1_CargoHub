@@ -169,6 +169,12 @@ AI_API_KEY = env("AI_API_KEY", default="")
 AI_BASE_URL = env("AI_BASE_URL", default="https://api.groq.com/openai/v1")
 AI_MODEL = env("AI_MODEL", default="llama-3.3-70b-versatile")
 
+# Audio : clé OpenAI séparée, car Groq/Ollama ne proposent pas tous les mêmes endpoints audio.
+OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
+OPENAI_TRANSCRIPTION_MODEL = env("OPENAI_TRANSCRIPTION_MODEL", default="gpt-transcribe")
+OPENAI_TTS_MODEL = env("OPENAI_TTS_MODEL", default="gpt-4o-mini-tts")
+OPENAI_TTS_VOICE = env("OPENAI_TTS_VOICE", default="coral")
+
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY", default="")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")

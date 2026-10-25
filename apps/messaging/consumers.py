@@ -4,6 +4,8 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.utils import timezone
 
+from apps.core.roles import est_admin
+
 from .models import Conversation
 from .services import ConversationBloquee, TEXTE_MASQUE, envoyer_message
 
@@ -46,7 +48,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def _participe(self, user):
-        return Conversation.objects.filter(pk=self.conversation_id, participants=user).exists()
+        return est_admin(user) or Conversation.objects.filter(pk=self.conversation_id, participants=user).exists()
 
     @database_sync_to_async
     def _enregistrer(self, texte):

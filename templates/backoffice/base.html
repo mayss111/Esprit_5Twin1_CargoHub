@@ -41,7 +41,7 @@
       </form>
     </header>
     <main class="p-4" id="contenu" tabindex="-1">
-      {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>{% endfor %}
+      {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}" role="status" aria-live="polite" aria-atomic="true">{{ message }}</div>{% endfor %}
       {% block content %}{% endblock %}
     </main>
   </div>

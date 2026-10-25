@@ -18,6 +18,7 @@
       indicateur.append(" ", badge);
     }
     badge.textContent = total;
+    indicateur.setAttribute("aria-label", `Messagerie, ${total} message${total > 1 ? "s" : ""} non lu${total > 1 ? "s" : ""}`);
 
     menu.querySelector("[data-messagerie-vide]")?.remove();
     const item = document.createElement("li");
@@ -36,6 +37,9 @@
 
     const toast = document.createElement("div");
     toast.className = "messagerie-toast shadow";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    toast.setAttribute("aria-atomic", "true");
     toast.innerHTML = '<i class="bi bi-chat-dots-fill me-2" aria-hidden="true"></i><strong>Nouveau message</strong>';
     toast.append(document.createTextNode(` de ${data.auteur || "un interlocuteur"}`));
     document.body.append(toast);

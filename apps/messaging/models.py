@@ -34,6 +34,8 @@ class Message(Horodate):
     auteur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     contenu = models.TextField()
     piece_jointe = models.FileField(upload_to="messagerie/", blank=True)
+    fichier_audio = models.FileField(upload_to="messagerie/audio/", blank=True)
+    transcription = models.TextField(blank=True)
     lu = models.BooleanField(default=False)
     signale = models.BooleanField(default=False)  # rempli par la modération IA
     raison_signalement = models.CharField(max_length=200, blank=True)

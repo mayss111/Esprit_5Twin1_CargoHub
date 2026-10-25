@@ -20,7 +20,7 @@ class ConversationBloquee(Exception):
     pass
 
 
-def envoyer_message(conversation, auteur, contenu, piece_jointe=None):
+def envoyer_message(conversation, auteur, contenu, piece_jointe=None, fichier_audio=None, transcription=""):
     """Enregistre un message après modération. Un message signalé reste visible par son auteur et par l'admin."""
     if conversation.bloquee_par.exists():
         raise ConversationBloquee("Cette conversation est bloquée.")
@@ -34,6 +34,8 @@ def envoyer_message(conversation, auteur, contenu, piece_jointe=None):
         auteur=auteur,
         contenu=contenu,
         piece_jointe=piece_jointe or "",
+        fichier_audio=fichier_audio or "",
+        transcription=transcription or "",
         signale=verdict["signale"],
         raison_signalement=verdict["raison"],
     )
@@ -41,7 +43,7 @@ def envoyer_message(conversation, auteur, contenu, piece_jointe=None):
     if message.signale:
         apercu = "Un message a été masqué par la modération."
     else:
-        apercu = "Pièce jointe reçue." if piece_jointe else contenu[:120]
+        apercu = "Message vocal reçu." if fichier_audio else ("Pièce jointe reçue." if piece_jointe else contenu[:120])
     for destinataire_id in destinataires:
         notifier.delay(
             destinataire_id,

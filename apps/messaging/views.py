@@ -9,15 +9,18 @@ import logging
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.contrib import messages
+from django.http import FileResponse, HttpResponse
 from django.db.models import Count, Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views import View
-from django.views.generic import CreateView, DeleteView, DetailView, FormView, UpdateView
+from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, UpdateView
 
 from apps.core import ai
 from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
+from apps.core.roles import Role
+from apps.core.audio import AudioIndisponible, tts_http_response
 from apps.core.views import ListeBackofficeView, ListeFrontView
 
 from .ai import REPONSE_PAR_DEFAUT, repondre_support
@@ -106,7 +109,8 @@ class ConversationDetailView(RoleRequiredMixin, View):
             return self.afficher(conversation, form)
         try:
             message = envoyer_message(
-                conversation, request.user, form.cleaned_data["contenu"], form.cleaned_data.get("piece_jointe")
+                conversation, request.user, form.cleaned_data["contenu"], form.cleaned_data.get("piece_jointe"),
+                form.cleaned_data.get("fichier_audio"), "",
             )
         except ConversationBloquee:
             messages.error(request, "Cette conversation est bloquée.")
@@ -182,6 +186,37 @@ class MessageSupprimerView(RoleRequiredMixin, View):
         message.delete()
         messages.success(request, "Message supprimé.")
         return redirect("messaging:conversation", pk=conversation_id)
+
+
+class MessageAudioView(RoleRequiredMixin, View):
+    """Diffuse un vocal uniquement à un participant ou à un administrateur."""
+
+    def get(self, request, pk):
+        queryset = Message.objects.select_related("conversation").filter(pk=pk)
+        if not (request.user.is_superuser or getattr(request.user, "role", None) == Role.ADMIN):
+            queryset = queryset.filter(conversation__participants=request.user)
+        message = get_object_or_404(queryset)
+        if not message.fichier_audio:
+            return HttpResponse(status=404)
+        response = FileResponse(message.fichier_audio.open("rb"), content_type="audio/webm")
+        response["Content-Disposition"] = "inline"
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+
+class MessageTTSView(RoleRequiredMixin, View):
+    def get(self, request, pk):
+        queryset = Message.objects.select_related("conversation").filter(pk=pk)
+        if not (request.user.is_superuser or getattr(request.user, "role", None) == Role.ADMIN):
+            queryset = queryset.filter(conversation__participants=request.user)
+        message = get_object_or_404(queryset)
+        if message.signale and message.auteur_id != request.user.pk and not request.user.is_staff:
+            return HttpResponse(status=404)
+        texte = message.contenu or message.transcription or "Message vocal CargoHub."
+        try:
+            return tts_http_response(texte)
+        except AudioIndisponible:
+            return HttpResponse("Le service audio est indisponible.", status=503)
 
 
 # ---------------------------------------------------------------- assistant et tickets
@@ -306,6 +341,56 @@ class BackofficeTicketSupportView(ListeBackofficeView):
         ctx = super().get_context_data(**kwargs)
         ctx["statuts"] = TicketSupport.Statut.choices
         return ctx
+
+
+class BackofficeConversationsView(AdminRequiredMixin, ListView):
+    model = Conversation
+    template_name = "messaging/backoffice/conversations.html"
+    context_object_name = "conversations"
+    paginate_by = 25
+
+    def get_queryset(self):
+        return (
+            Conversation.objects.prefetch_related("participants")
+            .select_related("reservation")
+            .annotate(dernier=Max("messages__created_at"))
+            .order_by("-dernier", "-created_at")
+        )
+
+
+class BackofficeConversationDetailView(AdminRequiredMixin, View):
+    template_name = "messaging/backoffice/conversation.html"
+
+    def get_conversation(self):
+        return get_object_or_404(Conversation, pk=self.kwargs["pk"])
+
+    def afficher(self, conversation, form):
+        conversation.messages.filter(lu=False).update(lu=True)
+        fil = [(m, texte_visible(m, self.request.user)) for m in conversation.messages.select_related("auteur")]
+        return render(
+            self.request,
+            self.template_name,
+            {"conversation": conversation, "fil": fil, "form": form},
+        )
+
+    def get(self, request, pk):
+        return self.afficher(self.get_conversation(), MessageForm())
+
+    def post(self, request, pk):
+        conversation = self.get_conversation()
+        form = MessageForm(request.POST, request.FILES)
+        if not form.is_valid():
+            return self.afficher(conversation, form)
+        try:
+            message = envoyer_message(
+                conversation, request.user, form.cleaned_data["contenu"], form.cleaned_data.get("piece_jointe"),
+                form.cleaned_data.get("fichier_audio"), "",
+            )
+        except ConversationBloquee:
+            messages.error(request, "Cette conversation est bloquée. Débloquez-la avant d’écrire.")
+            return self.afficher(conversation, form)
+        diffuser(message)
+        return redirect(f"{reverse('bo_messaging:conversation', args=[pk])}#dernier")
 
 
 class BackofficeTicketDetailView(AdminRequiredMixin, UpdateView):

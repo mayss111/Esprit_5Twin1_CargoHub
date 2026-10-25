@@ -50,6 +50,7 @@ MENU_BACKOFFICE = [
         [
             ("Utilisateurs", "bo_accounts:liste", "people"),
             ("Support", "bo_messaging:liste", "life-preserver"),
+            ("Conversations", "bo_messaging:conversations", "chat-dots"),
             ("Réclamations", "bo_reclamations:liste", "exclamation-circle"),
             ("Modération", "bo_messaging:moderation", "flag"),
             ("Contrats", "bo_contracts:liste", "file-earmark-text"),

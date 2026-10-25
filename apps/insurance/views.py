@@ -4,6 +4,7 @@ from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import HttpResponse
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -14,6 +15,8 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
 from apps.core.roles import Role
 from apps.bookings.notification_service import notifier_dossier
+from apps.core.audio import AudioIndisponible, tts_http_response
+from apps.core.roles import est_admin
 
 from .forms import PieceJustificativeForm, SinistreForm, TraitementSinistreForm
 from .models import PieceJustificative, Sinistre
@@ -96,6 +99,28 @@ class SinistreDetailView(MesSinistresMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context["justificatif_form"] = PieceJustificativeForm()
         return context
+
+
+class SinistreEcouterView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        if est_admin(request.user):
+            queryset = Sinistre.objects.all()
+        elif request.user.role == Role.TRANSPORTEUR:
+            queryset = Sinistre.objects.filter(
+                Q(auteur=request.user) | Q(expedition__reservations__trajet__transporteur=request.user)
+            )
+        else:
+            queryset = Sinistre.objects.filter(Q(auteur=request.user) | Q(expedition__pme=request.user))
+        sinistre = get_object_or_404(queryset.distinct(), pk=pk)
+        texte = f"{sinistre.titre}. {sinistre.description}."
+        if sinistre.decision_admin:
+            texte += f" Décision administrative : {sinistre.decision_admin}."
+        if sinistre.justification_decision:
+            texte += f" Justification : {sinistre.justification_decision}."
+        try:
+            return tts_http_response(texte)
+        except AudioIndisponible:
+            return HttpResponse("Le service audio est indisponible.", status=503)
 
 
 class SinistreModifierView(MesSinistresMixin, UpdateView):

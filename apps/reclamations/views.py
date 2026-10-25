@@ -2,6 +2,7 @@ from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import HttpResponse
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -12,6 +13,8 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
 from apps.core.roles import Role
 from apps.bookings.notification_service import notifier_dossier
+from apps.core.audio import AudioIndisponible, tts_http_response
+from apps.core.roles import est_admin
 
 from .forms import ReclamationForm, TraitementReclamationForm
 from .models import Reclamation
@@ -104,6 +107,28 @@ class MesReclamationsMixin(LoginRequiredMixin):
 
 class ReclamationDetailView(MesReclamationsMixin, DetailView):
     template_name = "reclamations/detail.html"
+
+
+class ReclamationEcouterView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        if est_admin(request.user):
+            queryset = Reclamation.objects.all()
+        elif request.user.role == Role.TRANSPORTEUR:
+            queryset = Reclamation.objects.filter(
+                Q(auteur=request.user) | Q(expedition__reservations__trajet__transporteur=request.user)
+            )
+        else:
+            queryset = Reclamation.objects.filter(Q(auteur=request.user) | Q(expedition__pme=request.user))
+        reclamation = get_object_or_404(queryset.distinct(), pk=pk)
+        texte = f"{reclamation.titre}. {reclamation.description}."
+        if reclamation.reponse_admin:
+            texte += f" Réponse administrative : {reclamation.reponse_admin}."
+        if reclamation.justification_decision:
+            texte += f" Justification : {reclamation.justification_decision}."
+        try:
+            return tts_http_response(texte)
+        except AudioIndisponible:
+            return HttpResponse("Le service audio est indisponible.", status=503)
 
 
 class ReclamationModifierView(MesReclamationsMixin, UpdateView):

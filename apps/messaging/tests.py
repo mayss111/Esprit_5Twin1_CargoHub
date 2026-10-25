@@ -442,6 +442,18 @@ def test_backoffice_moderation(client, admin_user, conversation, pme):
     assert not Message.objects.filter(pk=a_supprimer.pk).exists()
 
 
+def test_admin_consulte_et_ecrit_dans_une_conversation(client, admin_user, conversation, pme):
+    client.force_login(admin_user)
+    assert client.get(reverse("bo_messaging:conversations")).status_code == 200
+    assert client.get(reverse("bo_messaging:conversation", args=[conversation.pk])).status_code == 200
+    response = client.post(
+        reverse("bo_messaging:conversation", args=[conversation.pk]),
+        {"contenu": "Bonjour, je prends en charge votre échange."},
+    )
+    assert response.status_code == 302
+    assert conversation.messages.get().auteur == admin_user
+
+
 @pytest.mark.parametrize("nom, args", [("liste", []), ("moderation", []), ("ticket", [1]), ("ticket_supprimer", [1])])
 def test_backoffice_messagerie_interdit_aux_pme(client, pme, nom, args):
     client.force_login(pme)

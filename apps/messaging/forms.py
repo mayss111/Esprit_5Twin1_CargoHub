@@ -9,16 +9,26 @@ from apps.core.roles import Role
 
 from .models import Message, TicketSupport
 
+EXTENSIONS_AUDIO = (".webm", ".ogg", ".mp3", ".wav", ".m4a", ".mp4", ".mpeg", ".mpga")
+TAILLE_MAX_AUDIO = 25 * 1024 * 1024
+
+
+def valider_audio(fichier):
+    if fichier and getattr(fichier, "size", 0) > TAILLE_MAX_AUDIO:
+        raise forms.ValidationError("Le vocal dépasse 25 Mo.")
+    return fichier
+
 
 class MessageForm(forms.ModelForm):
     class Meta:
         model = Message
-        fields = ("contenu", "piece_jointe")
-        labels = {"contenu": "Votre message", "piece_jointe": "Pièce jointe (facultatif)"}
+        fields = ("contenu", "piece_jointe", "fichier_audio")
+        labels = {"contenu": "Votre message", "piece_jointe": "Pièce jointe (facultatif)", "fichier_audio": "Message vocal (facultatif)"}
         widgets = {"contenu": forms.Textarea(attrs={"rows": 2, "maxlength": 2000})}
         help_texts = {
             "contenu": "Facultatif si vous envoyez une pièce jointe.",
             "piece_jointe": "PDF, JPG ou PNG, 5 Mo maximum.",
+            "fichier_audio": "WebM, OGG, MP3, WAV ou M4A, 25 Mo maximum.",
         }
 
     def __init__(self, *args, **kwargs):
@@ -26,14 +36,17 @@ class MessageForm(forms.ModelForm):
         self.fields["contenu"].required = False
         self.fields["piece_jointe"].validators += [FileExtensionValidator(EXTENSIONS_DOCUMENTS), valider_document]
         self.fields["piece_jointe"].widget.attrs["accept"] = ".pdf,.jpg,.jpeg,.png"
+        self.fields["fichier_audio"].required = False
+        self.fields["fichier_audio"].validators += [FileExtensionValidator(EXTENSIONS_AUDIO), valider_audio]
+        self.fields["fichier_audio"].widget.attrs.update({"accept": "audio/*", "capture": "user", "data-audio-input": ""})
 
     def clean_contenu(self):
         return self.cleaned_data.get("contenu", "").strip()
 
     def clean(self):
         data = super().clean()
-        if not data.get("contenu") and not data.get("piece_jointe"):
-            self.add_error("contenu", "Ajoutez un texte ou une pièce jointe.")
+        if not data.get("contenu") and not data.get("piece_jointe") and not data.get("fichier_audio"):
+            self.add_error("contenu", "Ajoutez un texte, une pièce jointe ou un message vocal.")
         return data
 
 
