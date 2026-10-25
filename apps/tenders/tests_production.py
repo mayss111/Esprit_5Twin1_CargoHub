@@ -141,36 +141,88 @@ def test_retenir_reverifie_le_trajet(pme, appel_offre, offre, trajet):
 
 
 def test_appel_d_offres_sur_une_expedition_vide(pme, expedition, appel_offre):
-    from apps.bookings.services import EXPEDITION_VIDE
-    from apps.tenders.forms import AppelOffreForm
+    from apps.tenders.forms import EXPEDITION_INDISPONIBLE, AppelOffreForm
 
     expedition.articles.all().delete()
     appel_offre.delete()  # l'expédition redevient disponible pour un appel
-    expedition.refresh_from_db()
     date = (expedition.date_souhaitee - timedelta(days=1)).strftime("%Y-%m-%dT18:00")
     form = AppelOffreForm({"expedition": expedition.pk, "date_cloture": date, "prix_max": "150"}, pme=pme)
-    assert form.errors["expedition"] == [EXPEDITION_VIDE]
+    assert form.errors["expedition"] == [EXPEDITION_INDISPONIBLE]
 
 
 # ---------------------------------------------------------------- 5. formulaire « Nouvel appel d'offres »
 
 
-def test_expeditions_proposees_pour_un_appel(pme, expedition, trajet):
+def _rendre(expedition, cas, trajet, autre_pme):
+    """Met l'expédition dans la situation `cas` (qui doit l'exclure du formulaire)."""
     from apps.bookings import services
     from apps.shipments.models import Expedition
-    from apps.tenders.forms import AppelOffreForm, expeditions_pour_appel
 
-    assert list(expeditions_pour_appel(pme)) == [expedition]
-    reservation = services.reserver(expedition, trajet)
-    assert list(expeditions_pour_appel(pme)) == [expedition]  # simple demande : toujours proposée
-    services.changer_statut(reservation, Reservation.Statut.ACCEPTEE)
-    assert not expeditions_pour_appel(pme).exists()  # un transporteur est déjà trouvé
+    maj = Expedition.objects.filter(pk=expedition.pk).update
+    if cas == "brouillon":
+        maj(statut=Expedition.Statut.BROUILLON)
+    elif cas == "0_kg":
+        expedition.articles.all().delete()
+    elif cas == "part_aujourd_hui":
+        maj(date_souhaitee=timezone.localdate())
+    elif cas == "date_passee":
+        maj(date_souhaitee=timezone.localdate() - timedelta(days=1))
+    elif cas == "appel_existant":
+        AppelOffre.objects.create(expedition=expedition, date_cloture=timezone.now() + timedelta(hours=5))
+    elif cas == "autre_pme":
+        maj(pme=autre_pme)
+    else:  # réservation EN_ATTENTE, ACCEPTEE ou EN_TRANSIT
+        reservation = services.reserver(expedition, trajet)
+        for statut in {"en_attente": [], "acceptee": ["ACCEPTEE"], "en_transit": ["ACCEPTEE", "EN_TRANSIT"]}[cas]:
+            services.changer_statut(reservation, statut)
 
-    services.changer_statut(reservation, Reservation.Statut.ANNULEE)
-    Expedition.objects.filter(pk=expedition.pk).update(date_souhaitee=timezone.localdate() - timedelta(days=1))
-    assert not expeditions_pour_appel(pme).exists()  # date passée : aucune date limite possible
-    Expedition.objects.filter(pk=expedition.pk).update(date_souhaitee=timezone.localdate())
-    assert list(expeditions_pour_appel(pme)) == [expedition]
+
+CAS_EXCLUS = [
+    "brouillon",
+    "0_kg",
+    "part_aujourd_hui",
+    "date_passee",
+    "en_attente",
+    "acceptee",
+    "en_transit",
+    "appel_existant",
+    "autre_pme",
+]
+
+
+@pytest.mark.parametrize("cas", CAS_EXCLUS)
+def test_expedition_exclue_du_formulaire(client, pme, autre_pme, expedition, trajet, cas):
+    from apps.tenders.forms import EXPEDITION_INDISPONIBLE, AppelOffreForm, expeditions_pour_appel
+
+    assert list(expeditions_pour_appel(pme)) == [expedition]  # au départ : proposée
+    _rendre(expedition, cas, trajet, autre_pme)
+    assert not expeditions_pour_appel(pme).exists()
+
+    # Identifiant forcé dans le POST : refusé côté serveur, aucun appel créé.
+    date = (timezone.localtime() + timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M")
+    form = AppelOffreForm({"expedition": expedition.pk, "date_cloture": date, "prix_max": "150"}, pme=pme)
+    assert form.errors["expedition"] == [EXPEDITION_INDISPONIBLE]
+
+    # ?expedition=<id> : pas pré-rempli, et la page explique pourquoi.
+    client.force_login(pme)
+    reponse = client.get(reverse("tenders:creer"), {"expedition": expedition.pk})
+    assert "expedition" not in reponse.context["form"].initial
+    html = reponse.content.decode()
+    assert ("pas d’appel d’offres possible, car" in html) is (cas != "autre_pme")  # l'id d'un autre : silence
+    assert "Aucune de vos expéditions ne peut" in html and reverse("shipments:creer") in html
+
+
+def test_raison_affichee_et_preremplissage(client, pme, expedition, trajet, autre_pme):
+    from apps.tenders.forms import AppelOffreForm, pourquoi_indisponible
+
+    assert pourquoi_indisponible(expedition) is None
+    client.force_login(pme)
+    assert client.get(reverse("tenders:creer"), {"expedition": expedition.pk}).context["form"].initial == {
+        "expedition": expedition.pk
+    }
+    assert client.get(reverse("tenders:creer"), {"expedition": "abc"}).context["form"].initial == {}
+    _rendre(expedition, "en_attente", trajet, autre_pme)
+    assert pourquoi_indisponible(expedition) == "elle a déjà une réservation en cours"
 
     attribut_min = AppelOffreForm(pme=pme).fields["date_cloture"].widget.attrs["min"]
     assert attribut_min.startswith(timezone.localtime().strftime("%Y-%m-%dT")) and len(attribut_min) == 16

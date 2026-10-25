@@ -211,7 +211,7 @@ def test_liste_selon_le_role(client, pme, autre_pme, transporteur, appel_offre):
 def test_creer_un_appel(client, pme, expedition):
     client.force_login(pme)
     url = reverse("tenders:creer")
-    assert client.get(url, {"expedition": expedition.pk}).context["form"].initial["expedition"] == str(expedition.pk)
+    assert client.get(url, {"expedition": expedition.pk}).context["form"].initial["expedition"] == expedition.pk
     reponse = client.post(url, {"expedition": expedition.pk, "date_cloture": _dans(-1), "prix_max": "150"})
     assert reponse.status_code == 200 and not AppelOffre.objects.exists()
     reponse = client.post(url, {"expedition": expedition.pk, "date_cloture": _dans(1), "prix_max": "150"})
@@ -221,7 +221,7 @@ def test_creer_un_appel(client, pme, expedition):
 
 def test_creer_sans_expedition_disponible(client, autre_pme):
     client.force_login(autre_pme)
-    assert "Publiez d’abord une expédition" in client.get(reverse("tenders:creer")).content.decode()
+    assert "Aucune de vos expéditions ne peut" in client.get(reverse("tenders:creer")).content.decode()
 
 
 def test_modifier_et_supprimer_sans_offre(client, pme, appel_offre):

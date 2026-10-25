@@ -23,9 +23,10 @@ from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
 from apps.core.roles import Role
 from apps.core.views import ListeBackofficeView, ListeFrontView
 from apps.fleet.models import Trajet
+from apps.shipments.models import Expedition
 
 from .ai import suggerer_prix
-from .forms import AppelOffreForm, OffreForm
+from .forms import AppelOffreForm, OffreForm, pourquoi_indisponible
 from .models import AppelOffre, Offre
 from .services import retenir_offre
 from .tasks import calculer_recommandation
@@ -83,7 +84,17 @@ class AppelCreerView(MesAppelsMixin, CreateView):
         return {**super().get_form_kwargs(), "pme": self.request.user}
 
     def get_initial(self):
-        return {"expedition": self.request.GET.get("expedition")}
+        """?expedition=<id> ne pré-remplit le champ que si l'expédition est vraiment disponible, sinon explique."""
+        demande = self.request.GET.get("expedition", "")
+        if not demande.isdigit():
+            return {}
+        expedition = Expedition.objects.filter(pk=demande, pme=self.request.user).first()
+        if expedition is None:
+            return {}
+        if raison := pourquoi_indisponible(expedition):
+            messages.warning(self.request, f"{expedition.reference} : pas d’appel d’offres possible, car {raison}.")
+            return {}
+        return {"expedition": expedition.pk}
 
     def form_valid(self, form):
         messages.success(self.request, "Appel d’offres publié : les transporteurs peuvent maintenant faire une offre.")
