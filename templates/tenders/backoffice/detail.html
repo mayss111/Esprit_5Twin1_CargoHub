@@ -1,4 +1,5 @@
 {% extends "backoffice/base.html" %}
+{% load trajets %}
 {% block title %}{{ appel }}{% endblock %}
 {% block content %}
 <nav aria-label="Fil d’Ariane"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bo_tenders:liste' %}">Appels d’offres</a></li><li class="breadcrumb-item active" aria-current="page">{{ appel }}</li></ol></nav>
@@ -15,7 +16,7 @@
       <tbody>{% for o in offres %}
         <tr>
           <td>{{ o.transporteur }}</td>
-          <td>{% if o.trajet %}{{ o.trajet.ville_depart }} → {{ o.trajet.ville_arrivee }}{% else %}—{% endif %}</td>
+          <td>{% if o.trajet %}{{ o.trajet|itineraire }}{% else %}—{% endif %}</td>
           <td>{{ o.prix }} DT</td>
           <td>{% include "tenders/_statut.html" with statut=o.statut libelle=o.get_statut_display %}</td>
           <td>{{ o.created_at|date:"d/m/Y H:i" }}</td>

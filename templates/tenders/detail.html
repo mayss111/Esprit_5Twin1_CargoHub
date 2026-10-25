@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load trajets %}
 {% block title %}{{ appel }}{% endblock %}
 {% block content %}
 <nav aria-label="Fil d’Ariane"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'tenders:liste' %}">Appels d’offres</a></li><li class="breadcrumb-item active" aria-current="page">{{ appel }}</li></ol></nav>
@@ -26,7 +27,7 @@
         <tbody>{% for o in offres %}
           <tr>
             <td>{{ o.transporteur }}{% if o == offre_recommandee %} <span class="badge text-bg-info"><i class="bi bi-stars" aria-hidden="true"></i> Recommandée par l’aide au choix</span>{% endif %}{% if o.message %}<div class="small text-muted">« {{ o.message|truncatechars:80 }} »</div>{% endif %}</td>
-            <td>{% if o.trajet %}{{ o.trajet.ville_depart }} → {{ o.trajet.ville_arrivee }}<div class="small text-muted">{{ o.trajet.date_depart|date:"d/m H:i" }}</div>{% else %}—{% endif %}</td>
+            <td>{% if o.trajet %}{{ o.trajet|itineraire }}<div class="small text-muted">{{ o.trajet.date_depart|date:"d/m H:i" }}</div>{% else %}—{% endif %}</td>
             <td class="fw-semibold">{{ o.prix }} DT</td>
             <td>{% include "tenders/_statut.html" with statut=o.statut libelle=o.get_statut_display %}</td>
             <td class="text-end">
@@ -48,7 +49,7 @@
       <p class="small text-muted">{{ nb_offres }} offre{{ nb_offres|pluralize }} déjà reçue{{ nb_offres|pluralize }} sur cet appel.</p>
       {% if mon_offre %}
         <p class="mb-2"><strong>{{ mon_offre.prix }} DT</strong> {% include "tenders/_statut.html" with statut=mon_offre.statut libelle=mon_offre.get_statut_display %}</p>
-        {% if mon_offre.trajet %}<p class="small mb-2">Trajet : {{ mon_offre.trajet.ville_depart }} → {{ mon_offre.trajet.ville_arrivee }}, le {{ mon_offre.trajet.date_depart|date:"d/m/Y" }}</p>{% endif %}
+        {% if mon_offre.trajet %}<p class="small mb-2">Trajet : {{ mon_offre.trajet|itineraire }}, le {{ mon_offre.trajet.date_depart|date:"d/m/Y" }}</p>{% endif %}
         {% if mon_offre.modifiable %}
         <div class="d-flex gap-2">
           <a class="btn btn-outline-primary btn-sm" href="{% url 'tenders:offre_modifier' mon_offre.pk %}">Modifier mon offre</a>
