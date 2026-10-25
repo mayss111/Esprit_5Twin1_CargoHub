@@ -3,6 +3,7 @@ from decimal import Decimal
 from django import forms
 from django.utils import timezone
 
+from apps.bookings.models import Reservation
 from apps.bookings.services import EXPEDITION_VIDE, est_compatible
 from apps.fleet.models import Trajet
 from apps.shipments.models import Expedition
@@ -10,6 +11,24 @@ from apps.shipments.models import Expedition
 from .models import AppelOffre, Offre
 
 TRAJET_INCOMPATIBLE = "Ce trajet part trop loin de la date souhaitée ou ne passe pas par les bonnes villes."
+
+
+def expeditions_pour_appel(pme):
+    """Expéditions publiées de la PME, sans transporteur déjà trouvé ni appel d'offres, et pas encore parties
+    (date souhaitée aujourd'hui ou plus tard : une date limite dans le futur reste possible)."""
+    deja_attribuees = Reservation.objects.filter(
+        statut__in=[Reservation.Statut.ACCEPTEE, Reservation.Statut.EN_TRANSIT, Reservation.Statut.LIVREE]
+    ).values("expedition_id")
+    return (
+        Expedition.objects.filter(
+            pme=pme,
+            statut=Expedition.Statut.PUBLIEE,
+            appel_offre__isnull=True,  # une expédition n'a qu'un seul appel d'offres (OneToOne)
+            date_souhaitee__gte=timezone.localdate(),
+        )
+        .exclude(pk__in=deja_attribuees)
+        .select_related("adresse_depart", "adresse_arrivee")
+    )
 
 
 class AppelOffreForm(forms.ModelForm):
@@ -33,12 +52,12 @@ class AppelOffreForm(forms.ModelForm):
     def __init__(self, *args, pme, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["prix_max"].required = True
+        # Validation côté navigateur, cohérente avec clean_date_cloture() : pas de date limite passée.
+        self.fields["date_cloture"].widget.attrs["min"] = timezone.localtime().strftime("%Y-%m-%dT%H:%M")
         if self.instance.pk:
             del self.fields["expedition"]  # on ne change pas l'expédition d'un appel existant
         else:
-            self.fields["expedition"].queryset = Expedition.objects.filter(
-                pme=pme, statut=Expedition.Statut.PUBLIEE, appel_offre__isnull=True
-            ).select_related("adresse_depart", "adresse_arrivee")
+            self.fields["expedition"].queryset = expeditions_pour_appel(pme)
             self.fields["expedition"].empty_label = "Choisissez une expédition publiée"
 
     def clean_date_cloture(self):

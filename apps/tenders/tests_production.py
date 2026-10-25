@@ -9,6 +9,7 @@ import pytest
 from django.apps import apps
 from django.core.management import call_command
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.bookings.models import Reservation
 from apps.bookings.services import ReservationImpossible, est_compatible
@@ -149,3 +150,34 @@ def test_appel_d_offres_sur_une_expedition_vide(pme, expedition, appel_offre):
     date = (expedition.date_souhaitee - timedelta(days=1)).strftime("%Y-%m-%dT18:00")
     form = AppelOffreForm({"expedition": expedition.pk, "date_cloture": date, "prix_max": "150"}, pme=pme)
     assert form.errors["expedition"] == [EXPEDITION_VIDE]
+
+
+# ---------------------------------------------------------------- 5. formulaire « Nouvel appel d'offres »
+
+
+def test_expeditions_proposees_pour_un_appel(pme, expedition, trajet):
+    from apps.bookings import services
+    from apps.shipments.models import Expedition
+    from apps.tenders.forms import AppelOffreForm, expeditions_pour_appel
+
+    assert list(expeditions_pour_appel(pme)) == [expedition]
+    reservation = services.reserver(expedition, trajet)
+    assert list(expeditions_pour_appel(pme)) == [expedition]  # simple demande : toujours proposée
+    services.changer_statut(reservation, Reservation.Statut.ACCEPTEE)
+    assert not expeditions_pour_appel(pme).exists()  # un transporteur est déjà trouvé
+
+    services.changer_statut(reservation, Reservation.Statut.ANNULEE)
+    Expedition.objects.filter(pk=expedition.pk).update(date_souhaitee=timezone.localdate() - timedelta(days=1))
+    assert not expeditions_pour_appel(pme).exists()  # date passée : aucune date limite possible
+    Expedition.objects.filter(pk=expedition.pk).update(date_souhaitee=timezone.localdate())
+    assert list(expeditions_pour_appel(pme)) == [expedition]
+
+    attribut_min = AppelOffreForm(pme=pme).fields["date_cloture"].widget.attrs["min"]
+    assert attribut_min.startswith(timezone.localtime().strftime("%Y-%m-%dT")) and len(attribut_min) == 16
+
+
+def test_page_nouvel_appel_a_un_min(client, pme, expedition, appel_offre):
+    client.force_login(pme)
+    appel_offre.delete()
+    html = client.get(reverse("tenders:creer")).content.decode()
+    assert f'min="{timezone.localtime():%Y-%m-%d}' in html
