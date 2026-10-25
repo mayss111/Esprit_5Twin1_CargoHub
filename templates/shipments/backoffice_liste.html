@@ -67,7 +67,12 @@
             </td>
             <td>{{ expedition.poids_total_kg }} kg</td>
             <td><span class="badge-statut badge-{{ expedition.statut }}">{{ expedition.get_statut_display }}</span></td>
-            <td><a href="{% url 'bo_shipments:detail' expedition.pk %}">Détail</a></td>
+            <td>
+              <a href="{% url 'bo_shipments:detail' expedition.pk %}">Détail</a>
+              {% if expedition.bon_disponible %}
+                · <a href="{% url 'shipments:bon' expedition.pk %}">Télécharger le bon d'expédition PDF</a>
+              {% endif %}
+            </td>
           </tr>
         {% endfor %}
       </tbody>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}{{ expedition.reference }}{% endblock %}
-{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}" rel="stylesheet">{% endblock %}
+{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}?v=20261025k" rel="stylesheet">{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
   <div>
@@ -11,14 +11,17 @@
   </div>
   <div class="d-flex flex-wrap gap-2">
     <a class="btn btn-outline-secondary" href="{% url 'shipments:liste' %}">Liste</a>
+    {% if expedition.statut == "PUBLIEE" or expedition.statut == "RESERVEE" or expedition.statut == "LIVREE" %}
+      <a class="btn btn-outline-secondary" href="{% url 'warehouses:liste' %}?expedition={{ expedition.pk }}">Trouver un point relais</a>
+    {% endif %}
+    {% if expedition.bon_disponible %}
+      <a class="btn btn-accent" href="{% url 'shipments:bon' expedition.pk %}">Télécharger le bon d'expédition PDF</a>
+    {% endif %}
     {% if expedition.peut_etre_modifiee %}
       <a class="btn btn-primary" href="{% url 'shipments:modifier' expedition.pk %}">Modifier</a>
     {% endif %}
     {% if expedition.peut_etre_annulee %}
       <a class="btn btn-outline-secondary" href="{% url 'shipments:annuler' expedition.pk %}">Annuler</a>
-    {% endif %}
-    {% if expedition.peut_etre_supprimee %}
-      <a class="btn btn-outline-danger" href="{% url 'shipments:supprimer' expedition.pk %}">Supprimer</a>
     {% endif %}
   </div>
 </div>
@@ -27,13 +30,19 @@
   <div class="col-md-4">
     <section class="card card-ch p-3 h-100">
       <h2 class="h6">Départ</h2>
-      <p class="mb-0">{{ expedition.adresse_depart }}</p>
+      <p class="detail-adresse mb-0">
+        {{ expedition.adresse_depart.ligne }}<br>
+        {% if expedition.adresse_depart.code_postal %}{{ expedition.adresse_depart.code_postal }} {% endif %}{{ expedition.adresse_depart.ville }}{% if expedition.adresse_depart.gouvernorat %} · {{ expedition.adresse_depart.gouvernorat }}{% endif %}
+      </p>
     </section>
   </div>
   <div class="col-md-4">
     <section class="card card-ch p-3 h-100">
       <h2 class="h6">Arrivée</h2>
-      <p class="mb-0">{{ expedition.adresse_arrivee }}</p>
+      <p class="detail-adresse mb-0">
+        {{ expedition.adresse_arrivee.ligne }}<br>
+        {% if expedition.adresse_arrivee.code_postal %}{{ expedition.adresse_arrivee.code_postal }} {% endif %}{{ expedition.adresse_arrivee.ville }}{% if expedition.adresse_arrivee.gouvernorat %} · {{ expedition.adresse_arrivee.gouvernorat }}{% endif %}
+      </p>
     </section>
   </div>
   <div class="col-md-4">
@@ -47,13 +56,42 @@
 </div>
 
 {% if expedition.description %}
-  <p>{{ expedition.description }}</p>
+  <section class="card card-ch p-3 mb-4">
+    <h2 class="h6">Description</h2>
+    <p class="mb-0">{{ expedition.description }}</p>
+  </section>
+{% endif %}
+
+{% include "warehouses/_depot_expedition.html" %}
+
+{% if expedition.motif_decision %}
+  <div class="alert {% if expedition.statut == 'REFUSEE' %}alert-danger{% elif expedition.statut == 'A_VERIFIER' %}alert-warning{% else %}alert-info{% endif %}" role="status">
+    {{ expedition.motif_decision }}
+  </div>
+{% endif %}
+
+{% if expedition.controles_recents %}
+  <section class="card card-ch p-3 mb-4">
+    <h2 class="h6">Vérification des articles</h2>
+    <ul class="list-unstyled detail-controles mb-0">
+      {% for controle in expedition.controles_recents %}
+        <li>
+          <div class="detail-controle">
+            <strong>{{ controle.nom }}</strong>
+            <span class="badge-statut badge-{{ controle.decision }}">{{ controle.get_decision_display }}</span>
+          </div>
+          {% if controle.regle %}<div class="small text-muted">{{ controle.regle.nom }}</div>{% endif %}
+          {% if controle.motif %}<div class="small text-muted">{{ controle.motif }}</div>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
 {% endif %}
 
 <h2 class="h5">Articles</h2>
 {% if expedition.articles.all %}
-  <div class="table-responsive">
-    <table class="table table-ch align-middle">
+  <div class="table-responsive card card-ch">
+    <table class="table table-ch align-middle mb-0">
       <thead>
         <tr>
           <th>Article</th>
@@ -73,9 +111,9 @@
               {% if article.description %}<div class="small text-muted">{{ article.description }}</div>{% endif %}
             </td>
             <td>{{ article.get_type_marchandise_display }}</td>
-            <td>{{ article.quantite }}</td>
-            <td>{{ article.poids_kg }} kg</td>
-            <td>{{ article.volume_m3 }} m³</td>
+            <td class="col-chiffre">{{ article.quantite }}</td>
+            <td class="col-chiffre">{{ article.poids_kg }} kg</td>
+            <td class="col-chiffre">{{ article.volume_m3 }} m³</td>
             <td>{% if article.fragile %}Oui{% else %}Non{% endif %}</td>
             <td>{% if article.valeur_declaree %}{{ article.valeur_declaree }} DT{% else %}—{% endif %}</td>
           </tr>
@@ -83,7 +121,7 @@
       </tbody>
     </table>
   </div>
-  <p class="mb-0">Poids total : <strong>{{ expedition.poids_total_kg }} kg</strong> · Volume total : <strong>{{ expedition.volume_total_m3 }} m³</strong></p>
+  <p class="mt-3 mb-0">Poids total : <strong>{{ expedition.poids_total_kg }} kg</strong> · Volume total : <strong>{{ expedition.volume_total_m3 }} m³</strong></p>
 {% else %}
   <p class="text-muted">Aucun article pour le moment.</p>
 {% endif %}

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}{{ titre }}{% endblock %}
-{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}" rel="stylesheet">{% endblock %}
+{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}?v=20261025q" rel="stylesheet">{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
   <div>
@@ -50,10 +50,11 @@
 
 {% if expeditions %}
   <div class="table-responsive">
-    <table class="table table-ch align-middle">
+    <table class="table table-ch align-top liste-expeditions">
       <thead>
         <tr>
           <th>Référence</th>
+          <th>Description</th>
           <th>Départ</th>
           <th>Arrivée</th>
           <th>Dates</th>
@@ -65,19 +66,32 @@
       <tbody>
         {% for expedition in expeditions %}
           <tr>
-            <td>{{ expedition.reference }}</td>
-            <td>{{ expedition.adresse_depart.ville }}</td>
-            <td>{{ expedition.adresse_arrivee.ville }}</td>
-            <td>
+            <td class="col-reference">{{ expedition.reference }}</td>
+            <td class="description-cell">
+              {% if expedition.description %}
+                <span class="description-extrait" title="{{ expedition.description }}">{{ expedition.description }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="col-ville">{{ expedition.adresse_depart.ville }}</td>
+            <td class="col-ville">{{ expedition.adresse_arrivee.ville }}</td>
+            <td class="col-dates">
               <div>Départ {{ expedition.date_souhaitee|date:"d/m/Y" }}</div>
               <div class="small text-muted">Arrivée {{ expedition.date_arrivee|date:"d/m/Y" }}</div>
             </td>
-            <td>{{ expedition.poids_total_kg }} kg</td>
+            <td class="col-poids">{{ expedition.poids_total_kg }} kg</td>
             <td><span class="badge-statut badge-{{ expedition.statut }}">{{ expedition.get_statut_display }}</span></td>
-            <td class="text-nowrap">
+            <td class="col-actions">
               <a href="{% url 'shipments:detail' expedition.pk %}">Détail</a>
+              {% if expedition.bon_disponible %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'shipments:bon' expedition.pk %}">Télécharger le bon d'expédition PDF</a>
+              {% endif %}
               {% if expedition.peut_etre_modifiee %}
-                · <a href="{% url 'shipments:modifier' expedition.pk %}">Modifier</a>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'shipments:modifier' expedition.pk %}">Modifier</a>
+              {% endif %}
+              {% if expedition.peut_etre_annulee %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'shipments:annuler' expedition.pk %}">Annuler</a>
               {% endif %}
             </td>
           </tr>
