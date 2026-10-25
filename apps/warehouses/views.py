@@ -20,12 +20,6 @@ from .services.capacity import synthese_entrepot
 from .services.distance import distance_km
 from .services.reservation import STATUTS_ELIGIBLES
 
-STATUTS_POUR_DEPOT = {
-    Expedition.Statut.PUBLIEE,
-    Expedition.Statut.RESERVEE,
-    Expedition.Statut.LIVREE,
-}
-
 
 def _texte(parametre, limite=80):
     return (parametre or "").strip()[:limite]
@@ -48,22 +42,13 @@ def _entrepots_actifs(request):
     return queryset
 
 
-def _origine_expedition(request):
-    """Coordonnées de départ si l'expédition appartient à la PME et peut être déposée."""
+def _expedition_liee(request):
+    """Identifiant gardé pour la réservation. Il ne filtre pas la liste des entrepôts."""
     brut = _texte(request.GET.get("expedition"), 12)
-    if not brut:
-        return None, None, ""
     if not brut.isdigit():
-        return None, None, "Expédition inconnue."
-    expedition = Expedition.objects.filter(pk=int(brut), pme=request.user).select_related("adresse_depart").first()
-    if expedition is None:
-        return None, None, "Expédition inconnue."
-    if expedition.statut not in STATUTS_POUR_DEPOT:
-        return None, expedition, "Cette expédition ne peut pas servir à choisir un point relais."
-    depart = expedition.adresse_depart
-    if depart.latitude is None or depart.longitude is None:
-        return None, expedition, "L'adresse de départ n'a pas de coordonnées. La distance ne peut pas être calculée."
-    return (depart.latitude, depart.longitude), expedition, ""
+        return ""
+    existe = Expedition.objects.filter(pk=int(brut), pme=request.user, statut__in=STATUTS_ELIGIBLES).exists()
+    return brut if existe else ""
 
 
 def _avec_distances(entrepots, origine):
@@ -114,9 +99,8 @@ class PointsRelaisView(RoleRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         contexte = super().get_context_data(**kwargs)
-        origine, expedition, message = _origine_expedition(self.request)
-        lignes = _avec_distances(_entrepots_actifs(self.request), origine)
-        expedition_id = expedition.pk if expedition is not None and expedition.statut in STATUTS_ELIGIBLES else ""
+        lignes = _avec_distances(_entrepots_actifs(self.request), None)
+        expedition_id = _expedition_liee(self.request)
         get = self.request.GET
         contexte.update(
             titre="Entrepôts & Points Relais",
@@ -133,14 +117,8 @@ class PointsRelaisView(RoleRequiredMixin, TemplateView):
                 for ligne in lignes
                 if (marqueur := _marqueur(ligne["entrepot"], _url_reservation(ligne["entrepot"], expedition_id)))
             ],
-            expeditions=Expedition.objects.filter(pme=self.request.user, statut__in=STATUTS_POUR_DEPOT).select_related(
-                "adresse_depart"
-            ),
-            expedition=expedition,
-            origine=origine,
-            avertissement=message,
             aucun_actif=not Entrepot.objects.filter(actif=True).exists(),
-            recherche=any(get.get(nom) for nom in ("q", "ville", "gouvernorat", "expedition")),
+            recherche=any(get.get(nom) for nom in ("q", "ville", "gouvernorat")),
         )
         return contexte
 

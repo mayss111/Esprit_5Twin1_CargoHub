@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Mes dépôts{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
@@ -9,11 +10,11 @@
   <a class="btn btn-outline-secondary btn-sm" href="{% url 'warehouses:liste' %}">Trouver un point relais</a>
 </div>
 
-<form method="get" class="card card-ch p-3 mb-3" role="search">
+<form method="get" class="card card-ch p-3 mb-3" role="search" data-filtre-auto>
   <div class="row g-2 align-items-end">
-    <div class="col-md-4">
-      <label class="form-label" for="filtre-reference">Référence</label>
-      <input class="form-control form-control-sm" id="filtre-reference" name="q" value="{{ filtre.q }}" maxlength="40">
+    <div class="col-md-6">
+      <label class="form-label" for="filtre-reference">Recherche</label>
+      <input class="form-control form-control-sm" id="filtre-reference" name="q" value="{{ filtre.q }}" maxlength="80" placeholder="Référence, expédition ou entrepôt" autocomplete="off">
     </div>
     <div class="col-md-3">
       <label class="form-label" for="filtre-statut">Statut</label>
@@ -27,9 +28,6 @@
     <div class="col-md-3">
       <label class="form-label" for="filtre-date">Date du dépôt</label>
       <input class="form-control form-control-sm" id="filtre-date" type="date" name="date" value="{{ filtre.date }}">
-    </div>
-    <div class="col-md-2">
-      <button class="btn btn-accent btn-sm w-100" type="submit">Filtrer</button>
     </div>
   </div>
 </form>
@@ -83,4 +81,7 @@
 {% else %}
   <p>Vous n'avez pas encore de dépôt réservé.</p>
 {% endif %}
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'shipments/js/filtre.js' %}"></script>
 {% endblock %}

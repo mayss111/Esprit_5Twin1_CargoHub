@@ -13,29 +13,20 @@
 
 <form method="get" class="card card-ch p-3 mb-3" role="search" data-filtre-auto>
   <div class="row g-3 align-items-end">
-    <div class="col-md-3">
+    <div class="col-md-4">
       <label class="form-label" for="filtre-nom">Nom ou adresse</label>
       <input class="form-control" id="filtre-nom" name="q" value="{{ filtre.q }}" maxlength="80" autocomplete="off">
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
       <label class="form-label" for="filtre-ville">Ville</label>
       <input class="form-control" id="filtre-ville" name="ville" value="{{ filtre.ville }}" maxlength="80" autocomplete="off">
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
       <label class="form-label" for="filtre-gouvernorat">Gouvernorat</label>
       <select class="form-select" id="filtre-gouvernorat" name="gouvernorat">
         <option value="">Tous</option>
         {% for valeur, libelle in gouvernorats %}
           <option value="{{ valeur }}" {% if filtre.gouvernorat == valeur %}selected{% endif %}>{{ libelle }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label" for="filtre-expedition">Expédition</label>
-      <select class="form-select" id="filtre-expedition" name="expedition">
-        <option value="">Sans expédition</option>
-        {% for item in expeditions %}
-          <option value="{{ item.pk }}" {% if expedition and expedition.pk == item.pk %}selected{% endif %}>{{ item.reference }} — {{ item.adresse_depart.ville }}</option>
         {% endfor %}
       </select>
     </div>
@@ -48,7 +39,6 @@
   </div>
 </form>
 <p class="small text-muted" id="position-message" role="status">La position du navigateur n'est pas enregistrée. Seuls les entrepôts actifs sont proposés.</p>
-{% if avertissement %}<div class="alert alert-warning" role="alert">{{ avertissement }}</div>{% endif %}
 
 <div class="mb-4">
   <div id="carte-relais" class="carte-relais carte-relais-liste" role="region" aria-label="Carte des points relais"></div>
