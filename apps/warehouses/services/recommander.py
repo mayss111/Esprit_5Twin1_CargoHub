@@ -5,6 +5,7 @@ La capacité, les horaires et le statut actif sont décidés par Django, pas par
 Si le modèle ne se charge pas, un classement lexical prend le relais.
 """
 
+import os
 import re
 import time
 import unicodedata
@@ -13,6 +14,7 @@ from datetime import datetime
 from datetime import time as heure_jour
 from decimal import Decimal
 from math import sqrt
+from pathlib import Path
 
 from django.conf import settings
 from django.utils import timezone
@@ -229,10 +231,32 @@ def _demande(expedition, volume):
     return texte
 
 
+def _modele_en_cache():
+    """Les poids ne sont pas dans l'image Render. Les importer ferait tomber l'offre gratuite."""
+    nom = (settings.SENTENCE_TRANSFORMERS_MODEL or "").strip().strip("/")
+    if not nom:
+        return False
+    if "/" not in nom:
+        nom = f"sentence-transformers/{nom}"
+    dossier = "models--" + nom.replace("/", "--")
+    racines = [Path(os.environ["HF_HOME"])] if os.environ.get("HF_HOME") else []
+    racines.append(Path.home() / ".cache" / "huggingface")
+    return any((racine / "hub" / dossier).is_dir() for racine in racines)
+
+
+def classement_immediat():
+    """Sans les poids, le classement lexical répond dans la requête et ne charge pas Torch."""
+    if not getattr(settings, "SENTENCE_TRANSFORMERS_ACTIF", True):
+        return True
+    return not _modele_en_cache()
+
+
 def _charger_modele():
     global _MODELE
     if not getattr(settings, "SENTENCE_TRANSFORMERS_ACTIF", True):
         raise ModeleIndisponible("Le modèle est désactivé.")
+    if not _modele_en_cache():
+        raise ModeleIndisponible("Les poids du modèle ne sont pas sur cette machine.")
     if _MODELE is None:
         try:
             from sentence_transformers import SentenceTransformer

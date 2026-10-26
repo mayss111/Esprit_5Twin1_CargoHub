@@ -249,6 +249,17 @@ def test_bilan_co2_par_vehicule(trajet, autre_trajet):
     assert services.bilan_co2(trajet.transporteur, vehicule=deuxieme)["nb_trajets"] == 0
 
 
+def test_page_impact_affiche_graphique_et_acces_navigation(client, transporteur, trajet):
+    Trajet.objects.filter(pk=trajet.pk).update(statut=Trajet.Statut.TERMINE, co2_kg=125.0)
+    client.force_login(transporteur)
+
+    reponse = client.get(reverse("fleet:impact"))
+
+    assert reponse.status_code == 200
+    assert b"CO2 par v\xc3\xa9hicule" in reponse.content or "CO₂ par véhicule" in reponse.content.decode()
+    assert b'href="/flotte/impact/"' in reponse.content
+
+
 def test_certificat_vert_pdf(trajet):
     Trajet.objects.filter(pk=trajet.pk).update(
         statut=Trajet.Statut.TERMINE, date_depart=timezone.now() - timedelta(days=1), co2_kg=120.0
@@ -307,6 +318,17 @@ def test_pages_du_transporteur(client, transporteur, pme, trajet, nom):
     assert client.get(reverse(nom)).status_code == 200
     client.force_login(pme)
     assert client.get(reverse(nom)).status_code == 403
+
+
+def test_impact_affiche_graphique_et_lien_dans_le_menu(client, transporteur, trajet):
+    Trajet.objects.filter(pk=trajet.pk).update(statut=Trajet.Statut.TERMINE, co2_kg=125.0)
+    client.force_login(transporteur)
+
+    reponse = client.get(reverse("fleet:impact"))
+
+    assert reponse.status_code == 200
+    assert "CO₂ par véhicule" in reponse.content.decode()
+    assert b'href="/flotte/impact/"' in reponse.content
 
 
 def test_pages_demandent_une_connexion(client, vehicule):

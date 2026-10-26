@@ -22,10 +22,10 @@ DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 CSRF_TRUSTED_ORIGINS = env.list(
     "CSRF_TRUSTED_ORIGINS",
-    default=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8000"],
+    default=["http://localhost:8000", "http://127.0.0.1:8000"],
 )
 # Tuiles Carto (optionnel). Sans clé, Leaflet utilise OpenStreetMap.
-CARTO_API_KEY = env("CARTO_API_KEY", default=env("REACT_APP_CARTO_API_KEY", default=""))
+CARTO_API_KEY = env("CARTO_API_KEY", default="")
 
 # ---------------------------------------------------------------- applications
 DJANGO_APPS = [
@@ -43,7 +43,7 @@ THIRD_PARTY_APPS = [
     "channels",
     "crispy_forms",
     "crispy_bootstrap5",
-    "rest_framework",  # API REST de la flotte (M3), utilisée par le SPA React (frontend/)
+    "rest_framework",  # API REST de la flotte (M3) et intégrations
     "rest_framework_simplejwt",
 ]
 # Une application = un module. Le commentaire indique le membre responsable.
@@ -69,7 +69,6 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "apps.core.middleware.CorsSpaMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
