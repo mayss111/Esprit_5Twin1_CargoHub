@@ -87,14 +87,18 @@ def test_coordonnees_manquantes_sans_marqueur(client, pme):
     assert "Sans GPS" not in noms
 
 
-def test_proche_depuis_lexpedition_de_la_pme(client, pme):
-    expedition = _expedition(pme, latitude=36.8, longitude=10.18)
+def test_expedition_ne_filtre_pas_les_entrepots(client, pme):
+    expedition = _expedition(pme, latitude=None, longitude=None)
     _entrepot(nom="Tout près", ville="Tunis", latitude=36.81, longitude=10.19)
     _entrepot(nom="Très loin", ville="Tataouine", gouvernorat="Tataouine", latitude=32.93, longitude=10.45)
     client.force_login(pme)
+    sans = client.get(reverse("warehouses:liste")).content.decode()
     html = client.get(reverse("warehouses:liste"), {"expedition": expedition.pk}).content.decode()
-    assert html.index("Tout près") < html.index("Très loin")
-    assert "vol d'oiseau" in html
+    assert "filtre-expedition" not in html
+    assert "n'a pas de coordonnées" not in html
+    assert "Tout près" in html and "Très loin" in html
+    assert "Tout près" in sans and "Très loin" in sans
+    assert f"expedition={expedition.pk}" in html
     detail = client.get(reverse("shipments:detail", args=[expedition.pk])).content.decode()
     assert "Trouver un point relais" in detail
 
@@ -105,7 +109,8 @@ def test_expedition_dune_autre_pme_est_refusee(client, pme):
     _entrepot(nom="Relais Public", ville="Sfax")
     client.force_login(pme)
     html = client.get(reverse("warehouses:liste"), {"expedition": expedition.pk}).content.decode()
-    assert "Expédition inconnue" in html
+    assert "Expédition inconnue" not in html
+    assert f"expedition={expedition.pk}" not in html
     assert expedition.reference not in html
     assert "Rue de départ" not in html
 
@@ -114,7 +119,8 @@ def test_expedition_refusee_ne_donne_pas_de_distance(client, pme):
     expedition = _expedition(pme, statut=Expedition.Statut.REFUSEE)
     client.force_login(pme)
     html = client.get(reverse("warehouses:liste"), {"expedition": expedition.pk}).content.decode()
-    assert "ne peut pas servir" in html
+    assert "ne peut pas servir" not in html
+    assert f"expedition={expedition.pk}" not in html
     assert "km à vol d'oiseau" not in html
     detail = client.get(reverse("shipments:detail", args=[expedition.pk])).content.decode()
     assert "Trouver un point relais" not in detail

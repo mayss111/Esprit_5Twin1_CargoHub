@@ -269,6 +269,10 @@ def test_acces_reserve_a_la_pme_et_liste_filtree(client, pme, expedition, admin_
     html = client.get(reverse("warehouses:mes_depots"), {"q": reservation.reference}).content.decode()
     assert reservation.reference in html
     assert "Relais Filtre" in html
+    assert "data-filtre-auto" in html
+    assert ">Filtrer<" not in html
+    par_entrepot = client.get(reverse("warehouses:mes_depots"), {"q": "Relais Filtre"}).content.decode()
+    assert reservation.reference in par_entrepot
     vide = client.get(reverse("warehouses:mes_depots"), {"statut": "ANNULE"}).content.decode()
     assert "Aucune réservation" in vide
     client.force_login(admin_user)

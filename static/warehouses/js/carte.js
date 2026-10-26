@@ -35,7 +35,25 @@
       marqueur.addTo(groupe);
     });
     groupe.addTo(carte);
-    if (points.length === 1) {
+    const sourceReco = document.getElementById("recommandations-entrepots");
+    const recommandations = sourceReco ? JSON.parse(sourceReco.textContent) : [];
+    const retenus = L.featureGroup();
+    recommandations.forEach(function (point) {
+      if (point.lat == null || point.lng == null) return;
+      const marqueur = L.circleMarker([point.lat, point.lng], {
+        radius: 13,
+        color: "#F59E0B",
+        weight: 3,
+        fillColor: "#F59E0B",
+        fillOpacity: 0.95,
+      });
+      marqueur.bindPopup(popupRecommandation(point));
+      marqueur.addTo(retenus);
+    });
+    retenus.addTo(carte);
+    if (retenus.getLayers().length) {
+      carte.fitBounds(retenus.getBounds(), { padding: [28, 28] });
+    } else if (points.length === 1) {
       carte.setView([points[0].lat, points[0].lng], 13);
     } else if (points.length > 1) {
       carte.fitBounds(groupe.getBounds(), { padding: [24, 24] });
@@ -115,6 +133,19 @@
       lignes.push('<a href="' + echapper(point.reserver) + '">Réserver un créneau de dépôt</a>');
     }
     return lignes.filter(Boolean).join("<br>");
+  }
+
+  function popupRecommandation(point) {
+    const lignes = [
+      "<strong>" + echapper(point.rang) + ". " + echapper(point.nom) + "</strong>",
+      echapper(point.ville),
+      "Score " + echapper(point.score) + " %",
+      echapper(point.explication),
+    ];
+    if (point.reserver) {
+      lignes.push('<a href="' + echapper(point.reserver) + '">Réserver</a>');
+    }
+    return lignes.join("<br>");
   }
 
   function echapper(valeur) {

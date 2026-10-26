@@ -1,33 +1,34 @@
 {% extends "backoffice/base.html" %}
-{% block title %}Importer des entrepôts{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr "Importer des entrepôts" %}{% endblock %}
 {% block content %}
-<p class="mb-2"><a href="{% url 'bo_warehouses:liste' %}">Tous les entrepôts</a></p>
-<h1 class="page-title mb-1">Importer des entrepôts</h1>
-<p class="text-muted">Créez un seul entrepôt avec le <a href="{% url 'bo_warehouses:creer' %}">formulaire</a>, ou plusieurs à la fois avec un fichier CSV ou Excel. Si une ligne est incorrecte, aucun entrepôt du fichier n'est créé.</p>
+<p class="mb-2"><a href="{% url 'bo_warehouses:liste' %}">{% tr "Tous les entrepôts" %}</a></p>
+<h1 class="page-title mb-1">{% tr "Importer des entrepôts" %}</h1>
+<p class="text-muted">{% tr "Créez un seul entrepôt avec le" %} <a href="{% url 'bo_warehouses:creer' %}">{% tr "formulaire" %}</a>{% tr ", ou plusieurs à la fois avec un fichier CSV ou Excel. Si une ligne est incorrecte, aucun entrepôt du fichier n'est créé." %}</p>
 
 <section class="card card-ch p-3 mb-3">
-  <h2 class="h6">Modèle de fichier</h2>
-  <p class="mb-2">La première ligne contient les noms de colonnes. 500 entrepôts maximum, fichier de 2 Mo maximum.</p>
+  <h2 class="h6">{% tr "Modèle de fichier" %}</h2>
+  <p class="mb-2">{% tr "La première ligne contient les noms de colonnes. 500 entrepôts maximum, fichier de 2 Mo maximum." %}</p>
   <p class="mb-2">
-    <a class="btn btn-outline-secondary btn-sm" href="{% url 'bo_warehouses:importer_modele' %}">Télécharger le modèle CSV</a>
-    <a class="btn btn-outline-secondary btn-sm" href="{% url 'bo_warehouses:importer_modele' %}?format=xlsx">Télécharger le modèle Excel</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'bo_warehouses:importer_modele' %}">{% tr "Télécharger le modèle CSV" %}</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'bo_warehouses:importer_modele' %}?format=xlsx">{% tr "Télécharger le modèle Excel" %}</a>
   </p>
-  <p class="mb-0 small text-muted">Colonnes obligatoires : nom, adresse, ville, capacite_max_m3. Les autres peuvent rester vides : ouverture 08:00, fermeture 18:00, stockage 48 h, délai de grâce 30 min, actif oui. Indiquez la latitude et la longitude ensemble, ou laissez les deux vides.</p>
+  <p class="mb-0 small text-muted">{% tr "Colonnes obligatoires : nom, adresse, ville, capacite_max_m3. Les autres peuvent rester vides : ouverture 08:00, fermeture 18:00, stockage 48 h, délai de grâce 30 min, actif oui. Indiquez la latitude et la longitude ensemble, ou laissez les deux vides." %}</p>
 </section>
 
 <form method="post" enctype="multipart/form-data" class="card card-ch p-3 mb-3">
   {% csrf_token %}
   <div class="mb-3">
-    <label class="form-label" for="{{ formulaire.fichier.id_for_label }}">{{ formulaire.fichier.label }}</label>
+    <label class="form-label" for="{{ formulaire.fichier.id_for_label }}">{% tr formulaire.fichier.label %}</label>
     {{ formulaire.fichier }}
     {% for erreur in formulaire.fichier.errors %}<div class="invalid-feedback d-block">{{ erreur }}</div>{% endfor %}
   </div>
-  <button class="btn btn-accent" type="submit">Importer</button>
+  <button class="btn btn-accent" type="submit">{% tr "Importer" %}</button>
 </form>
 
 {% if erreurs %}
   <section class="card card-ch p-3" role="alert">
-    <h2 class="h6">Lignes à corriger</h2>
+    <h2 class="h6">{% tr "Lignes à corriger" %}</h2>
     <ul class="mb-0">
       {% for erreur in erreurs %}
         <li>{{ erreur }}</li>

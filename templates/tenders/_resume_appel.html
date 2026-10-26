@@ -1,7 +1,8 @@
+{% load cargohub %}
 <dl class="row mb-0">
-  <dt class="col-sm-4">Statut</dt><dd class="col-sm-8">{% include "tenders/_statut.html" with statut=appel.statut libelle=appel.get_statut_display %}</dd>
-  <dt class="col-sm-4">Trajet souhaité</dt><dd class="col-sm-8">{{ appel.expedition.adresse_depart.ville }} → {{ appel.expedition.adresse_arrivee.ville }}, le {{ appel.expedition.date_souhaitee|date:"d/m/Y" }}</dd>
-  <dt class="col-sm-4">Marchandise</dt><dd class="col-sm-8">{{ appel.expedition.poids_total_kg|floatformat:0 }} kg · {{ appel.expedition.volume_total_m3|floatformat:2 }} m³</dd>
-  <dt class="col-sm-4">Budget maximum</dt><dd class="col-sm-8">{% if appel.prix_max %}{{ appel.prix_max }} DT{% else %}—{% endif %}</dd>
-  <dt class="col-sm-4">Date limite</dt><dd class="col-sm-8">{{ appel.date_cloture|date:"d/m/Y à H:i" }}</dd>
+  <dt class="col-sm-4">{% tr "Statut" %}</dt><dd class="col-sm-8">{% include "tenders/_statut.html" with statut=appel.statut libelle=appel.get_statut_display %}</dd>
+  <dt class="col-sm-4">{% tr "Trajet souhaité" %}</dt><dd class="col-sm-8">{{ appel.expedition.adresse_depart.ville }} → {{ appel.expedition.adresse_arrivee.ville }}{% tr ", le" %} {{ appel.expedition.date_souhaitee|date:"d/m/Y" }}</dd>
+  <dt class="col-sm-4">{% tr "Marchandise" %}</dt><dd class="col-sm-8">{{ appel.expedition.poids_total_kg|floatformat:0 }} {% tr "kg ·" %} {{ appel.expedition.volume_total_m3|floatformat:2 }} m³</dd>
+  <dt class="col-sm-4">{% tr "Budget maximum" %}</dt><dd class="col-sm-8">{% if appel.prix_max %}{{ appel.prix_max }} DT{% else %}—{% endif %}</dd>
+  <dt class="col-sm-4">{% tr "Date limite" %}</dt><dd class="col-sm-8">{{ appel.date_cloture|date:"d/m/Y à H:i" }}</dd>
 </dl>

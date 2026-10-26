@@ -59,9 +59,14 @@ def queryset_reservations():
 
 
 def filtrer_reservations(request, queryset, avec_entrepot=False):
-    recherche = (request.GET.get("q") or "").strip()[:40]
+    recherche = (request.GET.get("q") or "").strip()[:80]
     if recherche:
-        queryset = queryset.filter(Q(reference__icontains=recherche) | Q(expedition__reference__icontains=recherche))
+        queryset = queryset.filter(
+            Q(reference__icontains=recherche)
+            | Q(expedition__reference__icontains=recherche)
+            | Q(entrepot__nom__icontains=recherche)
+            | Q(entrepot__ville__icontains=recherche)
+        )
     statut = (request.GET.get("statut") or "").strip()
     if statut in CreneauDepot.Statut.values:
         queryset = queryset.filter(statut=statut)

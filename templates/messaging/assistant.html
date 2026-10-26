@@ -1,36 +1,36 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
-{% block title %}Aide et support{% endblock %}
+{% load crispy_forms_tags  cargohub %}
+{% block title %}{% tr "Aide et support" %}{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-lg-8">
   <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-    <h1 class="page-title mb-0">Aide et support</h1>
-    <a class="btn btn-outline-secondary" href="{% url 'messaging:tickets' %}"><i class="bi bi-ticket-detailed" aria-hidden="true"></i> Mes tickets</a>
+    <h1 class="page-title mb-0">{% tr "Aide et support" %}</h1>
+    <a class="btn btn-outline-secondary" href="{% url 'messaging:tickets' %}"><i class="bi bi-ticket-detailed" aria-hidden="true"></i> {% tr "Mes tickets" %}</a>
   </div>
   <div class="card card-ch p-4 mb-3">
-    <h2 class="h5"><i class="bi bi-robot" aria-hidden="true"></i> Posez votre question à l’assistant</h2>
-    <p class="small text-muted">Réponse immédiate. Si elle ne vous aide pas, ouvrez un ticket : un administrateur vous répondra.</p>
+    <h2 class="h5"><i class="bi bi-robot" aria-hidden="true"></i> {% tr "Posez votre question à l’assistant" %}</h2>
+    <p class="small text-muted">{% tr "Réponse immédiate. Si elle ne vous aide pas, ouvrez un ticket : un administrateur vous répondra." %}</p>
     <form method="post" data-ia="L’assistant réfléchit…">{% csrf_token %}
       {{ form|crispy }}
-      <button class="btn btn-primary" type="submit">Demander</button>
+      <button class="btn btn-primary" type="submit">{% tr "Demander" %}</button>
     </form>
   </div>
 
   {% if question %}
   <section class="card card-ch p-4 mb-3" aria-labelledby="titre-reponse">
-    <h2 class="h5" id="titre-reponse">Réponse de l’assistant</h2>
+    <h2 class="h5" id="titre-reponse">{% tr "Réponse de l’assistant" %}</h2>
     {% if reponse %}
       <p class="mb-2">{{ reponse|linebreaksbr }}</p>
       <p class="small text-muted mb-0">
-        {% if ia_active %}Réponse générée par l’IA{% else %}Réponse issue de la FAQ (IA non configurée){% endif %}
-        {% if duree_ms is not None %} · {{ duree_ms }} ms{% endif %}
+        {% if ia_active %}{% tr "Réponse générée par l’IA" %}{% else %}{% tr "Réponse issue de la FAQ (IA non configurée)" %}{% endif %}
+        {% if duree_ms is not None %} · {{ duree_ms }} {% tr "ms" %}{% endif %}
       </p>
     {% else %}
-      <p class="text-danger mb-0">L’assistant n’a pas pu répondre.</p>
+      <p class="text-danger mb-0">{% tr "L’assistant n’a pas pu répondre." %}</p>
     {% endif %}
     <hr>
-    <p class="mb-2">{% if sans_reponse or not reponse %}Votre question nécessite un administrateur.{% else %}Cette réponse ne règle pas votre problème ?{% endif %}</p>
-    <a class="btn btn-accent" href="{% url 'messaging:ticket_creer' %}?description={{ question|urlencode }}">Ouvrir un ticket</a>
+    <p class="mb-2">{% if sans_reponse or not reponse %}{% tr "Votre question nécessite un administrateur." %}{% else %}{% tr "Cette réponse ne règle pas votre problème ?" %}{% endif %}</p>
+    <a class="btn btn-accent" href="{% url 'messaging:ticket_creer' %}?description={{ question|urlencode }}">{% tr "Ouvrir un ticket" %}</a>
   </section>
   {% endif %}
 </div></div>

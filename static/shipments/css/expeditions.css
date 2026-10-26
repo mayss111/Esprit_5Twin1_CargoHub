@@ -14,8 +14,15 @@
 
 .article-card { background: #fff; }
 .assistant-ia { border: 1px solid #E87722; background: #fffaf5; }
+.saisie-page .page-title { font-size: 1.55rem; }
+.saisie-page .form-label { font-size: .78rem; font-weight: 600; margin-bottom: .15rem; }
+.saisie-outils .card { align-items: flex-start; }
+.saisie-outils .card > * { width: 100%; }
+.saisie-outils .btn { width: auto; }
+.saisie-outils textarea { min-height: 3.4rem; }
 .expedition-form .form-label { font-size: .78rem; font-weight: 600; margin-bottom: .15rem; }
 .expedition-form h2 { color: var(--ch-navy); }
+.expedition-form textarea { min-height: 2.5rem; }
 @media (max-width: 576px) {
   .table-ch { font-size: .9rem; }
 }

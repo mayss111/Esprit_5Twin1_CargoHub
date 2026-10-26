@@ -1,50 +1,50 @@
 {% extends "backoffice/base.html" %}
-{% load static %}
+{% load static  cargohub %}
 {% block title %}{{ entrepot.nom }}{% endblock %}
 {% block extra_head %}<link href="{% static 'warehouses/css/relais.css' %}?v=20261025f" rel="stylesheet">{% endblock %}
 {% block content %}
-<p class="mb-2"><a href="{% url 'bo_warehouses:liste' %}">Tous les entrepôts</a></p>
+<p class="mb-2"><a href="{% url 'bo_warehouses:liste' %}">{% tr "Tous les entrepôts" %}</a></p>
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
   <div>
     <h1 class="page-title mb-1">{{ entrepot.nom }}</h1>
     <p class="text-muted mb-2">{{ entrepot.ville }}{% if entrepot.gouvernorat %} · {{ entrepot.gouvernorat }}{% endif %}</p>
     {% if entrepot.actif %}
-      <span class="badge-statut badge-PUBLIEE">Actif</span>
+      <span class="badge-statut badge-PUBLIEE">{% tr "Actif" %}</span>
     {% else %}
-      <span class="badge-statut badge-BROUILLON">Inactif</span>
+      <span class="badge-statut badge-BROUILLON">{% tr "Inactif" %}</span>
     {% endif %}
   </div>
   <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-outline-secondary" href="{% url 'bo_warehouses:modifier' entrepot.pk %}">Modifier</a>
+    <a class="btn btn-outline-secondary" href="{% url 'bo_warehouses:modifier' entrepot.pk %}">{% tr "Modifier" %}</a>
     {% if entrepot.actif %}
-      <a class="btn btn-outline-secondary" href="{% url 'bo_warehouses:desactiver' entrepot.pk %}">Désactiver</a>
+      <a class="btn btn-outline-secondary" href="{% url 'bo_warehouses:desactiver' entrepot.pk %}">{% tr "Désactiver" %}</a>
     {% else %}
       <form method="post" action="{% url 'bo_warehouses:activer' entrepot.pk %}">{% csrf_token %}
-        <button class="btn btn-accent" type="submit">Activer</button>
+        <button class="btn btn-accent" type="submit">{% tr "Activer" %}</button>
       </form>
     {% endif %}
   </div>
 </div>
 
 <section class="card card-ch p-3 mb-4">
-  <h2 class="h6 mb-1">Occupation</h2>
-  <p class="text-muted small mb-3">Somme des réservations dont la fin n'est pas encore atteinte.</p>
+  <h2 class="h6 mb-1">{% tr "Occupation" %}</h2>
+  <p class="text-muted small mb-3">{% tr "Somme des réservations dont la fin n'est pas encore atteinte." %}</p>
   <div class="row g-3 mb-3">
     <div class="col-6 col-lg">
       <div class="kpi h-100">
-        <div class="text-muted small">Capacité réservée</div>
+        <div class="text-muted small">{% tr "Capacité réservée" %}</div>
         <div class="val">{{ occupation.reserve }} m³</div>
       </div>
     </div>
     <div class="col-6 col-lg">
       <div class="kpi h-100">
-        <div class="text-muted small">Disponible</div>
+        <div class="text-muted small">{% tr "Disponible" %}</div>
         <div class="val">{{ occupation.disponible }} m³</div>
       </div>
     </div>
   </div>
-  <p class="mb-1">Taux d'occupation : <strong>{{ occupation.taux }} %</strong></p>
-  <div class="progress entrepot-barre" role="progressbar" aria-label="Taux d'occupation" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ occupation.barre }}">
+  <p class="mb-1">{% tr "Taux d'occupation :" %} <strong>{{ occupation.taux }} %</strong></p>
+  <div class="progress entrepot-barre" role="progressbar" aria-label="{% tr "Taux d'occupation" %}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ occupation.barre }}">
     <div class="progress-bar" style="width: {{ occupation.barre }}%"></div>
   </div>
 </section>
@@ -52,60 +52,60 @@
 <div class="row g-3 mb-4">
   <div class="col-lg-6">
     <section class="card card-ch p-3 h-100">
-      <h2 class="h6">Informations</h2>
+      <h2 class="h6">{% tr "Informations" %}</h2>
       <dl class="entrepot-faits">
         {% if entrepot.description %}
           <div>
-            <dt>Description</dt>
+            <dt>{% tr "Description" %}</dt>
             <dd>{{ entrepot.description }}</dd>
           </div>
         {% endif %}
         <div>
-          <dt>Adresse</dt>
+          <dt>{% tr "Adresse" %}</dt>
           <dd>
             {{ entrepot.adresse }}<br>
             {{ entrepot.code_postal }} {{ entrepot.ville }}{% if entrepot.gouvernorat %} · {{ entrepot.gouvernorat }}{% endif %}
           </dd>
         </div>
         <div>
-          <dt>Localisation</dt>
+          <dt>{% tr "Localisation" %}</dt>
           <dd>
             {% if entrepot.latitude is not None %}
-              Latitude {{ entrepot.latitude }} · longitude {{ entrepot.longitude }}
+              {% tr "Latitude" %} {{ entrepot.latitude }} {% tr "· longitude" %} {{ entrepot.longitude }}
             {% else %}
-              GPS non renseigné
+              {% tr "GPS non renseigné" %}
             {% endif %}
           </dd>
         </div>
         <div>
-          <dt>Historique</dt>
-          <dd>Créé le {{ entrepot.created_at|date:"d/m/Y H:i" }} · modifié le {{ entrepot.updated_at|date:"d/m/Y H:i" }}</dd>
+          <dt>{% tr "Historique" %}</dt>
+          <dd>{% tr "Créé le" %} {{ entrepot.created_at|date:"d/m/Y H:i" }} {% tr "· modifié le" %} {{ entrepot.updated_at|date:"d/m/Y H:i" }}</dd>
         </div>
       </dl>
     </section>
   </div>
   <div class="col-lg-6">
     <section class="card card-ch p-3 h-100">
-      <h2 class="h6">Capacité et horaires</h2>
+      <h2 class="h6">{% tr "Capacité et horaires" %}</h2>
       <dl class="entrepot-faits">
         <div>
-          <dt>Capacité maximale</dt>
+          <dt>{% tr "Capacité maximale" %}</dt>
           <dd>{{ entrepot.capacite_max_m3 }} m³</dd>
         </div>
         <div>
-          <dt>Horaires</dt>
+          <dt>{% tr "Horaires" %}</dt>
           <dd>{{ entrepot.horaire_ouverture|time:"H:i" }} – {{ entrepot.horaire_fermeture|time:"H:i" }}</dd>
         </div>
         <div>
-          <dt>Stockage prévu</dt>
-          <dd>{{ entrepot.duree_stockage_max_heures }} h après le début du dépôt</dd>
+          <dt>{% tr "Stockage prévu" %}</dt>
+          <dd>{{ entrepot.duree_stockage_max_heures }} {% tr "h après le début du dépôt" %}</dd>
         </div>
         <div>
-          <dt>Délai de grâce</dt>
-          <dd>{{ entrepot.delai_grace_minutes }} min après la fin du créneau</dd>
+          <dt>{% tr "Délai de grâce" %}</dt>
+          <dd>{{ entrepot.delai_grace_minutes }} {% tr "min après la fin du créneau" %}</dd>
         </div>
         <div>
-          <dt>Réservé actuellement</dt>
+          <dt>{% tr "Réservé actuellement" %}</dt>
           <dd>{{ occupation.reserve }} m³</dd>
         </div>
       </dl>
@@ -115,20 +115,20 @@
 
 <section class="card card-ch p-3">
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <h2 class="h6 mb-0">Réservations de dépôt</h2>
-    <a href="{% url 'bo_warehouses:reservations' %}?entrepot={{ entrepot.pk }}">Toutes les réservations</a>
+    <h2 class="h6 mb-0">{% tr "Réservations de dépôt" %}</h2>
+    <a href="{% url 'bo_warehouses:reservations' %}?entrepot={{ entrepot.pk }}">{% tr "Toutes les réservations" %}</a>
   </div>
   {% if creneaux %}
     <div class="table-responsive">
       <table class="table table-ch align-middle mb-0">
         <thead>
           <tr>
-            <th>Référence</th>
-            <th>Expédition</th>
-            <th>E-mail</th>
-            <th>Statut</th>
-            <th>Créneau</th>
-            <th>Volume</th>
+            <th>{% tr "Référence" %}</th>
+            <th>{% tr "Expédition" %}</th>
+            <th>{% tr "E-mail" %}</th>
+            <th>{% tr "Statut" %}</th>
+            <th>{% tr "Créneau" %}</th>
+            <th>{% tr "Volume" %}</th>
           </tr>
         </thead>
         <tbody>
@@ -137,7 +137,7 @@
               <td><a href="{% url 'bo_warehouses:reservation' creneau.pk %}">{{ creneau.reference }}</a></td>
               <td>{{ creneau.expedition.reference }}</td>
               <td>{{ creneau.expedition.pme.email }}</td>
-              <td><span class="badge-statut badge-{{ creneau.statut }}">{{ creneau.get_statut_display }}</span></td>
+              <td><span class="badge-statut badge-{{ creneau.statut }}">{% tr creneau.get_statut_display %}</span></td>
               <td>{{ creneau.debut|date:"d/m/Y H:i" }} – {{ creneau.fin|time:"H:i" }}</td>
               <td>{% if creneau.volume_reserve is not None %}{{ creneau.volume_reserve }} m³{% else %}—{% endif %}</td>
             </tr>
@@ -146,7 +146,7 @@
       </table>
     </div>
   {% else %}
-    <p class="mb-0 text-muted">Aucune réservation.</p>
+    <p class="mb-0 text-muted">{% tr "Aucune réservation." %}</p>
   {% endif %}
 </section>
 {% endblock %}
