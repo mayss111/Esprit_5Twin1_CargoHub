@@ -5,6 +5,7 @@ from django.utils import translation
 from .html_langue import traduire_page
 from .traductions import LANGUES
 
+
 class LangueExpliciteMiddleware:
     """Active FR, EN ou AR seulement si la personne l'a choisi."""
 
