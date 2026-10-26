@@ -547,7 +547,7 @@ class BonExpeditionView(LoginRequiredMixin, View):
 
 
 class VerifierBonView(View):
-    """Page ouverte par le QR Code. Le jeton ne transporte pas les adresses."""
+    """Page ouverte par le QR Code. L'adresse est la référence imprimée sur le bon."""
 
     template_name = "shipments/verifier_bon.html"
 

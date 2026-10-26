@@ -1,4 +1,4 @@
-"""Bon d'expédition PDF et QR Code stable.
+"""Bon d'expédition PDF. Le QR Code est le lien de la référence publique.
 
 ReportLab est utilisé à la place de WeasyPrint : le paquet est déjà installé
 et ne demande pas Cairo ni Pango. Les accents passent par les polices DejaVu
@@ -12,7 +12,6 @@ from io import BytesIO
 from pathlib import Path
 
 import qrcode
-from django.core.signing import BadSignature, Signer
 from django.urls import reverse
 from django.utils import timezone
 from qrcode.constants import ERROR_CORRECT_M
@@ -24,7 +23,6 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-SEL = "cargohub-bon-expedition"
 NAVY = colors.HexColor("#0F1E3D")
 ORANGE = colors.HexColor("#E87722")
 CREAM = colors.HexColor("#F7F5F2")
@@ -33,15 +31,17 @@ _POLICES = False
 
 
 def jeton_bon(expedition):
-    """Jeton signé et stable. Il contient la clé primaire, jamais l'adresse."""
-    return Signer(salt=SEL).sign(str(expedition.pk))
+    """Référence déjà imprimée sur le bon. Le QR Code n'ajoute pas d'autre secret."""
+    return expedition.reference
 
 
 def lire_jeton(jeton):
-    try:
-        return int(Signer(salt=SEL).unsign(jeton))
-    except (BadSignature, ValueError):
+    from apps.shipments.models import Expedition
+
+    reference = (jeton or "").strip()
+    if not reference:
         return None
+    return Expedition.objects.filter(reference=reference).values_list("pk", flat=True).first()
 
 
 def url_verification(request, expedition):
@@ -250,7 +250,7 @@ def _tableau(articles, style_entete, style_cellule):
 def _qr(url, style_texte):
     image = Image(BytesIO(png_qr(url)), width=32 * mm, height=32 * mm)
     legende = Paragraph(
-        "QR Code propre à cette expédition. Il ouvre une page de vérification signée "
+        "QR Code de cette expédition. Il ouvre la page de sa référence "
         "et ne contient ni adresse, ni coordonnées, ni description des marchandises.",
         style_texte,
     )
