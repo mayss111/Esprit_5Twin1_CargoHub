@@ -6,6 +6,7 @@ Back-office  : tous les appels d'offres avec quelques indicateurs.
 """
 
 import logging
+from datetime import timedelta
 
 from django.contrib import messages
 from django.db.models import Avg, Count, Exists, OuterRef, Q
@@ -16,17 +17,18 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, UpdateView
 
-from apps.bookings.services import ReservationImpossible
+from apps.bookings.services import ECART_MAX_JOURS, ReservationImpossible
 from apps.core import ai
 from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
 from apps.core.roles import Role
 from apps.core.views import ListeBackofficeView, ListeFrontView
 from apps.fleet.models import Trajet
+from apps.shipments.models import Expedition
 
 from .ai import suggerer_prix
-from .forms import AppelOffreForm, OffreForm
+from .forms import AppelOffreForm, OffreForm, pourquoi_indisponible
 from .models import AppelOffre, Offre
-from .services import retenir_offre
+from .services import offre_retenable, offres_retenables, retenir_offre
 from .tasks import calculer_recommandation
 
 logger = logging.getLogger(__name__)
@@ -82,7 +84,17 @@ class AppelCreerView(MesAppelsMixin, CreateView):
         return {**super().get_form_kwargs(), "pme": self.request.user}
 
     def get_initial(self):
-        return {"expedition": self.request.GET.get("expedition")}
+        """?expedition=<id> ne pré-remplit le champ que si l'expédition est vraiment disponible, sinon explique."""
+        demande = self.request.GET.get("expedition", "")
+        if not demande.isdigit():
+            return {}
+        expedition = Expedition.objects.filter(pk=demande, pme=self.request.user).first()
+        if expedition is None:
+            return {}
+        if raison := pourquoi_indisponible(expedition):
+            messages.warning(self.request, f"{expedition.reference} : pas d’appel d’offres possible, car {raison}.")
+            return {}
+        return {"expedition": expedition.pk}
 
     def form_valid(self, form):
         messages.success(self.request, "Appel d’offres publié : les transporteurs peuvent maintenant faire une offre.")
@@ -142,11 +154,19 @@ class AppelDetailView(RoleRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
-        offres = self.object.offres.select_related("transporteur", "trajet")
+        offres = self.object.offres.select_related("transporteur", "trajet__vehicule").prefetch_related(
+            "trajet__etapes"
+        )
         if user.role == Role.PME:
             ctx["offres"] = offres
             ctx["prix_moyen"] = offres.aggregate(m=Avg("prix"))["m"]
-            ctx["nb_proposees"] = sum(o.statut == Offre.Statut.PROPOSEE for o in offres)
+            # Offres proposées dont le trajet ne convient plus : badge « Trajet incompatible » au lieu de « Retenir ».
+            ctx["incompatibles"] = {
+                o.pk
+                for o in offres
+                if o.statut == Offre.Statut.PROPOSEE and not offre_retenable(o, self.object.expedition)
+            }
+            ctx["nb_proposees"] = sum(o.statut == Offre.Statut.PROPOSEE for o in offres) - len(ctx["incompatibles"])
             reco = self.object.recommandation_ia or {}
             ctx["offre_recommandee"] = next((o for o in offres if o.pk == reco.get("offre_id")), None)
         else:
@@ -180,8 +200,10 @@ class LancerRecommandationView(RoleRequiredMixin, View):
         appel = get_object_or_404(AppelOffre, pk=pk, expedition__pme=request.user)
         if appel.statut != AppelOffre.Statut.OUVERT:
             messages.error(request, "Cet appel d’offres n’est plus ouvert : il n’y a plus d’offre à comparer.")
-        elif appel.offres.filter(statut=Offre.Statut.PROPOSEE).count() < 2:
-            messages.error(request, "L’aide au choix compare au moins 2 offres : attendez d’autres propositions.")
+        elif len(offres_retenables(appel)) < 2:
+            messages.error(
+                request, "L’aide au choix compare au moins 2 offres compatibles : attendez d’autres propositions."
+            )
         elif appel.recommandation_statut == AppelOffre.Recommandation.EN_COURS:
             messages.info(request, "Analyse déjà en cours…")
         else:
@@ -220,6 +242,16 @@ class StatutRecommandationView(RoleRequiredMixin, View):
 # ---------------------------------------------------------------- offres des transporteurs
 
 
+def contexte_offre(appel):
+    """L'appel, et la plage de départ acceptée (pour expliquer pourquoi aucun trajet ne convient)."""
+    date = appel.expedition.date_souhaitee
+    return {
+        "appel": appel,
+        "date_min": date - timedelta(days=ECART_MAX_JOURS),
+        "date_max": date + timedelta(days=ECART_MAX_JOURS),
+    }
+
+
 class OffreCreerView(RoleRequiredMixin, CreateView):
     roles = [Role.TRANSPORTEUR]
     model = Offre
@@ -242,7 +274,7 @@ class OffreCreerView(RoleRequiredMixin, CreateView):
         return {**super().get_form_kwargs(), "transporteur": self.request.user, "appel": self.appel}
 
     def get_context_data(self, **kwargs):
-        return {**super().get_context_data(**kwargs), "appel": self.appel}
+        return {**super().get_context_data(**kwargs), **contexte_offre(self.appel)}
 
     def form_valid(self, form):
         self.appel.effacer_recommandation()  # nouvelle offre : l'aide au choix doit être refaite
@@ -280,7 +312,7 @@ class OffreModifierView(MesOffresMixin, UpdateView):
         return {**super().get_form_kwargs(), "transporteur": self.request.user, "appel": self.object.appel}
 
     def get_context_data(self, **kwargs):
-        return {**super().get_context_data(**kwargs), "appel": self.object.appel}
+        return {**super().get_context_data(**kwargs), **contexte_offre(self.object.appel)}
 
     def form_valid(self, form):
         self.object.appel.effacer_recommandation()

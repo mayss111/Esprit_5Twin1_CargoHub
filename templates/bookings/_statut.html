@@ -1,5 +1,6 @@
-{% if statut == "ACCEPTEE" %}<span class="badge text-bg-success"><i class="bi bi-check-circle" aria-hidden="true"></i> {{ libelle }}</span>
-{% elif statut == "EN_ATTENTE" %}<span class="badge text-bg-warning"><i class="bi bi-hourglass-split" aria-hidden="true"></i> {{ libelle }}</span>
-{% elif statut == "EN_TRANSIT" %}<span class="badge text-bg-info"><i class="bi bi-truck" aria-hidden="true"></i> {{ libelle }}</span>
-{% elif statut == "LIVREE" %}<span class="badge text-bg-primary"><i class="bi bi-box-seam" aria-hidden="true"></i> {{ libelle }}</span>
-{% else %}<span class="badge text-bg-secondary"><i class="bi bi-x-circle" aria-hidden="true"></i> {{ libelle }}</span>{% endif %}
+{% load cargohub %}
+{% if statut == "ACCEPTEE" %}<span class="badge text-bg-success"><i class="bi bi-check-circle" aria-hidden="true"></i> {% tr libelle %}</span>
+{% elif statut == "EN_ATTENTE" %}<span class="badge text-bg-warning"><i class="bi bi-hourglass-split" aria-hidden="true"></i> {% tr libelle %}</span>
+{% elif statut == "EN_TRANSIT" %}<span class="badge text-bg-info"><i class="bi bi-truck" aria-hidden="true"></i> {% tr libelle %}</span>
+{% elif statut == "LIVREE" %}<span class="badge text-bg-primary"><i class="bi bi-box-seam" aria-hidden="true"></i> {% tr libelle %}</span>
+{% else %}<span class="badge text-bg-secondary"><i class="bi bi-x-circle" aria-hidden="true"></i> {% tr libelle %}</span>{% endif %}

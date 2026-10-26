@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load cargohub %}
+{% block title %}{% tr "Annuler" %} {{ reservation.reference }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card card-ch p-4">
+      <h1 class="page-title h3 mb-3">{% tr "Annuler" %} {{ reservation.reference }}</h1>
+      {% if reservation.annulable_par_pme %}
+        <p>{% tr "Le dépôt du" %} {{ reservation.debut|date:"d/m/Y" }} {% tr "à" %} {{ reservation.debut|time:"H:i" }} {% tr "chez" %} {{ reservation.entrepot.nom }} {% tr "sera conservé dans l'historique. La capacité prévisionnelle sera libérée." %}</p>
+        <form method="post" class="d-flex flex-wrap gap-2">
+          {% csrf_token %}
+          <button class="btn btn-accent" type="submit">{% tr "Confirmer l'annulation" %}</button>
+          <a class="btn btn-outline-secondary" href="{% url 'warehouses:depot' reservation.pk %}">{% tr "Retour" %}</a>
+        </form>
+      {% else %}
+        <p>{% tr "Ce dépôt ne peut plus être annulé." %}</p>
+        <a class="btn btn-outline-secondary" href="{% url 'warehouses:depot' reservation.pk %}">{% tr "Retour" %}</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

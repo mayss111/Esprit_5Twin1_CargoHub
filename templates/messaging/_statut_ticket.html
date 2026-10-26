@@ -1,1 +1,2 @@
-<span class="badge {% if ticket.statut == 'RESOLU' %}text-bg-success{% elif ticket.statut == 'EN_COURS' %}text-bg-info{% else %}text-bg-warning{% endif %}">{{ ticket.get_statut_display }}</span>
+{% load cargohub %}
+<span class="badge {% if ticket.statut == 'RESOLU' %}text-bg-success{% elif ticket.statut == 'EN_COURS' %}text-bg-info{% else %}text-bg-warning{% endif %}">{% tr ticket.get_statut_display %}</span>

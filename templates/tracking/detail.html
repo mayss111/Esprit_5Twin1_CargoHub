@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Suivi {{ reservation }}{% endblock %}
+{% block content %}
+<nav aria-label="Fil d’Ariane">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'tracking:liste' %}">Suivi</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ reservation }}</li>
+  </ol>
+</nav>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <h1 class="page-title mb-0">Suivi {{ reservation }}</h1>
+  <span class="badge text-bg-light border">{{ reservation.get_statut_display }}</span>
+</div>
+<p class="text-muted">{{ reservation.expedition }} — {{ reservation.trajet }}</p>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <section class="card card-ch p-4 mb-3" aria-labelledby="titre-positions">
+      <h2 class="h5" id="titre-positions">Positions du camion</h2>
+      {% if positions %}
+      <ol class="mb-3">
+        {% for position in positions %}
+        <li>{{ position.date }} — {{ position.latitude }}, {{ position.longitude }}</li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      <p class="text-muted">Aucune position pour le moment.</p>
+      {% endif %}
+      {% if est_transporteur and reservation.statut != "LIVREE" %}
+      <form method="post" novalidate data-controle>{% csrf_token %}
+        <input type="hidden" name="action" value="position">
+        {{ form_position|crispy }}
+        <button class="btn btn-primary" type="submit">Enregistrer la position</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section class="card card-ch p-4" aria-labelledby="titre-incidents">
+      <h2 class="h5" id="titre-incidents">Incidents</h2>
+      {% for incident in incidents %}
+      <article class="border rounded-3 p-3 mb-2">
+        <h3 class="h6 mb-1">{{ incident.get_type_display }} — {{ incident.get_statut_display }}</h3>
+        <p class="mb-1">{{ incident.description }}</p>
+        <p class="small text-muted mb-2">Déclaré par {{ incident.declare_par }}</p>
+        {% if incident.declare_par_id == user.id and incident.statut == "OUVERT" %}
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'tracking:incident_modifier' incident.pk %}">Modifier</a>
+        <a class="btn btn-sm btn-outline-danger" href="{% url 'tracking:incident_supprimer' incident.pk %}">Supprimer</a>
+        {% endif %}
+      </article>
+      {% empty %}
+      <p class="text-muted">Aucun incident déclaré.</p>
+      {% endfor %}
+      <form method="post" class="mt-3" novalidate data-controle>{% csrf_token %}
+        <input type="hidden" name="action" value="incident">
+        {{ form_incident|crispy }}
+        <button class="btn btn-outline-danger" type="submit">Déclarer un incident</button>
+      </form>
+    </section>
+  </div>
+
+  <div class="col-lg-5">
+    <section class="card card-ch p-4 mb-3" aria-labelledby="titre-preuve">
+      <h2 class="h5" id="titre-preuve">Preuve de livraison</h2>
+      {% if preuve %}
+        {% if preuve.photo %}
+        <img src="{{ preuve.photo.url }}" alt="Photo de la preuve de livraison" class="img-fluid rounded mb-2">
+        {% endif %}
+        {% if est_transporteur %}<p>Code à communiquer à la PME : <strong>{{ preuve.code_otp }}</strong></p>{% endif %}
+        {% if preuve.confirmee_le %}<p class="text-success mb-0">Confirmée le {{ preuve.confirmee_le }}.</p>{% endif %}
+      {% else %}
+      <p class="text-muted">Le transporteur n’a pas encore généré de code.</p>
+      {% endif %}
+      {% if est_transporteur and reservation.statut != "LIVREE" %}
+      <form method="post" enctype="multipart/form-data" class="mt-2" novalidate data-controle>{% csrf_token %}
+        <input type="hidden" name="action" value="preuve">
+        {{ form_preuve|crispy }}
+        <button class="btn btn-primary" type="submit">{% if preuve %}Mettre à jour la photo{% else %}Générer le code{% endif %}</button>
+      </form>
+      {% endif %}
+      {% if est_pme and preuve and not preuve.confirmee_le %}
+      <form method="post" class="mt-3" novalidate data-controle>{% csrf_token %}
+        <input type="hidden" name="action" value="confirmer">
+        {{ form_confirmation|crispy }}
+        <button class="btn btn-success" type="submit">Confirmer la livraison</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section class="card card-ch p-4 mb-3" aria-labelledby="titre-avis">
+      <h2 class="h5" id="titre-avis">Avis</h2>
+      {% for avis in avis_liste %}
+      <article class="mb-2">
+        <h3 class="h6 mb-0">{{ avis.note }}/5 — {{ avis.get_sentiment_display|default:"en cours" }}</h3>
+        <p class="mb-1">{{ avis.commentaire|default:"Sans commentaire." }}</p>
+        {% if avis.auteur_id == user.id %}
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'tracking:avis_modifier' avis.pk %}">Modifier</a>
+        <a class="btn btn-sm btn-outline-danger" href="{% url 'tracking:avis_supprimer' avis.pk %}">Supprimer</a>
+        {% endif %}
+      </article>
+      {% empty %}<p class="text-muted">Pas encore d’avis.</p>{% endfor %}
+      {% if reservation.statut == "LIVREE" and not mon_avis %}
+      <form method="post" novalidate data-controle data-ia="Analyse du sentiment…">{% csrf_token %}
+        <input type="hidden" name="action" value="avis">
+        {{ form_avis|crispy }}
+        <button class="btn btn-primary" type="submit">Publier l’avis</button>
+      </form>
+      {% endif %}
+    </section>
+
+    <section class="card card-ch p-4 mb-3" aria-labelledby="titre-resume">
+      <h2 class="h5" id="titre-resume">Résumé des avis du transporteur</h2>
+      {% if resume.en_cours %}
+      <p role="status">Analyse en cours… la page se met à jour.</p>
+      {% elif resume.texte %}
+      <p>{{ resume.texte }}</p>
+      {% else %}
+      <p class="text-muted">Aucun résumé pour le moment.</p>
+      {% endif %}
+      <form method="post" data-ia="Résumé en cours…">{% csrf_token %}
+        <input type="hidden" name="action" value="resume">
+        <button class="btn btn-outline-primary" type="submit">Lancer le résumé IA</button>
+      </form>
+    </section>
+
+    <section class="card card-ch p-4" aria-labelledby="titre-paiement">
+      <h2 class="h5" id="titre-paiement">Paiement</h2>
+      {% if paiement %}
+      <p class="mb-2">{{ paiement.montant }} DT — {{ paiement.get_statut_display }}</p>
+      <a class="btn btn-primary" href="{% url 'payments:detail' paiement.pk %}">Voir le paiement</a>
+      {% elif est_pme %}
+      <form method="post" action="{% url 'payments:ouvrir' reservation.pk %}">{% csrf_token %}
+        <button class="btn btn-accent" type="submit">Préparer le paiement</button>
+      </form>
+      {% else %}
+      <p class="text-muted mb-0">La PME n’a pas encore ouvert le paiement.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{% if resume.en_cours %}<script>setTimeout(function () { window.location.reload(); }, 3000);</script>{% endif %}
+{% endblock %}

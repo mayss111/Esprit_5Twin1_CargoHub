@@ -1,18 +1,19 @@
 {% extends "base.html" %}
-{% block title %}Mes contrats{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr "Mes contrats" %}{% endblock %}
 {% block content %}
-<h1 class="page-title mb-1">Mes contrats</h1>
-<p class="text-muted">Contrats et documents de transport de vos réservations.</p>
+<h1 class="page-title mb-1">{% tr "Mes contrats" %}</h1>
+<p class="text-muted">{% tr "Contrats et documents de transport de vos réservations." %}</p>
 
 {% if reservations_sans_contrat %}
 <section class="card card-ch p-4 mb-4" aria-labelledby="titre-a-generer">
-  <h2 class="h5" id="titre-a-generer">Réservations acceptées sans contrat</h2>
+  <h2 class="h5" id="titre-a-generer">{% tr "Réservations acceptées sans contrat" %}</h2>
   <ul class="list-unstyled mb-0">
     {% for r in reservations_sans_contrat %}
     <li class="d-flex flex-wrap justify-content-between align-items-center gap-2 py-2 border-bottom">
-      <span>{{ r }} · {{ r.expedition.adresse_depart.ville }} → {{ r.expedition.adresse_arrivee.ville }} · {{ r.get_statut_display }}</span>
+      <span>{{ r }} · {{ r.expedition.adresse_depart.ville }} → {{ r.expedition.adresse_arrivee.ville }} · {% tr r.get_statut_display %}</span>
       <form method="post" action="{% url 'contracts:generer' r.pk %}">{% csrf_token %}
-        <button class="btn btn-sm btn-accent" type="submit">Générer le contrat<span class="visually-hidden"> de la {{ r|lower }}</span></button>
+        <button class="btn btn-sm btn-accent" type="submit">{% tr "Générer le contrat" %}<span class="visually-hidden"> {% tr "de la" %} {{ r|lower }}</span></button>
       </form>
     </li>
     {% endfor %}
@@ -22,19 +23,19 @@
 
 {% if object_list %}
 <div class="table-responsive"><table class="table table-ch align-middle">
-  <caption class="visually-hidden">Mes contrats</caption>
-  <thead><tr><th scope="col">Réservation</th><th scope="col">Trajet</th><th scope="col">Signature PME</th><th scope="col">Signature transporteur</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+  <caption class="visually-hidden">{% tr "Mes contrats" %}</caption>
+  <thead><tr><th scope="col">{% tr "Réservation" %}</th><th scope="col">{% tr "Trajet" %}</th><th scope="col">{% tr "Signature PME" %}</th><th scope="col">{% tr "Signature transporteur" %}</th><th scope="col"><span class="visually-hidden">{% tr "Actions" %}</span></th></tr></thead>
   <tbody>{% for c in object_list %}
     <tr>
       <td>{{ c.reservation }}</td>
       <td>{{ c.reservation.trajet.ville_depart }} → {{ c.reservation.trajet.ville_arrivee }}</td>
-      <td>{% if c.signe_par_pme_le %}<i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i> {{ c.signe_par_pme_le|date:"d/m/Y" }}{% else %}En attente{% endif %}</td>
-      <td>{% if c.signe_par_transporteur_le %}<i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i> {{ c.signe_par_transporteur_le|date:"d/m/Y" }}{% else %}En attente{% endif %}</td>
-      <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'contracts:detail' c.pk %}">Ouvrir<span class="visually-hidden"> le contrat de la {{ c.reservation|lower }}</span></a></td>
+      <td>{% if c.signe_par_pme_le %}<i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i> {{ c.signe_par_pme_le|date:"d/m/Y" }}{% else %}{% tr "En attente" %}{% endif %}</td>
+      <td>{% if c.signe_par_transporteur_le %}<i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i> {{ c.signe_par_transporteur_le|date:"d/m/Y" }}{% else %}{% tr "En attente" %}{% endif %}</td>
+      <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'contracts:detail' c.pk %}">{% tr "Ouvrir" %}<span class="visually-hidden"> {% tr "le contrat de la" %} {{ c.reservation|lower }}</span></a></td>
     </tr>{% endfor %}
   </tbody></table></div>
 {% include "core/_pagination.html" %}
 {% else %}
-<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-file-earmark-text fs-1 d-block mb-2" aria-hidden="true"></i>Aucun contrat pour le moment.</div>
+<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-file-earmark-text fs-1 d-block mb-2" aria-hidden="true"></i>{% tr "Aucun contrat pour le moment." %}</div>
 {% endif %}
 {% endblock %}

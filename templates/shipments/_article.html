@@ -1,3 +1,4 @@
+{% load cargohub %}
 <div class="article-card border rounded-3 px-3 pt-2 pb-1 mb-2">
   {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
   {% if form.non_field_errors %}
@@ -15,7 +16,7 @@
     {% if form.instance.pk %}
       <div class="col-md-3 mb-2">
         <label class="form-check-label small" for="{{ form.DELETE.id_for_label }}">
-          {{ form.DELETE }} Retirer
+          {{ form.DELETE }} {% tr "Retirer" %}
         </label>
       </div>
     {% endif %}

@@ -1,25 +1,25 @@
 {% extends "backoffice/base.html" %}
-{% load crispy_forms_tags %}
+{% load crispy_forms_tags  cargohub %}
 {% block title %}{{ reservation }}{% endblock %}
 {% block content %}
-<nav aria-label="Fil d’Ariane"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bo_bookings:liste' %}">Réservations</a></li><li class="breadcrumb-item active" aria-current="page">{{ reservation }}</li></ol></nav>
+<nav aria-label="{% tr "Fil d’Ariane" %}"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bo_bookings:liste' %}">{% tr "Réservations" %}</a></li><li class="breadcrumb-item active" aria-current="page">{{ reservation }}</li></ol></nav>
 <h1 class="page-title mb-3">{{ reservation }}</h1>
 <div class="row g-3">
   <div class="col-lg-7">
-    <div class="card card-ch p-4 mb-3"><h2 class="h5 mb-3">Détails</h2>{% include "bookings/_resume.html" %}</div>
+    <div class="card card-ch p-4 mb-3"><h2 class="h5 mb-3">{% tr "Détails" %}</h2>{% include "bookings/_resume.html" %}</div>
     <div class="card card-ch p-4">{% include "bookings/_historique.html" %}</div>
   </div>
   <div class="col-lg-5">
     <div class="card card-ch p-4">
-      <h2 class="h5">Annuler pour litige</h2>
+      <h2 class="h5">{% tr "Annuler pour litige" %}</h2>
       {% if reservation.annulable %}
-        <p class="small text-muted">La PME est prévenue. Si la réservation était acceptée, la place est rendue au camion.</p>
+        <p class="small text-muted">{% tr "La PME est prévenue. Si la réservation était acceptée, la place est rendue au camion." %}</p>
         <form method="post" action="{% url 'bo_bookings:litige' reservation.pk %}">{% csrf_token %}
           {{ form_litige|crispy }}
-          <button class="btn btn-danger" type="submit">Annuler la réservation</button>
+          <button class="btn btn-danger" type="submit">{% tr "Annuler la réservation" %}</button>
         </form>
       {% else %}
-        <p class="mb-0">Impossible : la réservation est « {{ reservation.get_statut_display|lower }} ».</p>
+        <p class="mb-0">{% tr "Impossible : la réservation est «" %} {{ reservation.get_statut_display|lower }} ».</p>
       {% endif %}
     </div>
   </div>

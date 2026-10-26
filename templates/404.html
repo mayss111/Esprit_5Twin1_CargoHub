@@ -1,5 +1,6 @@
 {% extends "erreur_base.html" %}
+{% load cargohub %}
 {% block code %}404{% endblock %}
 {% block code2 %}404{% endblock %}
-{% block titre %}Page introuvable{% endblock %}
-{% block texte %}Cette page n'existe pas ou a été déplacée.{% endblock %}
+{% block titre %}{% tr "Page introuvable" %}{% endblock %}
+{% block texte %}{% tr "Cette page n'existe pas ou a été déplacée." %}{% endblock %}

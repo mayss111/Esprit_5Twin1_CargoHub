@@ -32,6 +32,7 @@ Docker garantit que **les 5 membres ont exactement les mêmes versions** (Python
 4. Dans un **deuxième terminal**, créer les données de démonstration :
    ```bash
    docker compose exec web python manage.py donnees_demo
+   docker compose exec web python manage.py donnees_demo_co2
    ```
 5. Ouvrir http://localhost:8000 — comptes de démo (mot de passe `cargohub2026`) :
    - `admin@cargohub.tn` → back-office : http://localhost:8000/backoffice/
@@ -49,6 +50,7 @@ pip install -r requirements/dev.txt
 cp .env.example .env               # puis commentez DATABASE_URL et REDIS_URL
 python manage.py migrate
 python manage.py donnees_demo
+python manage.py donnees_demo_co2
 python manage.py runserver
 ```
 

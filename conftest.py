@@ -78,6 +78,18 @@ def expedition(pme):
     return exp
 
 
+@pytest.fixture
+def reservation(expedition, trajet):
+    from apps.bookings.models import Reservation
+
+    return Reservation.objects.create(
+        expedition=expedition,
+        trajet=trajet,
+        statut=Reservation.Statut.ACCEPTEE,
+        prix_convenu=Decimal("100.00"),
+    )
+
+
 # ---------- M4 : un deuxième compte de chaque rôle et un appel d'offres (pour tester l'isolement des données)
 
 

@@ -1,7 +1,8 @@
 """
 python manage.py donnees_demo
 
-Crée les mêmes données de démonstration chez tout le monde.
+Crée les mêmes données de démonstration chez tout le monde, dont le scénario de soutenance du M4
+(appel d’offres avec 2 offres et des avis). Peut être relancée sans créer de doublon.
 Mot de passe de tous les comptes : cargohub2026
 """
 
@@ -16,11 +17,14 @@ from apps.accounts.models import ProfilPME, ProfilTransporteur, Utilisateur
 from apps.bookings import services
 from apps.bookings.models import Reservation
 from apps.core.roles import Role
-from apps.fleet.models import Trajet, Vehicule
+from apps.fleet.models import DocumentVehicule, FacteurEmission, Trajet, Vehicule
 from apps.shipments.models import Adresse, ArticleExpedie, Expedition
+from apps.tenders.models import AppelOffre, Offre
+from apps.tracking.models import Avis
 from apps.warehouses.models import Entrepot
 
 MDP = "cargohub2026"
+SOUTENANCE = "[démo soutenance]"  # repère les données du scénario, pour ne jamais les créer deux fois
 
 
 class Command(BaseCommand):
@@ -29,9 +33,12 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **options):
         if Utilisateur.objects.filter(email="admin@cargohub.tn").exists():
-            self.stdout.write(self.style.WARNING("Les données de démo existent déjà."))
-            return
+            self.stdout.write(self.style.WARNING("Les données de base existent déjà."))
+        else:
+            self.donnees_de_base()
+        self.scenario_soutenance()
 
+    def donnees_de_base(self):
         Utilisateur.objects.create_superuser("admin@cargohub.tn", MDP, first_name="Admin")
 
         pme = Utilisateur.objects.create_user("sami@atelier.tn", MDP, role=Role.PME, first_name="Sami")
@@ -46,6 +53,29 @@ class Command(BaseCommand):
             capacite_kg=3000,
             capacite_m3=Decimal("22"),
         )
+        DocumentVehicule.objects.create(
+            vehicule=camion,
+            type=DocumentVehicule.Type.CARTE_GRISE,
+            fichier="demo/carte-grise-214.pdf",
+            date_expiration=(timezone.now() + timedelta(days=200)).date(),
+        )
+        DocumentVehicule.objects.create(
+            vehicule=camion,
+            type=DocumentVehicule.Type.ASSURANCE,
+            fichier="demo/assurance-214.pdf",
+            date_expiration=(timezone.now() + timedelta(days=20)).date(),
+        )
+
+        # Facteurs d'émission par défaut (modifiables dans le back-office)
+        for type_vehicule, facteur in (
+            (Vehicule.Type.CAMIONNETTE, "0.1800"),
+            (Vehicule.Type.CAMION, "0.2500"),
+            (Vehicule.Type.SEMI_REMORQUE, "0.4100"),
+            (Vehicule.Type.FRIGORIFIQUE, "0.3300"),
+        ):
+            FacteurEmission.objects.update_or_create(
+                type_vehicule=type_vehicule, defaults={"kg_co2_par_km": Decimal(facteur)}
+            )
 
         demain = timezone.now() + timedelta(days=1)
         trajet = Trajet.objects.create(
@@ -56,6 +86,8 @@ class Command(BaseCommand):
             date_depart=demain,
             capacite_dispo_kg=Decimal("1000"),
             capacite_dispo_m3=Decimal("8"),
+            capacite_totale_kg=Decimal("3000"),
+            capacite_totale_m3=Decimal("22"),
             prix_indicatif=Decimal("85"),
             distance_km=270,
             recurrent=True,
@@ -91,3 +123,187 @@ class Command(BaseCommand):
                 f"Données créées (mot de passe : {MDP}) : admin@cargohub.tn, sami@atelier.tn, karim@transport.tn"
             )
         )
+
+    # ---------------------------------------------------------------- scénario de soutenance (M4)
+
+    def scenario_soutenance(self):
+        """
+        Idempotent : peut être relancé (par exemple la veille de la soutenance) sans créer de doublon.
+        Les dates sont recalées à J+7 tant que l'appel d'offres n'a pas été attribué.
+        """
+        sami = Utilisateur.objects.get(email="sami@atelier.tn")
+        karim = self.transporteur("karim@transport.tn", "Karim")
+        mohamed = self.transporteur("mohamed@transport.tn", "Mohamed")
+        # Camions de démo, toujours conformes (un camion non conforme rend tous ses trajets incompatibles).
+        camion_karim = self.camion_demo(karim, "214 TU 3381", 3000, "22")
+        camion_mohamed = self.camion_demo(mohamed, "318 TU 7720", 3500, "20")
+
+        depart = (timezone.localtime() + timedelta(days=7)).replace(hour=8, minute=0, second=0, microsecond=0)
+        expedition = Expedition.objects.filter(pme=sami, description=SOUTENANCE).first()
+        if expedition is None:
+            expedition = Expedition.objects.create(
+                pme=sami,
+                adresse_depart=Adresse.objects.create(ligne="Zone industrielle", ville="Monastir"),
+                adresse_arrivee=Adresse.objects.create(ligne="Avenue de Carthage", ville="Tunis"),
+                date_souhaitee=depart.date(),
+                date_arrivee=(depart + timedelta(days=1)).date(),
+                statut=Expedition.Statut.PUBLIEE,
+                description=SOUTENANCE,
+            )
+            ArticleExpedie.objects.create(
+                expedition=expedition,
+                designation="Rouleaux de tissu",
+                quantite=12,
+                poids_kg=Decimal("25"),  # 300 kg
+                volume_m3=Decimal("0.2"),
+                type_marchandise=ArticleExpedie.Type.TEXTILE,
+            )
+
+        appel, _ = AppelOffre.objects.get_or_create(
+            expedition=expedition, defaults={"date_cloture": depart - timedelta(days=2), "prix_max": Decimal("150")}
+        )
+        if appel.statut == AppelOffre.Statut.OUVERT:  # on recale les dates tant que rien n'a été attribué
+            Expedition.objects.filter(pk=expedition.pk).update(
+                date_souhaitee=depart.date(), date_arrivee=(depart + timedelta(days=1)).date()
+            )
+            AppelOffre.objects.filter(pk=appel.pk).update(date_cloture=depart - timedelta(days=2))
+            # Mohamed : direct et moins cher, mais moins bien noté ; Karim : plus cher, via Monastir, très bien noté.
+            self.offre_demo(
+                appel, mohamed, camion_mohamed, "Monastir", [], depart, 160, "95", "Trajet direct, départ 8 h."
+            )
+            self.offre_demo(
+                appel,
+                karim,
+                camion_karim,
+                "Sfax",
+                ["Monastir", "Sousse"],
+                depart - timedelta(hours=2),
+                270,
+                "110",
+                "Je passe par Monastir, chargement soigné.",
+            )
+            appel.effacer_recommandation()
+
+        else:
+            self.stdout.write(
+                self.style.WARNING(f"Appel d’offres #{appel.pk} déjà {appel.get_statut_display().lower()} : inchangé.")
+            )
+
+        self.avis_passes(sami, karim, camion_karim, [5, 5, 4], "Livraison à l’heure, très soigneux.")
+        self.avis_passes(sami, mohamed, camion_mohamed, [3, 2], "Retard à la livraison, cartons abîmés.")
+        self.verifier(appel, expedition)
+
+    def verifier(self, appel, expedition):
+        """Affiche l'état réel du scénario : chaque offre doit être compatible, sinon on le dit clairement."""
+        from apps.bookings.services import est_compatible, score_compatibilite
+        from apps.bookings.templatetags.trajets import itineraire
+        from apps.tenders.ai import notes_des_avis
+
+        expedition.refresh_from_db()
+        offres = appel.offres.select_related("transporteur", "trajet__vehicule").prefetch_related("trajet__etapes")
+        notes = notes_des_avis([o.transporteur_id for o in offres])
+        self.stdout.write(
+            f"Appel d’offres #{appel.pk} ({appel.get_statut_display()}) : {expedition.reference}, Monastir - Tunis, "
+            f"{expedition.poids_total_kg:g} kg, le {expedition.date_souhaitee:%d/%m/%Y}"
+        )
+        toutes_ok = True
+        for o in offres:
+            ok = o.trajet is not None and est_compatible(expedition, o.trajet)
+            toutes_ok &= ok
+            trajet = itineraire(o.trajet).replace("→", "-") if o.trajet else "sans trajet"
+            score = score_compatibilite(expedition, o.trajet) if o.trajet else 0
+            note = f"{notes[o.transporteur_id]:g}/5" if o.transporteur_id in notes else "pas d’avis"
+            etat = "compatible" if ok else "INCOMPATIBLE"
+            self.stdout.write(f"  - {o.transporteur} : {o.prix} DT, {trajet}, score {score}/100, note {note} -> {etat}")
+        message = f"Scénario de soutenance prêt. Nouveau compte : mohamed@transport.tn / {MDP}"
+        self.stdout.write(self.style.SUCCESS(message) if toutes_ok else self.style.ERROR("Offre incompatible !"))
+
+    def camion_demo(self, transporteur, immatriculation, capacite_kg, capacite_m3):
+        camion, _ = Vehicule.objects.update_or_create(
+            immatriculation=immatriculation,
+            defaults={
+                "transporteur": transporteur,
+                "type": Vehicule.Type.CAMION,
+                "capacite_kg": capacite_kg,
+                "capacite_m3": Decimal(capacite_m3),
+                "conforme": True,
+            },
+        )
+        return camion
+
+    def offre_demo(self, appel, transporteur, camion, ville_depart, etapes, date, distance, prix, message):
+        """Le trajet de démo est retrouvé par son offre : aucun risque de confondre avec un trajet créé à la main."""
+        offre = Offre.objects.filter(appel=appel, transporteur=transporteur).select_related("trajet").first()
+        trajet = offre.trajet if offre and offre.trajet else Trajet(transporteur=transporteur)
+        trajet.vehicule, trajet.ville_depart, trajet.ville_arrivee = camion, ville_depart, "Tunis"
+        trajet.date_depart, trajet.distance_km, trajet.prix_indicatif = date, distance, Decimal(prix)
+        trajet.capacite_dispo_kg, trajet.capacite_dispo_m3 = Decimal("1500"), Decimal("10")
+        trajet.statut = Trajet.Statut.OUVERT
+        trajet.save()
+        trajet.etapes.filter(ordre__gt=len(etapes)).delete()  # étapes ajoutées à la main : on repart propre
+        for ordre, ville in enumerate(etapes, start=1):
+            trajet.etapes.update_or_create(ordre=ordre, defaults={"ville": ville})
+        Offre.objects.update_or_create(
+            appel=appel,
+            transporteur=transporteur,
+            defaults={"trajet": trajet, "prix": Decimal(prix), "message": message, "statut": Offre.Statut.PROPOSEE},
+        )
+
+    def transporteur(self, email, prenom):
+        user, cree = Utilisateur.objects.get_or_create(
+            email=email, defaults={"role": Role.TRANSPORTEUR, "first_name": prenom, "is_active": True}
+        )
+        if cree:
+            user.set_password(MDP)
+            user.save(update_fields=["password"])
+        elif not user.is_active:  # compte désactivé pendant une répétition : on le réactive
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+        ProfilTransporteur.objects.update_or_create(
+            utilisateur=user, defaults={"statut_validation": ProfilTransporteur.Statut.VALIDE}
+        )
+        return user
+
+    def avis_passes(self, pme, transporteur, camion, notes, commentaire):
+        """Anciens transports livrés, chacun avec un avis de Sami (un avis par réservation)."""
+        if Avis.objects.filter(auteur=pme, cible=transporteur, commentaire__startswith=SOUTENANCE).exists():
+            return
+        for i, note in enumerate(notes, start=1):
+            date = timezone.now() - timedelta(days=20 * i)
+            expedition = Expedition.objects.create(
+                pme=pme,
+                adresse_depart=Adresse.objects.create(ligne="Zone industrielle", ville="Monastir"),
+                adresse_arrivee=Adresse.objects.create(ligne="Centre-ville", ville="Tunis"),
+                date_souhaitee=date.date(),
+                date_arrivee=(date + timedelta(days=1)).date(),
+                statut=Expedition.Statut.LIVREE,
+                description=f"{SOUTENANCE} historique",
+            )
+            ArticleExpedie.objects.create(
+                expedition=expedition,
+                designation="Cartons",
+                quantite=4,
+                poids_kg=Decimal("25"),
+                volume_m3=Decimal("0.1"),
+            )
+            trajet = Trajet.objects.create(
+                transporteur=transporteur,
+                vehicule=camion,
+                ville_depart="Monastir",
+                ville_arrivee="Tunis",
+                date_depart=date,
+                capacite_dispo_kg=Decimal("0"),
+                capacite_dispo_m3=Decimal("0"),
+                distance_km=160,
+                statut=Trajet.Statut.TERMINE,
+            )
+            reservation = Reservation.objects.create(
+                expedition=expedition, trajet=trajet, statut=Reservation.Statut.LIVREE, prix_convenu=Decimal("90")
+            )
+            Avis.objects.create(
+                reservation=reservation,
+                auteur=pme,
+                cible=transporteur,
+                note=note,
+                commentaire=f"{SOUTENANCE} {commentaire}",
+            )

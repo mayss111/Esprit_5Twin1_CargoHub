@@ -10,7 +10,10 @@ Partie IA du Membre 4.
 """
 
 import json
+import re
 from decimal import Decimal
+
+from django.db.models import Avg
 
 from apps.core import ai
 
@@ -34,6 +37,11 @@ def entrainer(historique: list) -> object:
     from sklearn.linear_model import LinearRegression
 
     return LinearRegression().fit([caracteristiques(d, p) for d, p, _ in historique], [prix for *_, prix in historique])
+
+
+def chauffer_modele():
+    """Importe scikit-learn et fait un entraînement de chauffe sur 2 points fictifs (appelé au démarrage)."""
+    return entrainer([(100.0, 1000.0, 55.0), (200.0, 2000.0, 160.0)])
 
 
 def estimateur():
@@ -62,28 +70,40 @@ def suggerer_prix(distance_km: float, poids_kg: float) -> dict:
 
 # ---------------------------------------------------------------- aide au choix d'une offre
 
+SANS_AVIS = "pas encore d'avis"
+
 CONSIGNE_RECOMMANDATION = (
     "Tu aides une PME tunisienne à choisir un transporteur parmi plusieurs offres pour une expédition. "
-    "Pour chaque offre tu reçois : prix (DT), prix_juste (estimation du marché), ecart_pct (écart du prix au prix "
-    "juste, négatif = moins cher que le marché), note (sur 5, null si le transporteur n'est pas encore noté) et "
-    "depart (date de départ du camion). Choisis l'offre au meilleur rapport prix / fiabilité : un prix bas compte, "
-    "mais une mauvaise note ou un départ beaucoup plus tardif que les autres sont des risques. "
+    "Pour chaque offre tu reçois : transporteur (son nom), prix (DT), prix_juste (estimation du marché), "
+    "ecart_pct (écart du prix au prix juste, négatif = moins cher que le marché), note (moyenne des avis des "
+    f"clients sur 5, ou « {SANS_AVIS} ») et depart (date de départ du camion). "
+    "Choisis l'offre au meilleur rapport prix / fiabilité : un prix bas compte, mais une mauvaise note ou un départ "
+    "beaucoup plus tardif que les autres sont des risques. Dans l'explication, désigne TOUJOURS une offre par le nom "
+    "de son transporteur (« l'offre de Karim »), jamais par son numéro offre_id. "
     'Format : {"offre_id": <entier>, "explication": "3 phrases maximum en français simple, sans jargon"}'
 )
 
 
+def notes_des_avis(transporteurs) -> dict:
+    """Note moyenne des avis reçus (module tracking, lecture seule) : {id du transporteur: moyenne sur 5}."""
+    from apps.tracking.models import Avis
+
+    moyennes = Avis.objects.filter(cible__in=transporteurs).values("cible").annotate(moyenne=Avg("note"))
+    return {m["cible"]: round(float(m["moyenne"]), 1) for m in moyennes}
+
+
 def resumer_offres(appel) -> list[dict]:
-    """Ce que l'IA (ou la règle) voit de chaque offre encore proposée."""
-    offres = appel.offres.filter(statut=Offre.Statut.PROPOSEE).select_related(
-        "trajet", "transporteur__profil_transporteur"
-    )
+    """Ce que l'IA (ou la règle) voit : uniquement les offres retenables (trajet encore compatible)."""
+    from .services import offres_retenables  # import local : services importe déjà ce module
+
+    offres = offres_retenables(appel)  # une offre incompatible n'est jamais envoyée au LLM
+    notes = notes_des_avis([o.transporteur_id for o in offres])
     poids = float(appel.expedition.poids_total_kg)
     estimer, _ = estimateur()
     resume = []
     for o in offres:
         juste = round(estimer(o.trajet.distance_km, poids), 2) if o.trajet and o.trajet.distance_km else None
-        profil = getattr(o.transporteur, "profil_transporteur", None)
-        note = float(profil.note_moyenne) if profil and profil.note_moyenne else None  # 0 = pas encore noté
+        note = notes.get(o.transporteur_id)  # None = pas encore d'avis
         resume.append(
             {
                 "offre_id": o.pk,
@@ -129,21 +149,43 @@ def recommander_depuis_resume(resume: list[dict]) -> dict:
     """LLM si disponible ; sinon, ou si sa réponse est inutilisable, la règle. Renvoie toujours la méthode."""
     if not resume:
         raise ValueError("Aucune offre à comparer.")
+    pour_le_llm = [{**o, "note": SANS_AVIS if o["note"] is None else o["note"]} for o in resume]
     try:
         reponse = ai.demander_json(
-            "Offres reçues :\n" + json.dumps(resume, ensure_ascii=False), systeme=CONSIGNE_RECOMMANDATION
+            "Offres reçues :\n" + json.dumps(pour_le_llm, ensure_ascii=False), systeme=CONSIGNE_RECOMMANDATION
         )
     except ai.IAIndisponible:
         return recommander_par_regle(resume)
-    ids = {o["offre_id"] for o in resume}
+    noms = {o["offre_id"]: o["transporteur"] for o in resume}
     offre_id, explication = reponse.get("offre_id"), str(reponse.get("explication") or "").strip()
     if isinstance(offre_id, str) and offre_id.isdigit():
         offre_id = int(offre_id)
-    if offre_id not in ids or not explication:  # l'IA a inventé une offre ou n'a rien expliqué
+    if offre_id not in noms or not explication:  # l'IA a inventé une offre ou n'a rien expliqué
         resultat = recommander_par_regle(resume)
         resultat["methode"] = "règle (réponse de l’IA inutilisable)"
         return resultat
-    return {"offre_id": offre_id, "explication": explication[:600], "methode": f"LLM ({ai.settings.AI_MODEL})"}
+    return {
+        "offre_id": offre_id,
+        "explication": sans_identifiants(explication, noms)[:600],
+        "methode": f"LLM ({ai.settings.AI_MODEL})",
+    }
+
+
+# « l'offre 63 », « L’offre n° 63 », « offre #63 », « offre_id 63 »…
+IDENTIFIANT_OFFRE = re.compile(r"\b(?:([Ll])['’]\s*)?offre(?:_id)?\s*(?:n[°o]\.?\s*|#\s*|id\s*:?\s*)?(\d+)\b")
+
+
+def sans_identifiants(texte: str, noms: dict) -> str:
+    """Remplace par sécurité tout numéro technique d’offre par « l’offre de <nom> » (jamais visible du jury)."""
+
+    def remplacer(m):
+        nom = noms.get(int(m.group(2)))
+        if nom is None:
+            return m.group(0)
+        debut = f"{m.group(1)}’offre" if m.group(1) else "offre"
+        return f"{debut} de {nom}"
+
+    return IDENTIFIANT_OFFRE.sub(remplacer, texte)
 
 
 def recommander_offre(appel) -> dict:

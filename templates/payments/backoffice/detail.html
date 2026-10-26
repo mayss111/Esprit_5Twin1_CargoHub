@@ -1,0 +1,31 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Paiement #{{ paiement.pk }}{% endblock %}
+{% block content %}
+<nav aria-label="Fil d’Ariane"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'bo_payments:liste' %}">Paiements</a></li>
+  <li class="breadcrumb-item active" aria-current="page">#{{ paiement.pk }}</li>
+</ol></nav>
+<h1 class="page-title h3 mb-3">Paiement #{{ paiement.pk }}</h1>
+<p>{{ paiement.montant }} DT — {{ paiement.get_statut_display }}</p>
+<p>PME {{ paiement.reservation.expedition.pme.email }} — transporteur {{ paiement.reservation.trajet.transporteur.email }}</p>
+{% if commission %}
+<p>Commission {{ commission.montant_commission }} DT ({{ commission.taux }}) —
+  transporteur {{ commission.montant_transporteur }} DT —
+  {% if commission.versee %}versée{% else %}non versée{% endif %}.</p>
+{% endif %}
+{% if facture %}<p>Facture {{ facture.numero }}</p>{% endif %}
+<div class="d-flex flex-wrap gap-2">
+  {% if paiement.statut == "PAYE" and commission and not commission.versee %}
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="verser">
+    <button class="btn btn-primary" type="submit">Marquer la commission versée</button>
+  </form>
+  {% endif %}
+  {% if paiement.statut == "PAYE" %}
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="rembourser">
+    <button class="btn btn-outline-danger" type="submit">Rembourser</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

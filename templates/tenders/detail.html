@@ -1,64 +1,67 @@
 {% extends "base.html" %}
+{% load trajets  cargohub %}
 {% block title %}{{ appel }}{% endblock %}
 {% block content %}
-<nav aria-label="Fil d’Ariane"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'tenders:liste' %}">Appels d’offres</a></li><li class="breadcrumb-item active" aria-current="page">{{ appel }}</li></ol></nav>
+<nav aria-label="{% tr "Fil d’Ariane" %}"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'tenders:liste' %}">{% tr "Appels d’offres" %}</a></li><li class="breadcrumb-item active" aria-current="page">{{ appel }}</li></ol></nav>
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
   <h1 class="page-title mb-0">{{ appel }}</h1>
   {% if user.role == "PME" and appel.modifiable %}
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-primary" href="{% url 'tenders:modifier' appel.pk %}"><i class="bi bi-pencil" aria-hidden="true"></i> Modifier</a>
-    <a class="btn btn-outline-danger" href="{% url 'tenders:supprimer' appel.pk %}"><i class="bi bi-trash" aria-hidden="true"></i> Supprimer</a>
+    <a class="btn btn-outline-primary" href="{% url 'tenders:modifier' appel.pk %}"><i class="bi bi-pencil" aria-hidden="true"></i> {% tr "Modifier" %}</a>
+    <a class="btn btn-outline-danger" href="{% url 'tenders:supprimer' appel.pk %}"><i class="bi bi-trash" aria-hidden="true"></i> {% tr "Supprimer" %}</a>
   </div>
   {% endif %}
 </div>
 <div class="row g-3">
-  <div class="col-lg-5"><div class="card card-ch p-4"><h2 class="h5 mb-3">L’appel d’offres</h2>{% include "tenders/_resume_appel.html" %}</div></div>
+  <div class="col-lg-5"><div class="card card-ch p-4"><h2 class="h5 mb-3">{% tr "L’appel d’offres" %}</h2>{% include "tenders/_resume_appel.html" %}</div></div>
   <div class="col-lg-7">
     {% if user.role == "PME" %}
     {% if appel.statut == "OUVERT" and nb_proposees >= 2 %}{% include "tenders/_aide_au_choix.html" %}{% endif %}
     <section class="card card-ch p-4" aria-labelledby="titre-offres">
-      <h2 class="h5" id="titre-offres">Offres reçues ({{ offres|length }})</h2>
+      <h2 class="h5" id="titre-offres">{% tr "Offres reçues (" %}{{ offres|length }})</h2>
       {% if offres %}
-      {% if prix_moyen %}<p class="small text-muted">Prix moyen proposé : {{ prix_moyen|floatformat:2 }} DT. Les offres sont classées de la moins chère à la plus chère.</p>{% endif %}
+      {% if prix_moyen %}<p class="small text-muted">{% tr "Prix moyen proposé :" %} {{ prix_moyen|floatformat:2 }} {% tr "DT. Les offres sont classées de la moins chère à la plus chère." %}</p>{% endif %}
       <div class="table-responsive"><table class="table align-middle mb-0">
-        <caption class="visually-hidden">Offres reçues, de la moins chère à la plus chère</caption>
-        <thead><tr><th scope="col">Transporteur</th><th scope="col">Trajet</th><th scope="col">Prix</th><th scope="col">Statut</th><th scope="col"><span class="visually-hidden">Action</span></th></tr></thead>
+        <caption class="visually-hidden">{% tr "Offres reçues, de la moins chère à la plus chère" %}</caption>
+        <thead><tr><th scope="col">{% tr "Transporteur" %}</th><th scope="col">{% tr "Trajet" %}</th><th scope="col">{% tr "Prix" %}</th><th scope="col">{% tr "Statut" %}</th><th scope="col"><span class="visually-hidden">{% tr "Action" %}</span></th></tr></thead>
         <tbody>{% for o in offres %}
           <tr>
-            <td>{{ o.transporteur }}{% if o == offre_recommandee %} <span class="badge text-bg-info"><i class="bi bi-stars" aria-hidden="true"></i> Recommandée par l’aide au choix</span>{% endif %}{% if o.message %}<div class="small text-muted">« {{ o.message|truncatechars:80 }} »</div>{% endif %}</td>
-            <td>{% if o.trajet %}{{ o.trajet.ville_depart }} → {{ o.trajet.ville_arrivee }}<div class="small text-muted">{{ o.trajet.date_depart|date:"d/m H:i" }}</div>{% else %}—{% endif %}</td>
+            <td>{{ o.transporteur }}{% if o == offre_recommandee %} <span class="badge text-bg-info"><i class="bi bi-stars" aria-hidden="true"></i> {% tr "Recommandée par l’aide au choix" %}</span>{% endif %}{% if o.message %}<div class="small text-muted">« {{ o.message|truncatechars:80 }} »</div>{% endif %}</td>
+            <td>{% if o.trajet %}{{ o.trajet|itineraire }}<div class="small text-muted">{{ o.trajet.date_depart|date:"d/m H:i" }}</div>{% else %}—{% endif %}</td>
             <td class="fw-semibold">{{ o.prix }} DT</td>
             <td>{% include "tenders/_statut.html" with statut=o.statut libelle=o.get_statut_display %}</td>
             <td class="text-end">
-              {% if appel.statut == "OUVERT" and o.statut == "PROPOSEE" %}
+              {% if appel.statut == "OUVERT" and o.pk in incompatibles %}
+              <span class="badge text-bg-secondary text-wrap" title="{% tr "Le trajet ne correspond plus à la date ou aux villes de l’expédition" %}"><i class="bi bi-slash-circle" aria-hidden="true"></i> {% tr "Trajet incompatible" %}</span>
+              {% elif appel.statut == "OUVERT" and o.statut == "PROPOSEE" %}
               <form method="post" action="{% url 'tenders:retenir' o.pk %}">{% csrf_token %}
-                <button class="btn btn-sm btn-accent" type="submit">Retenir<span class="visually-hidden"> l’offre de {{ o.transporteur }} à {{ o.prix }} DT</span></button>
+                <button class="btn btn-sm btn-accent" type="submit">{% tr "Retenir" %}<span class="visually-hidden"> {% tr "l’offre de" %} {{ o.transporteur }} {% tr "à" %} {{ o.prix }} DT</span></button>
               </form>
               {% endif %}
             </td>
           </tr>{% endfor %}
         </tbody></table></div>
       {% else %}
-      <p class="text-muted mb-0">Aucune offre pour le moment. Les transporteurs ont jusqu’au {{ appel.date_cloture|date:"d/m/Y à H:i" }}.</p>
+      <p class="text-muted mb-0">{% tr "Aucune offre pour le moment. Les transporteurs ont jusqu’au" %} {{ appel.date_cloture|date:"d/m/Y à H:i" }}.</p>
       {% endif %}
     </section>
     {% else %}
     <section class="card card-ch p-4" aria-labelledby="titre-mon-offre">
-      <h2 class="h5" id="titre-mon-offre">Mon offre</h2>
-      <p class="small text-muted">{{ nb_offres }} offre{{ nb_offres|pluralize }} déjà reçue{{ nb_offres|pluralize }} sur cet appel.</p>
+      <h2 class="h5" id="titre-mon-offre">{% tr "Mon offre" %}</h2>
+      <p class="small text-muted">{{ nb_offres }} {% tr "offre" %}{{ nb_offres|pluralize }} {% tr "déjà reçue" %}{{ nb_offres|pluralize }} {% tr "sur cet appel." %}</p>
       {% if mon_offre %}
         <p class="mb-2"><strong>{{ mon_offre.prix }} DT</strong> {% include "tenders/_statut.html" with statut=mon_offre.statut libelle=mon_offre.get_statut_display %}</p>
-        {% if mon_offre.trajet %}<p class="small mb-2">Trajet : {{ mon_offre.trajet.ville_depart }} → {{ mon_offre.trajet.ville_arrivee }}, le {{ mon_offre.trajet.date_depart|date:"d/m/Y" }}</p>{% endif %}
+        {% if mon_offre.trajet %}<p class="small mb-2">{% tr "Trajet :" %} {{ mon_offre.trajet|itineraire }}{% tr ", le" %} {{ mon_offre.trajet.date_depart|date:"d/m/Y" }}</p>{% endif %}
         {% if mon_offre.modifiable %}
         <div class="d-flex gap-2">
-          <a class="btn btn-outline-primary btn-sm" href="{% url 'tenders:offre_modifier' mon_offre.pk %}">Modifier mon offre</a>
-          <a class="btn btn-outline-danger btn-sm" href="{% url 'tenders:offre_retirer' mon_offre.pk %}">Retirer mon offre</a>
+          <a class="btn btn-outline-primary btn-sm" href="{% url 'tenders:offre_modifier' mon_offre.pk %}">{% tr "Modifier mon offre" %}</a>
+          <a class="btn btn-outline-danger btn-sm" href="{% url 'tenders:offre_retirer' mon_offre.pk %}">{% tr "Retirer mon offre" %}</a>
         </div>
         {% endif %}
       {% elif appel.est_ouvert %}
-        <a class="btn btn-accent" href="{% url 'tenders:offre_creer' appel.pk %}"><i class="bi bi-send" aria-hidden="true"></i> Faire une offre</a>
+        <a class="btn btn-accent" href="{% url 'tenders:offre_creer' appel.pk %}"><i class="bi bi-send" aria-hidden="true"></i> {% tr "Faire une offre" %}</a>
       {% else %}
-        <p class="mb-0">Cet appel d’offres est clos.</p>
+        <p class="mb-0">{% tr "Cet appel d’offres est clos." %}</p>
       {% endif %}
     </section>
     {% endif %}

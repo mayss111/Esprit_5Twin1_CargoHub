@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Paiement #{{ paiement.pk }}{% endblock %}
+{% block content %}
+<nav aria-label="Fil d’Ariane"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'payments:liste' %}">Paiements</a></li>
+  <li class="breadcrumb-item active" aria-current="page">#{{ paiement.pk }}</li>
+</ol></nav>
+<h1 class="page-title h3 mb-3">Paiement #{{ paiement.pk }}</h1>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <section class="card card-ch p-4" aria-labelledby="titre-montant">
+      <h2 class="h5" id="titre-montant">{{ paiement.montant }} DT</h2>
+      <p>Statut : {{ paiement.get_statut_display }}</p>
+      <p class="mb-0">Réservation #{{ paiement.reservation_id }}{% if paiement.code_promo %} — code {{ paiement.code_promo }}{% endif %}</p>
+    </section>
+  </div>
+  <div class="col-lg-5">
+    {% if est_pme and paiement.statut == "EN_ATTENTE" %}
+    <section class="card card-ch p-4 mb-3" aria-labelledby="titre-code">
+      <h2 class="h5" id="titre-code">Code promo</h2>
+      <form method="post" novalidate data-controle>{% csrf_token %}
+        <input type="hidden" name="action" value="code">
+        {{ form_code|crispy }}
+        <button class="btn btn-outline-primary" type="submit">Appliquer</button>
+      </form>
+    </section>
+    <section class="card card-ch p-4 mb-3" aria-labelledby="titre-payer">
+      <h2 class="h5" id="titre-payer">Régler</h2>
+      <form method="post" class="mb-2">{% csrf_token %}
+        <input type="hidden" name="action" value="payer">
+        <button class="btn btn-accent" type="submit">Payer (démonstration)</button>
+      </form>
+      {% if stripe %}
+      <form method="post">{% csrf_token %}
+        <input type="hidden" name="action" value="carte">
+        <button class="btn btn-primary" type="submit">Payer par carte</button>
+      </form>
+      {% endif %}
+    </section>
+    {% endif %}
+    {% if facture %}
+    <a class="btn btn-outline-primary" href="{% url 'payments:facture' paiement.pk %}">Télécharger la facture PDF</a>
+    {% endif %}
+    {% if commission %}
+    <p class="mt-3 mb-0">Part transporteur : {{ commission.montant_transporteur }} DT
+      {% if commission.versee %}(versée){% else %}(en attente de versement){% endif %}</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Adresse, ArticleExpedie, Expedition
+from .models import Adresse, ArticleExpedie, ControleArticle, Expedition, RegleInterdite
 
 
 class ArticleExpedieInline(admin.TabularInline):
@@ -63,6 +63,20 @@ class ExpeditionAdmin(admin.ModelAdmin):
     @admin.display(description="Arrivée", ordering="adresse_arrivee__ville")
     def ville_arrivee(self, obj):
         return obj.adresse_arrivee.ville
+
+
+@admin.register(RegleInterdite)
+class RegleInterditeAdmin(admin.ModelAdmin):
+    list_display = ("nom", "actif", "motif")
+    list_filter = ("actif",)
+    search_fields = ("nom", "mots_cles", "motif")
+
+
+@admin.register(ControleArticle)
+class ControleArticleAdmin(admin.ModelAdmin):
+    list_display = ("nom", "expedition", "decision", "risque", "verifie_le")
+    list_filter = ("decision", "risque")
+    search_fields = ("nom", "expedition__reference")
 
 
 @admin.register(ArticleExpedie)

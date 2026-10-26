@@ -96,7 +96,8 @@ EXPEDITIONS = [
     ("bouteilles de gaz inflammable", "INTERDIT", True),
 ]
 
-# M5 — sentiment des avis : (commentaire, note /5, sentiment attendu)
+# M5 — sentiment des avis : (commentaire, note /5, sentiment attendu).
+# Les libellés suivent le repli sans clé (mots-clés, note, contradiction note/texte).
 AVIS = [
     ("Livraison rapide et soigneuse, merci !", 5, "POSITIF"),
     ("Chauffeur ponctuel, parfait", 5, "POSITIF"),
@@ -110,4 +111,32 @@ AVIS = [
     ("Excellent service, très professionnel", 5, "POSITIF"),
     ("Marchandise cassée à l'arrivée", 1, "NEGATIF"),
     ("Livraison faite dans les délais annoncés", 4, "POSITIF"),
+    ("Rapide et ponctuel, merci beaucoup", 5, "POSITIF"),
+    ("Parfait du début à la fin", 5, "POSITIF"),
+    ("Chauffeur soigneux, rien à redire", 4, "POSITIF"),
+    ("Bien reçu, conforme à la commande", 4, "POSITIF"),
+    ("Livraison correcte", 3, "NEUTRE"),
+    ("Colis arrivé", 3, "NEUTRE"),
+    ("Retard important, chauffeur impoli", 2, "NEGATIF"),
+    ("Marchandise perdue", 1, "NEGATIF"),
+    ("Camion sale et colis abîmé", 1, "NEGATIF"),
+    ("Jamais à l'heure", 2, "NEGATIF"),
+    ("Service excellent", 5, "POSITIF"),
+    ("Merci pour la rapidité", 5, "POSITIF"),
+    ("Ponctuel comme annoncé", 4, "POSITIF"),
+    ("Rien de spécial", 3, "NEUTRE"),
+    ("Acceptable", 3, "NEUTRE"),
+    ("Deux heures de retard", 2, "NEGATIF"),
+    ("Colis cassé", 1, "NEGATIF"),
+    ("Très sale à l'arrivée", 2, "NEGATIF"),
+    ("Je recommande, parfait", 5, "POSITIF"),
+    ("Correct sans commentaire", 3, "NEUTRE"),
+    ("Un retard mais le chauffeur était ponctuel", 4, "POSITIF"),
+    ("Noté haut mais retard et colis abîmé", 5, "NEGATIF"),
+    ("Excellent malgré la note basse", 1, "POSITIF"),
+    ("Impoli et en retard", 1, "NEGATIF"),
+    ("Soigneux et rapide", 4, "POSITIF"),
+    ("Livraison effectuée", 3, "NEUTRE"),
+    ("Perdu puis retrouvé abîmé", 2, "NEGATIF"),
+    ("Merci, c'était parfait et rapide", 5, "POSITIF"),
 ]

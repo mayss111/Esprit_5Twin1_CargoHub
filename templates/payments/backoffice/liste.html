@@ -1,0 +1,24 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Paiements{% endblock %}
+{% block content %}
+<h1 class="page-title mb-3">Paiements et commissions</h1>
+{% if object_list %}
+<div class="table-responsive">
+  <table class="table table-ch align-middle">
+    <caption class="visually-hidden">Paiements de la plateforme</caption>
+    <thead><tr><th scope="col">N°</th><th scope="col">Montant</th><th scope="col">Statut</th><th scope="col">Commission versée</th><th scope="col"><span class="visually-hidden">Action</span></th></tr></thead>
+    <tbody>
+      {% for paiement in object_list %}
+      <tr>
+        <td>{{ paiement.pk }}</td>
+        <td>{{ paiement.montant }} DT</td>
+        <td>{{ paiement.get_statut_display }}</td>
+        <td>{{ paiement.libelle_commission }}</td>
+        <td><a class="btn btn-sm btn-primary" href="{% url 'bo_payments:detail' paiement.pk %}">Ouvrir</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<p class="text-muted">Aucun paiement.</p>{% endif %}
+{% endblock %}

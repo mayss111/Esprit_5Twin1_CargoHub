@@ -1,13 +1,14 @@
+{% load cargohub %}
 {% with r=contrat.reservation %}
 <dl class="row mb-0">
-  <dt class="col-sm-4">Expéditeur (PME)</dt><dd class="col-sm-8">{{ r.expedition.pme }}</dd>
-  <dt class="col-sm-4">Transporteur</dt><dd class="col-sm-8">{{ r.trajet.transporteur }}</dd>
-  <dt class="col-sm-4">Trajet</dt><dd class="col-sm-8">{{ r.trajet.ville_depart }} → {{ r.trajet.ville_arrivee }}, départ le {{ r.trajet.date_depart|date:"d/m/Y H:i" }}</dd>
-  <dt class="col-sm-4">Enlèvement</dt><dd class="col-sm-8">{{ r.expedition.adresse_depart }}</dd>
-  <dt class="col-sm-4">Livraison</dt><dd class="col-sm-8">{{ r.expedition.adresse_arrivee }}</dd>
-  <dt class="col-sm-4">Prix convenu</dt><dd class="col-sm-8">{% if r.prix_convenu %}{{ r.prix_convenu }} TND{% else %}—{% endif %}</dd>
-  <dt class="col-sm-4">Statut de la réservation</dt><dd class="col-sm-8">{{ r.get_statut_display }}</dd>
-  <dt class="col-sm-4">Signature PME</dt><dd class="col-sm-8">{{ contrat.signe_par_pme_le|date:"d/m/Y H:i"|default:"en attente" }}</dd>
-  <dt class="col-sm-4">Signature transporteur</dt><dd class="col-sm-8">{{ contrat.signe_par_transporteur_le|date:"d/m/Y H:i"|default:"en attente" }}</dd>
+  <dt class="col-sm-4">{% tr "Expéditeur (PME)" %}</dt><dd class="col-sm-8">{{ r.expedition.pme }}</dd>
+  <dt class="col-sm-4">{% tr "Transporteur" %}</dt><dd class="col-sm-8">{{ r.trajet.transporteur }}</dd>
+  <dt class="col-sm-4">{% tr "Trajet" %}</dt><dd class="col-sm-8">{{ r.trajet.ville_depart }} → {{ r.trajet.ville_arrivee }}{% tr ", départ le" %} {{ r.trajet.date_depart|date:"d/m/Y H:i" }}</dd>
+  <dt class="col-sm-4">{% tr "Enlèvement" %}</dt><dd class="col-sm-8">{{ r.expedition.adresse_depart }}</dd>
+  <dt class="col-sm-4">{% tr "Livraison" %}</dt><dd class="col-sm-8">{{ r.expedition.adresse_arrivee }}</dd>
+  <dt class="col-sm-4">{% tr "Prix convenu" %}</dt><dd class="col-sm-8">{% if r.prix_convenu %}{{ r.prix_convenu }} TND{% else %}—{% endif %}</dd>
+  <dt class="col-sm-4">{% tr "Statut de la réservation" %}</dt><dd class="col-sm-8">{% tr r.get_statut_display %}</dd>
+  <dt class="col-sm-4">{% tr "Signature PME" %}</dt><dd class="col-sm-8">{{ contrat.signe_par_pme_le|date:"d/m/Y H:i"|default:"en attente" }}</dd>
+  <dt class="col-sm-4">{% tr "Signature transporteur" %}</dt><dd class="col-sm-8">{{ contrat.signe_par_transporteur_le|date:"d/m/Y H:i"|default:"en attente" }}</dd>
 </dl>
 {% endwith %}

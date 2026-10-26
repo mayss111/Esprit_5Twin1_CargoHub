@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Fidélité{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">Fidélité</h1>
+<p class="text-muted">Vos points, les codes promo et le parrainage.</p>
+<div class="row g-3">
+  <div class="col-md-4">
+    <section class="card card-ch p-4 h-100" aria-labelledby="titre-points">
+      <h2 class="h5" id="titre-points">Vos points</h2>
+      <p class="display-6 fw-bold mb-0">{{ points.solde }}</p>
+      <p class="text-muted mb-0">1 point par dinar payé.</p>
+    </section>
+  </div>
+  <div class="col-md-8">
+    <section class="card card-ch p-4 h-100" aria-labelledby="titre-parrain">
+      <h2 class="h5" id="titre-parrain">Parrainage</h2>
+      {% if parrainage %}
+      <p>Votre parrain : {{ parrainage.parrain.email }}{% if parrainage.recompense_versee %} — récompense versée{% endif %}.</p>
+      {% else %}
+      <form method="post" novalidate data-controle>{% csrf_token %}
+        {{ form_parrain|crispy }}
+        <button class="btn btn-primary" type="submit">Enregistrer mon parrain</button>
+      </form>
+      {% endif %}
+      {% if filleuls %}
+      <h3 class="h6 mt-3">Filleuls</h3>
+      <ul>{% for lien in filleuls %}<li>{{ lien.filleul.email }}{% if lien.recompense_versee %} — récompensé{% endif %}</li>{% endfor %}</ul>
+      {% endif %}
+    </section>
+  </div>
+</div>
+<h2 class="h5 mt-4">Codes promo actifs</h2>
+{% if object_list %}
+<div class="table-responsive">
+  <table class="table table-ch">
+    <caption class="visually-hidden">Codes promo utilisables</caption>
+    <thead><tr><th scope="col">Code</th><th scope="col">Type</th><th scope="col">Valeur</th><th scope="col">Expire le</th></tr></thead>
+    <tbody>
+      {% for code in object_list %}
+      <tr>
+        <td>{{ code.code }}</td>
+        <td>{{ code.get_type_display }}</td>
+        <td>{{ code.valeur }}</td>
+        <td>{{ code.date_expiration|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<p class="text-muted">Aucun code promo en ce moment.</p>{% endif %}
+{% endblock %}

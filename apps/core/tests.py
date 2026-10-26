@@ -98,13 +98,46 @@ def test_csrf_actif():
 def test_accessibilite_page_accueil(client):
     html = client.get(reverse("core:accueil")).content.decode()
     for balise in [
-        '<html lang="fr">',
+        'lang="fr"',
+        'dir="ltr"',
         "<header>",
         '<main class="container py-4" id="contenu"',
         "<footer",
         'href="#contenu"',
+        'id="texte-agrandir"',
+        'id="texte-reduire"',
+        'id="lecture-vocale"',
+        ">FR<",
+        ">AR<",
+        ">EN<",
     ]:
         assert balise in html
+
+
+def test_langue_anglaise_est_un_choix_explicite(client):
+    reponse = client.post(reverse("core:langue"), {"langue": "en", "next": reverse("core:accueil")})
+    assert reponse.status_code == 302
+    assert reponse.cookies["cargohub_langue"].value == "en"
+    html = client.get(reverse("core:accueil")).content.decode()
+    assert 'lang="en"' in html
+    assert "Log in" in html
+    assert "Read aloud" in html
+
+
+def test_langue_arabe_garde_le_sens_de_lecture(client):
+    client.post(reverse("core:langue"), {"langue": "ar", "next": reverse("core:accueil")})
+    html = client.get(reverse("core:accueil")).content.decode()
+    assert 'lang="ar"' in html and 'dir="ltr"' in html
+    assert "تسجيل الدخول" in html
+    assert "bootstrap.min.css" in html
+    assert "bootstrap.rtl" not in html
+
+
+def test_langue_inconnue_reste_francais(client):
+    client.post(reverse("core:langue"), {"langue": "de", "next": reverse("core:accueil")})
+    html = client.get(reverse("core:accueil")).content.decode()
+    assert 'lang="fr"' in html
+    assert "Connexion" in html
 
 
 def test_commande_evaluer_ia(db):
