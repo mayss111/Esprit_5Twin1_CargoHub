@@ -1,7 +1,8 @@
 {% extends "backoffice/base.html" %}
-{% block title %}{{ titre }}{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr titre %}{% endblock %}
 {% block content %}
-<h1 class="page-title mb-1">{{ titre }}</h1>
-<p class="text-muted">{% if page_obj %}{{ page_obj.paginator.count }}{% else %}{{ object_list|length }}{% endif %} élément(s)</p>
+<h1 class="page-title mb-1">{% tr titre %}</h1>
+<p class="text-muted">{% if page_obj %}{{ page_obj.paginator.count }}{% else %}{{ object_list|length }}{% endif %} {% tr "élément(s)" %}</p>
 {% include "core/_table.html" %}
 {% endblock %}

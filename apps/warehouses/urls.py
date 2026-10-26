@@ -4,6 +4,7 @@ from . import views, views_depots, views_import, views_occupation, views_scan
 
 urlpatterns = [
     path("", views.PointsRelaisView.as_view(), name="liste"),
+    path("recommander/", views.RecommanderEntrepotView.as_view(), name="recommander"),
     path("depots/", views_depots.MesDepotsView.as_view(), name="mes_depots"),
     path("depots/<int:pk>/", views_depots.DetailDepotView.as_view(), name="depot"),
     path("depots/<int:pk>/annuler/", views_depots.AnnulerDepotView.as_view(), name="depot_annuler"),

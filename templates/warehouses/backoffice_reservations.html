@@ -1,65 +1,65 @@
 {% extends "backoffice/base.html" %}
-{% load static %}
-{% block title %}Réservations de dépôt{% endblock %}
+{% load static  cargohub %}
+{% block title %}{% tr "Réservations de dépôt" %}{% endblock %}
 {% block extra_head %}<link href="{% static 'warehouses/css/relais.css' %}?v=20261025g" rel="stylesheet">{% endblock %}
 {% block content %}
 <div class="mb-4">
-  <h1 class="page-title mb-1">Gestion des réservations de dépôt</h1>
-  <p class="text-muted mb-0">{{ page_obj.paginator.count }} réservation{{ page_obj.paginator.count|pluralize }}. Le volume indiqué est prévisionnel.</p>
+  <h1 class="page-title mb-1">{% tr "Gestion des réservations de dépôt" %}</h1>
+  <p class="text-muted mb-0">{{ page_obj.paginator.count }} {% tr "réservation" %}{{ page_obj.paginator.count|pluralize }}{% tr ". Le volume indiqué est prévisionnel." %}</p>
 </div>
 
 <form method="get" class="card card-ch p-3 mb-4" role="search" data-filtre-auto>
   <div class="row g-3 align-items-end">
     <div class="col-md-4">
-      <label class="form-label" for="filtre-reference">Référence</label>
-      <input class="form-control" id="filtre-reference" name="q" value="{{ filtre.q }}" maxlength="40" placeholder="Expédition ou dépôt" autocomplete="off">
+      <label class="form-label" for="filtre-reference">{% tr "Référence" %}</label>
+      <input class="form-control" id="filtre-reference" name="q" value="{{ filtre.q }}" maxlength="40" placeholder="{% tr "Expédition ou dépôt" %}" autocomplete="off">
     </div>
     <div class="col-md-4">
-      <label class="form-label" for="filtre-email">E-mail</label>
-      <input class="form-control" id="filtre-email" type="search" name="email" value="{{ filtre.email }}" maxlength="254" placeholder="E-mail de la PME" inputmode="email" autocomplete="off">
+      <label class="form-label" for="filtre-email">{% tr "E-mail" %}</label>
+      <input class="form-control" id="filtre-email" type="search" name="email" value="{{ filtre.email }}" maxlength="254" placeholder="{% tr "E-mail de la PME" %}" inputmode="email" autocomplete="off">
     </div>
     <div class="col-md-4">
-      <label class="form-label" for="filtre-entrepot">Entrepôt</label>
+      <label class="form-label" for="filtre-entrepot">{% tr "Entrepôt" %}</label>
       <select class="form-select" id="filtre-entrepot" name="entrepot">
-        <option value="">Tous</option>
+        <option value="">{% tr "Tous" %}</option>
         {% for entrepot in entrepots %}
           <option value="{{ entrepot.pk }}" {% if filtre.entrepot == entrepot.pk|stringformat:"s" %}selected{% endif %}>{{ entrepot.nom }} — {{ entrepot.ville }}</option>
         {% endfor %}
       </select>
     </div>
     <div class="col-md-4">
-      <label class="form-label" for="filtre-date">Date du dépôt</label>
+      <label class="form-label" for="filtre-date">{% tr "Date du dépôt" %}</label>
       <input class="form-control" id="filtre-date" type="date" name="date" value="{{ filtre.date }}">
     </div>
     <div class="col-md-4">
-      <label class="form-label" for="filtre-statut">Statut</label>
+      <label class="form-label" for="filtre-statut">{% tr "Statut" %}</label>
       <select class="form-select" id="filtre-statut" name="statut">
-        <option value="">Tous</option>
+        <option value="">{% tr "Tous" %}</option>
         {% for valeur, libelle in statuts %}
-          <option value="{{ valeur }}" {% if filtre.statut == valeur %}selected{% endif %}>{{ libelle }}</option>
+          <option value="{{ valeur }}" {% if filtre.statut == valeur %}selected{% endif %}>{% tr libelle %}</option>
         {% endfor %}
       </select>
     </div>
   </div>
   {% if recherche %}
-    <p class="mb-0 mt-2"><a href="{% url 'bo_warehouses:reservations' %}">Effacer les filtres</a></p>
+    <p class="mb-0 mt-2"><a href="{% url 'bo_warehouses:reservations' %}">{% tr "Effacer les filtres" %}</a></p>
   {% endif %}
 </form>
 
 {% if reservations %}
   <div class="table-responsive">
     <table class="table table-ch align-middle">
-      <caption class="visually-hidden">Toutes les réservations de dépôt</caption>
+      <caption class="visually-hidden">{% tr "Toutes les réservations de dépôt" %}</caption>
       <thead>
         <tr>
-          <th>Réservation</th>
-          <th>Expédition</th>
-          <th>PME</th>
-          <th>Entrepôt</th>
-          <th>Date</th>
-          <th>Créneau</th>
-          <th>Volume prévu</th>
-          <th>Statut</th>
+          <th>{% tr "Réservation" %}</th>
+          <th>{% tr "Expédition" %}</th>
+          <th>{% tr "PME" %}</th>
+          <th>{% tr "Entrepôt" %}</th>
+          <th>{% tr "Date" %}</th>
+          <th>{% tr "Créneau" %}</th>
+          <th>{% tr "Volume prévu" %}</th>
+          <th>{% tr "Statut" %}</th>
           <th></th>
         </tr>
       </thead>
@@ -76,8 +76,8 @@
             <td class="col-chiffre">{{ reservation.debut|date:"d/m/Y" }}</td>
             <td class="col-chiffre">{{ reservation.debut|time:"H:i" }} – {{ reservation.fin|time:"H:i" }}</td>
             <td class="col-chiffre">{% if reservation.volume_reserve is not None %}{{ reservation.volume_reserve }}{% else %}{{ reservation.volume_m3 }}{% endif %} m³</td>
-            <td><span class="badge-statut badge-{{ reservation.statut }}">{{ reservation.get_statut_display }}</span></td>
-            <td><a href="{% url 'bo_warehouses:reservation' reservation.pk %}">Détails</a></td>
+            <td><span class="badge-statut badge-{{ reservation.statut }}">{% tr reservation.get_statut_display %}</span></td>
+            <td><a href="{% url 'bo_warehouses:reservation' reservation.pk %}">{% tr "Détails" %}</a></td>
           </tr>
         {% endfor %}
       </tbody>
@@ -86,7 +86,7 @@
   {% include "core/_pagination.html" %}
 {% else %}
   <p class="text-muted mb-0">
-    {% if recherche %}Aucune réservation ne correspond à cette recherche.{% else %}Aucune réservation.{% endif %}
+    {% if recherche %}{% tr "Aucune réservation ne correspond à cette recherche." %}{% else %}{% tr "Aucune réservation." %}{% endif %}
   </p>
 {% endif %}
 {% endblock %}

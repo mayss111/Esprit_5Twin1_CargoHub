@@ -1,19 +1,19 @@
 {% extends "backoffice/base.html" %}
-{% load static %}
-{% block title %}Occupation des entrepôts{% endblock %}
+{% load static  cargohub %}
+{% block title %}{% tr "Occupation des entrepôts" %}{% endblock %}
 {% block content %}
-<h1 class="page-title mb-1">Occupation des entrepôts</h1>
-<p class="text-muted">Le volume réservé est la somme des réservations actives. Une réservation compte dès sa confirmation, même si le dépôt est prévu plus tard, et jusqu'à sa date de fin.</p>
+<h1 class="page-title mb-1">{% tr "Occupation des entrepôts" %}</h1>
+<p class="text-muted">{% tr "Le volume réservé est la somme des réservations actives. Une réservation compte dès sa confirmation, même si le dépôt est prévu plus tard, et jusqu'à sa date de fin." %}</p>
 
 <form method="get" class="card card-ch p-3 mb-3" role="search" data-filtre-auto>
   <div class="row g-3 align-items-end">
     <div class="col-md-6">
-      <label class="form-label" for="occupation-nom">Nom de l'entrepôt</label>
+      <label class="form-label" for="occupation-nom">{% tr "Nom de l'entrepôt" %}</label>
       <input class="form-control" id="occupation-nom" name="q" value="{{ nom }}" maxlength="80" autocomplete="off">
     </div>
   </div>
   {% if recherche %}
-    <p class="mb-0 mt-2"><a href="{% url 'bo_warehouses:occupation' %}">Effacer les filtres</a></p>
+    <p class="mb-0 mt-2"><a href="{% url 'bo_warehouses:occupation' %}">{% tr "Effacer les filtres" %}</a></p>
   {% endif %}
 </form>
 
@@ -29,14 +29,14 @@
 {% if lignes %}
   <div class="table-responsive">
     <table class="table table-ch align-middle">
-      <caption class="visually-hidden">Occupation par entrepôt</caption>
+      <caption class="visually-hidden">{% tr "Occupation par entrepôt" %}</caption>
       <thead>
         <tr>
-          <th>Entrepôt</th>
-          <th>Capacité</th>
-          <th>Réservé</th>
-          <th>Disponible</th>
-          <th>Taux d'occupation</th>
+          <th>{% tr "Entrepôt" %}</th>
+          <th>{% tr "Capacité" %}</th>
+          <th>{% tr "Réservé" %}</th>
+          <th>{% tr "Disponible" %}</th>
+          <th>{% tr "Taux d'occupation" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -61,7 +61,7 @@
   </div>
 {% else %}
   <p class="text-muted mb-0">
-    {% if nom %}Aucun entrepôt ne correspond à cette recherche.{% else %}Aucun entrepôt actif.{% endif %}
+    {% if nom %}{% tr "Aucun entrepôt ne correspond à cette recherche." %}{% else %}{% tr "Aucun entrepôt actif." %}{% endif %}
   </p>
 {% endif %}
 {% endblock %}

@@ -6,7 +6,9 @@ from django import forms
 from django.core.validators import MinValueValidator
 from django.db import transaction
 from django.forms import inlineformset_factory
-from django.utils import timezone
+from django.utils import timezone, translation
+
+from apps.core.traductions import traduire
 
 from .models import CATEGORIES_INTERDITES, Adresse, ArticleExpedie, Expedition, RegleInterdite
 from .services.ai_checker import VerificationIndisponible, appliquer_verification
@@ -166,6 +168,9 @@ class ArticleExpedieForm(forms.ModelForm):
     def __init__(self, *args, publication=False, **kwargs):
         self.publication = publication
         super().__init__(*args, **kwargs)
+        langue = translation.get_language() or "fr"
+        choix = self.fields["type_marchandise"]
+        choix.choices = [(valeur, traduire(libelle, langue)) for valeur, libelle in choix.choices]
         self.fields["description"].required = False
         self.fields["valeur_declaree"].required = False
         _exiger_minimum(self.fields["quantite"], 1, "La quantité doit être supérieure à zéro.")

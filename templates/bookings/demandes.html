@@ -1,30 +1,30 @@
 {% extends "base.html" %}
-{% load trajets %}
-{% block title %}Demandes reçues{% endblock %}
+{% load trajets  cargohub %}
+{% block title %}{% tr "Demandes reçues" %}{% endblock %}
 {% block content %}
-<h1 class="page-title mb-1">Demandes reçues</h1>
-<p class="text-muted">Les PME qui demandent une place sur vos trajets. Accepter retire la place du camion.</p>
+<h1 class="page-title mb-1">{% tr "Demandes reçues" %}</h1>
+<p class="text-muted">{% tr "Les PME qui demandent une place sur vos trajets. Accepter retire la place du camion." %}</p>
 {% if object_list %}
 <div class="table-responsive"><table class="table table-ch align-middle">
-  <caption class="visually-hidden">Demandes de réservation en attente</caption>
-  <thead><tr><th scope="col">N°</th><th scope="col">PME</th><th scope="col">Trajet</th><th scope="col">Marchandise</th><th scope="col">Prix</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+  <caption class="visually-hidden">{% tr "Demandes de réservation en attente" %}</caption>
+  <thead><tr><th scope="col">{% tr "N°" %}</th><th scope="col">{% tr "PME" %}</th><th scope="col">{% tr "Trajet" %}</th><th scope="col">{% tr "Marchandise" %}</th><th scope="col">{% tr "Prix" %}</th><th scope="col"><span class="visually-hidden">{% tr "Actions" %}</span></th></tr></thead>
   <tbody>{% for r in object_list %}
     <tr>
       <td><a href="{% url 'bookings:detail' r.pk %}">#{{ r.pk }}</a></td>
       <td>{{ r.expedition.pme }}</td>
       <td>{{ r.trajet|itineraire }}<div class="small text-muted">{{ r.trajet.date_depart|date:"d/m/Y H:i" }}</div></td>
-      <td>{{ r.expedition.poids_total_kg|floatformat:0 }} kg · {{ r.expedition.volume_total_m3|floatformat:2 }} m³</td>
+      <td>{{ r.expedition.poids_total_kg|floatformat:0 }} {% tr "kg ·" %} {{ r.expedition.volume_total_m3|floatformat:2 }} m³</td>
       <td>{% if r.prix_convenu %}{{ r.prix_convenu }} DT{% else %}—{% endif %}</td>
       <td class="text-end text-nowrap">
         <form method="post" action="{% url 'bookings:repondre' r.pk %}" class="d-inline-flex gap-1">{% csrf_token %}
-          <button class="btn btn-sm btn-success" name="action" value="accepter" type="submit">Accepter<span class="visually-hidden"> la réservation #{{ r.pk }}</span></button>
-          <button class="btn btn-sm btn-outline-danger" name="action" value="refuser" type="submit">Refuser<span class="visually-hidden"> la réservation #{{ r.pk }}</span></button>
+          <button class="btn btn-sm btn-success" name="action" value="accepter" type="submit">{% tr "Accepter" %}<span class="visually-hidden"> {% tr "la réservation #" %}{{ r.pk }}</span></button>
+          <button class="btn btn-sm btn-outline-danger" name="action" value="refuser" type="submit">{% tr "Refuser" %}<span class="visually-hidden"> {% tr "la réservation #" %}{{ r.pk }}</span></button>
         </form>
       </td>
     </tr>{% endfor %}
   </tbody></table></div>
 {% include "core/_pagination.html" %}
 {% else %}
-<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-inbox fs-1 d-block mb-2" aria-hidden="true"></i>Aucune demande en attente.</div>
+<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-inbox fs-1 d-block mb-2" aria-hidden="true"></i>{% tr "Aucune demande en attente." %}</div>
 {% endif %}
 {% endblock %}

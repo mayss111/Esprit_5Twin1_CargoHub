@@ -1,19 +1,19 @@
 {% extends "base.html" %}
-{% load static %}
-{% block title %}{{ titre }}{% endblock %}
+{% load static cargohub %}
+{% block title %}{% tr titre %}{% endblock %}
 {% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}?v=20261025q" rel="stylesheet">{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
   <div>
-    <h1 class="page-title mb-1">{{ titre }}</h1>
-    <p class="text-muted mb-0">{{ sous_titre }}</p>
+    <h1 class="page-title mb-1">{% tr titre %}</h1>
+    <p class="text-muted mb-0">{% tr sous_titre %}</p>
   </div>
   <div class="d-flex gap-2">
     {% if historique %}
-      <a class="btn btn-outline-secondary" href="{% url 'shipments:liste' %}">Expéditions en cours</a>
+      <a class="btn btn-outline-secondary" href="{% url 'shipments:liste' %}">{% tr "Expéditions en cours" %}</a>
     {% else %}
-      <a class="btn btn-outline-secondary" href="{% url 'shipments:historique' %}">Historique</a>
-      <a class="btn btn-accent" href="{% url 'shipments:creer' %}"><i class="bi bi-plus-lg"></i> Nouvelle expédition</a>
+      <a class="btn btn-outline-secondary" href="{% url 'shipments:historique' %}">{% tr "Historique" %}</a>
+      <a class="btn btn-accent" href="{% url 'shipments:creer' %}"><i class="bi bi-plus-lg"></i> {% tr "Nouvelle expédition" %}</a>
     {% endif %}
   </div>
 </div>
@@ -21,28 +21,28 @@
 <form method="get" class="card card-ch p-3 mb-4" role="search" data-filtre-auto>
   <div class="row g-3 align-items-end">
     <div class="col-md-3">
-      <label class="form-label" for="filtre-reference">Référence</label>
+      <label class="form-label" for="filtre-reference">{% tr "Référence" %}</label>
       <input class="form-control" id="filtre-reference" name="q" value="{{ filtre.q }}">
     </div>
     <div class="col-md-2">
-      <label class="form-label" for="filtre-statut">Statut</label>
+      <label class="form-label" for="filtre-statut">{% tr "Statut" %}</label>
       <select class="form-select" id="filtre-statut" name="statut">
-        <option value="">Tous</option>
+        <option value="">{% tr "Tous" %}</option>
         {% for valeur, libelle in statuts %}
-          <option value="{{ valeur }}" {% if filtre.statut == valeur %}selected{% endif %}>{{ libelle }}</option>
+          <option value="{{ valeur }}" {% if filtre.statut == valeur %}selected{% endif %}>{% tr libelle %}</option>
         {% endfor %}
       </select>
     </div>
     <div class="col-md-3">
-      <label class="form-label" for="filtre-depart">Ville de départ</label>
+      <label class="form-label" for="filtre-depart">{% tr "Ville de départ" %}</label>
       <input class="form-control" id="filtre-depart" name="depart" value="{{ filtre.depart }}">
     </div>
     <div class="col-md-2">
-      <label class="form-label" for="filtre-arrivee">Ville d'arrivée</label>
+      <label class="form-label" for="filtre-arrivee">{% tr "Ville d'arrivée" %}</label>
       <input class="form-control" id="filtre-arrivee" name="arrivee" value="{{ filtre.arrivee }}">
     </div>
     <div class="col-md-2">
-      <label class="form-label" for="filtre-date">Date</label>
+      <label class="form-label" for="filtre-date">{% tr "Date" %}</label>
       <input class="form-control" id="filtre-date" type="date" name="date" value="{{ filtre.date }}">
     </div>
   </div>
@@ -53,14 +53,14 @@
     <table class="table table-ch align-top liste-expeditions">
       <thead>
         <tr>
-          <th>Référence</th>
-          <th>Description</th>
-          <th>Départ</th>
-          <th>Arrivée</th>
-          <th>Dates</th>
-          <th>Poids total</th>
-          <th>Statut</th>
-          <th>Actions</th>
+          <th>{% tr "Référence" %}</th>
+          <th>{% tr "Description" %}</th>
+          <th>{% tr "Départ" %}</th>
+          <th>{% tr "Arrivée" %}</th>
+          <th>{% tr "Dates" %}</th>
+          <th>{% tr "Poids total" %}</th>
+          <th>{% tr "Statut" %}</th>
+          <th>{% tr "Actions" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -77,21 +77,21 @@
             <td class="col-ville">{{ expedition.adresse_depart.ville }}</td>
             <td class="col-ville">{{ expedition.adresse_arrivee.ville }}</td>
             <td class="col-dates">
-              <div>Départ {{ expedition.date_souhaitee|date:"d/m/Y" }}</div>
-              <div class="small text-muted">Arrivée {{ expedition.date_arrivee|date:"d/m/Y" }}</div>
+              <div>{% tr "Départ" %} {{ expedition.date_souhaitee|date:"d/m/Y" }}</div>
+              <div class="small text-muted">{% tr "Arrivée" %} {{ expedition.date_arrivee|date:"d/m/Y" }}</div>
             </td>
             <td class="col-poids">{{ expedition.poids_total_kg }} kg</td>
-            <td><span class="badge-statut badge-{{ expedition.statut }}">{{ expedition.get_statut_display }}</span></td>
+            <td><span class="badge-statut badge-{{ expedition.statut }}">{% tr expedition.get_statut_display %}</span></td>
             <td class="col-actions">
-              <a href="{% url 'shipments:detail' expedition.pk %}">Détail</a>
+              <a href="{% url 'shipments:detail' expedition.pk %}">{% tr "Détail" %}</a>
               {% if expedition.bon_disponible %}
-                <a class="btn btn-sm btn-outline-secondary" href="{% url 'shipments:bon' expedition.pk %}">Télécharger le bon d'expédition PDF</a>
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'shipments:bon' expedition.pk %}">{% tr "Télécharger le bon d'expédition PDF" %}</a>
               {% endif %}
               {% if expedition.peut_etre_modifiee %}
-                <a class="btn btn-sm btn-outline-primary" href="{% url 'shipments:modifier' expedition.pk %}">Modifier</a>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'shipments:modifier' expedition.pk %}">{% tr "Modifier" %}</a>
               {% endif %}
               {% if expedition.peut_etre_annulee %}
-                <a class="btn btn-sm btn-outline-secondary" href="{% url 'shipments:annuler' expedition.pk %}">Annuler</a>
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'shipments:annuler' expedition.pk %}">{% tr "Annuler" %}</a>
               {% endif %}
             </td>
           </tr>
@@ -100,14 +100,14 @@
     </table>
   </div>
   {% if is_paginated %}
-    <nav aria-label="Pages des expéditions">
+    <nav aria-label="{% tr 'Pages des expéditions' %}">
       <ul class="pagination">
         {% if page_obj.has_previous %}
-          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtres %}&{{ filtres }}{% endif %}">Précédent</a></li>
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtres %}&{{ filtres }}{% endif %}">{% tr "Précédent" %}</a></li>
         {% endif %}
-        <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        <li class="page-item disabled"><span class="page-link">{% tr "Page" %} {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
         {% if page_obj.has_next %}
-          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtres %}&{{ filtres }}{% endif %}">Suivant</a></li>
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtres %}&{{ filtres }}{% endif %}">{% tr "Suivant" %}</a></li>
         {% endif %}
       </ul>
     </nav>
@@ -115,7 +115,7 @@
 {% else %}
   <div class="text-center text-muted border rounded-3 py-5">
     <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-    Aucune expédition ne correspond à cette recherche.
+    {% tr "Aucune expédition ne correspond à cette recherche." %}
   </div>
 {% endif %}
 {% endblock %}

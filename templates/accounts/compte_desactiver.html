@@ -1,14 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Désactiver mon compte{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr "Désactiver mon compte" %}{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-md-6">
   <div class="card card-ch p-4">
-    <h1 class="page-title h3 mb-3">Désactiver mon compte</h1>
-    <p>Vous ne pourrez plus vous connecter. Vos réservations, contrats et paiements sont conservés.</p>
+    <h1 class="page-title h3 mb-3">{% tr "Désactiver mon compte" %}</h1>
+    <p>{% tr "Vous ne pourrez plus vous connecter. Vos réservations, contrats et paiements sont conservés." %}</p>
     <form method="post">{% csrf_token %}
       <div class="d-flex gap-2">
-        <button class="btn btn-danger" type="submit">Oui, désactiver mon compte</button>
-        <a class="btn btn-outline-secondary" href="{% url 'accounts:profil' %}">Annuler</a>
+        <button class="btn btn-danger" type="submit">{% tr "Oui, désactiver mon compte" %}</button>
+        <a class="btn btn-outline-secondary" href="{% url 'accounts:profil' %}">{% tr "Annuler" %}</a>
       </div>
     </form>
   </div>

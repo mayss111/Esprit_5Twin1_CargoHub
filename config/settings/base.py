@@ -76,6 +76,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.LangueExpliciteMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -201,6 +202,12 @@ AI_BASE_URL = env("AI_BASE_URL", default="https://api.groq.com/openai/v1")
 AI_MODEL = env("AI_MODEL", default="openai/gpt-oss-120b")
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 GEMINI_MODEL = env("GEMINI_MODEL", default="gemini-3.5-flash-lite")
+# Modèle local de recommandation d'entrepôts. Les tests le laissent éteint.
+SENTENCE_TRANSFORMERS_ACTIF = env.bool("SENTENCE_TRANSFORMERS_ACTIF", default=True)
+SENTENCE_TRANSFORMERS_MODEL = env(
+    "SENTENCE_TRANSFORMERS_MODEL",
+    default="paraphrase-multilingual-MiniLM-L12-v2",
+)
 
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY", default="")

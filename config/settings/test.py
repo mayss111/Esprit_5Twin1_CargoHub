@@ -15,3 +15,4 @@ STORAGES = {
 }
 AI_API_KEY = ""  # les tests n'appellent jamais un vrai service d'IA
 GEMINI_API_KEY = ""
+SENTENCE_TRANSFORMERS_ACTIF = False

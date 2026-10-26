@@ -1,11 +1,12 @@
 {% extends "backoffice/base.html" %}
-{% block title %}{{ titre }}{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr titre %}{% endblock %}
 {% block content %}
 <p class="mb-2">
-  <a href="{% url 'bo_warehouses:liste' %}">Tous les entrepôts</a>
-  {% if not entrepot %} · <a href="{% url 'bo_warehouses:importer' %}">Importer un fichier Excel ou CSV</a>{% endif %}
+  <a href="{% url 'bo_warehouses:liste' %}">{% tr "Tous les entrepôts" %}</a>
+  {% if not entrepot %} · <a href="{% url 'bo_warehouses:importer' %}">{% tr "Importer un fichier Excel ou CSV" %}</a>{% endif %}
 </p>
-<h1 class="page-title mb-3">{{ titre }}</h1>
+<h1 class="page-title mb-3">{% tr titre %}</h1>
 <form method="post" class="card card-ch p-3 entrepot-form">
   {% csrf_token %}
   {% if formulaire.non_field_errors %}
@@ -17,7 +18,7 @@
     <div class="col-md-4 mb-2">
       <div class="form-check">
         {{ formulaire.actif }}
-        <label class="form-check-label" for="{{ formulaire.actif.id_for_label }}">{{ formulaire.actif.label }}</label>
+        <label class="form-check-label" for="{{ formulaire.actif.id_for_label }}">{% tr formulaire.actif.label %}</label>
       </div>
       {% for erreur in formulaire.actif.errors %}<div class="invalid-feedback d-block">{{ erreur }}</div>{% endfor %}
     </div>
@@ -36,8 +37,8 @@
   </div>
 
   <div class="d-flex flex-wrap gap-2 mt-2">
-    <button class="btn btn-accent" type="submit">Enregistrer</button>
-    <a class="btn btn-outline-secondary" href="{% if entrepot %}{% url 'bo_warehouses:detail' entrepot.pk %}{% else %}{% url 'bo_warehouses:liste' %}{% endif %}">Annuler</a>
+    <button class="btn btn-accent" type="submit">{% tr "Enregistrer" %}</button>
+    <a class="btn btn-outline-secondary" href="{% if entrepot %}{% url 'bo_warehouses:detail' entrepot.pk %}{% else %}{% url 'bo_warehouses:liste' %}{% endif %}">{% tr "Annuler" %}</a>
   </div>
 </form>
 {% endblock %}
