@@ -1,0 +1,44 @@
+{% extends "backoffice/base.html" %}
+{% load cargohub %}
+{% block title %}{% tr titre %}{% endblock %}
+{% block content %}
+<p class="mb-2">
+  <a href="{% url 'bo_warehouses:liste' %}">{% tr "Tous les entrepôts" %}</a>
+  {% if not entrepot %} · <a href="{% url 'bo_warehouses:importer' %}">{% tr "Importer un fichier Excel ou CSV" %}</a>{% endif %}
+</p>
+<h1 class="page-title mb-3">{% tr titre %}</h1>
+<form method="post" class="card card-ch p-3 entrepot-form">
+  {% csrf_token %}
+  {% if formulaire.non_field_errors %}
+    <div class="alert alert-danger" role="alert">{{ formulaire.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="row g-2 align-items-end">
+    <div class="col-md-8">{% include "warehouses/_champ.html" with champ=formulaire.nom %}</div>
+    <div class="col-md-4 mb-2">
+      <div class="form-check">
+        {{ formulaire.actif }}
+        <label class="form-check-label" for="{{ formulaire.actif.id_for_label }}">{% tr formulaire.actif.label %}</label>
+      </div>
+      {% for erreur in formulaire.actif.errors %}<div class="invalid-feedback d-block">{{ erreur }}</div>{% endfor %}
+    </div>
+    <div class="col-12">{% include "warehouses/_champ.html" with champ=formulaire.description %}</div>
+    <div class="col-md-8">{% include "warehouses/_champ.html" with champ=formulaire.adresse %}</div>
+    <div class="col-md-4">{% include "warehouses/_champ.html" with champ=formulaire.code_postal %}</div>
+    <div class="col-md-4">{% include "warehouses/_champ.html" with champ=formulaire.ville %}</div>
+    <div class="col-md-4">{% include "warehouses/_champ.html" with champ=formulaire.gouvernorat %}</div>
+    <div class="col-md-4">{% include "warehouses/_champ.html" with champ=formulaire.capacite_max_m3 %}</div>
+    <div class="col-md-3">{% include "warehouses/_champ.html" with champ=formulaire.latitude %}</div>
+    <div class="col-md-3">{% include "warehouses/_champ.html" with champ=formulaire.longitude %}</div>
+    <div class="col-md-3">{% include "warehouses/_champ.html" with champ=formulaire.horaire_ouverture %}</div>
+    <div class="col-md-3">{% include "warehouses/_champ.html" with champ=formulaire.horaire_fermeture %}</div>
+    <div class="col-md-3">{% include "warehouses/_champ.html" with champ=formulaire.duree_stockage_max_heures %}</div>
+    <div class="col-md-3">{% include "warehouses/_champ.html" with champ=formulaire.delai_grace_minutes %}</div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 mt-2">
+    <button class="btn btn-accent" type="submit">{% tr "Enregistrer" %}</button>
+    <a class="btn btn-outline-secondary" href="{% if entrepot %}{% url 'bo_warehouses:detail' entrepot.pk %}{% else %}{% url 'bo_warehouses:liste' %}{% endif %}">{% tr "Annuler" %}</a>
+  </div>
+</form>
+{% endblock %}

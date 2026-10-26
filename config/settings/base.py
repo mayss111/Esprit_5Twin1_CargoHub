@@ -5,6 +5,7 @@ Ne mettez JAMAIS de secret ici : tout ce qui change d'un poste à l'autre
 se lit dans le fichier .env (voir .env.example).
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -17,7 +18,12 @@ environ.Env.read_env(BASE_DIR / ".env")
 SECRET_KEY = env("SECRET_KEY", default="dev-insecure-change-me")
 DEBUG = env.bool("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8000"],
+)
+# Tuiles Carto (optionnel). Sans clé, Leaflet utilise OpenStreetMap.
+CARTO_API_KEY = env("CARTO_API_KEY", default=env("REACT_APP_CARTO_API_KEY", default=""))
 
 # ---------------------------------------------------------------- applications
 DJANGO_APPS = [
@@ -35,6 +41,8 @@ THIRD_PARTY_APPS = [
     "channels",
     "crispy_forms",
     "crispy_bootstrap5",
+    "rest_framework",  # API REST de la flotte (M3), utilisée par le SPA React (frontend/)
+    "rest_framework_simplejwt",
 ]
 # Une application = un module. Le commentaire indique le membre responsable.
 LOCAL_APPS = [
@@ -59,6 +67,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.middleware.CorsSpaMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -67,6 +76,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.LangueExpliciteMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -110,6 +120,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # ---------------------------------------------------------------- langue et fuseau
 LANGUAGE_CODE = "fr"
+# Une seule langue : même si le navigateur est en anglais, les messages restent en français.
+LANGUAGES = [("fr", "Français")]
 TIME_ZONE = "Africa/Tunis"
 USE_I18N = True
 USE_TZ = True
@@ -128,6 +140,22 @@ MEDIA_ROOT = BASE_DIR / "media"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
+# ---------------------------------------------------------------- API REST (DRF) — /api/…
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.UserRateThrottle",),
+    "DEFAULT_THROTTLE_RATES": {"user": "1000/day"},
+    "EXCEPTION_HANDLER": "apps.core.api_exceptions.gestion_erreurs",
+}
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+}
+
 # ---------------------------------------------------------------- Redis, Celery, Channels
 REDIS_URL = env("REDIS_URL", default="")
 
@@ -139,10 +167,15 @@ CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=not REDI
 CELERY_BEAT_SCHEDULE = {
     # M3 — recrée chaque jour les trajets récurrents de la semaine suivante
     "trajets-recurrents": {"task": "apps.fleet.tasks.generer_trajets_recurrents", "schedule": 60 * 60 * 24},
+    # M3 — alertes : documents de véhicule qui expirent (J-30) et entretiens à prévoir (J-7)
+    "alerte-documents": {"task": "apps.fleet.tasks.notifier_alerte_documents", "schedule": 60 * 60 * 24},
+    "alerte-entretien": {"task": "apps.fleet.tasks.notifier_alerte_entretien", "schedule": 60 * 60 * 24},
     # M3 — rappels d'entretien et blocage des véhicules non conformes
     "verifier-conformite": {"task": "apps.maintenance.tasks.verifier_conformite", "schedule": 60 * 60 * 24},
     # M4 — clôture automatique des appels d'offres
     "cloturer-appels-offres": {"task": "apps.tenders.tasks.cloturer_appels_offres", "schedule": 60 * 5},
+    # M2 — clôture des réservations d'entrepôt dont la fin est atteinte
+    "suivre-depots": {"task": "apps.warehouses.tasks.suivre_depots", "schedule": 60 * 5},
 }
 
 CHANNEL_LAYERS = {
@@ -166,7 +199,15 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="CargoHub <no-reply@cargo
 # IA : n'importe quel fournisseur compatible avec l'API OpenAI (Groq, OpenRouter, Ollama…)
 AI_API_KEY = env("AI_API_KEY", default="")
 AI_BASE_URL = env("AI_BASE_URL", default="https://api.groq.com/openai/v1")
-AI_MODEL = env("AI_MODEL", default="llama-3.3-70b-versatile")
+AI_MODEL = env("AI_MODEL", default="openai/gpt-oss-120b")
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+GEMINI_MODEL = env("GEMINI_MODEL", default="gemini-3.5-flash-lite")
+# Modèle local de recommandation d'entrepôts. Les tests le laissent éteint.
+SENTENCE_TRANSFORMERS_ACTIF = env.bool("SENTENCE_TRANSFORMERS_ACTIF", default=True)
+SENTENCE_TRANSFORMERS_MODEL = env(
+    "SENTENCE_TRANSFORMERS_MODEL",
+    default="paraphrase-multilingual-MiniLM-L12-v2",
+)
 
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY", default="")

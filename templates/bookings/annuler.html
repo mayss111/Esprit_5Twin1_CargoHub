@@ -1,21 +1,22 @@
 {% extends "base.html" %}
-{% block title %}Annuler {{ reservation }}{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr "Annuler" %} {{ reservation }}{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-md-7">
   <div class="card card-ch p-4">
-    <h1 class="page-title h3 mb-3">Annuler la {{ reservation|lower }} ?</h1>
+    <h1 class="page-title h3 mb-3">{% tr "Annuler la" %} {{ reservation|lower }} ?</h1>
     {% if reservation.annulable %}
-      <p>Trajet {{ reservation.trajet.ville_depart }} → {{ reservation.trajet.ville_arrivee }} du {{ reservation.trajet.date_depart|date:"d/m/Y" }}.
-        {% if reservation.statut == "ACCEPTEE" %}La place sera rendue au transporteur.{% endif %} Cette action est définitive.</p>
+      <p>{% tr "Trajet" %} {{ reservation.trajet.ville_depart }} → {{ reservation.trajet.ville_arrivee }} {% tr "du" %} {{ reservation.trajet.date_depart|date:"d/m/Y" }}.
+        {% if reservation.statut == "ACCEPTEE" %}{% tr "La place sera rendue au transporteur." %}{% endif %} {% tr "Cette action est définitive." %}</p>
       <form method="post">{% csrf_token %}
         <div class="d-flex flex-wrap gap-2">
-          <button class="btn btn-danger" type="submit">Oui, annuler</button>
-          <a class="btn btn-outline-secondary" href="{% url 'bookings:detail' reservation.pk %}">Non, revenir</a>
+          <button class="btn btn-danger" type="submit">{% tr "Oui, annuler" %}</button>
+          <a class="btn btn-outline-secondary" href="{% url 'bookings:detail' reservation.pk %}">{% tr "Non, revenir" %}</a>
         </div>
       </form>
     {% else %}
-      <p>Cette réservation est « {{ reservation.get_statut_display|lower }} » : elle ne peut plus être annulée.</p>
-      <a class="btn btn-outline-secondary" href="{% url 'bookings:detail' reservation.pk %}">Revenir</a>
+      <p>{% tr "Cette réservation est «" %} {{ reservation.get_statut_display|lower }} {% tr "» : elle ne peut plus être annulée." %}</p>
+      <a class="btn btn-outline-secondary" href="{% url 'bookings:detail' reservation.pk %}">{% tr "Revenir" %}</a>
     {% endif %}
   </div>
 </div></div>

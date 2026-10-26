@@ -1,14 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Supprimer l’appel d’offres{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr "Supprimer l’appel d’offres" %}{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-md-6">
   <div class="card card-ch p-4">
-    <h1 class="page-title h3 mb-3">Supprimer l’appel d’offres #{{ appel.pk }} ?</h1>
-    <p>{{ appel.expedition }} — aucune offre n’a encore été reçue.</p>
+    <h1 class="page-title h3 mb-3">{% tr "Supprimer l’appel d’offres #" %}{{ appel.pk }} ?</h1>
+    <p>{{ appel.expedition }} {% tr "— aucune offre n’a encore été reçue." %}</p>
     <form method="post">{% csrf_token %}
       <div class="d-flex flex-wrap gap-2">
-        <button class="btn btn-danger" type="submit">Supprimer</button>
-        <a class="btn btn-outline-secondary" href="{% url 'tenders:detail' appel.pk %}">Annuler</a>
+        <button class="btn btn-danger" type="submit">{% tr "Supprimer" %}</button>
+        <a class="btn btn-outline-secondary" href="{% url 'tenders:detail' appel.pk %}">{% tr "Annuler" %}</a>
       </div>
     </form>
   </div>

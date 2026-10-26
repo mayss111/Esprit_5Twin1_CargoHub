@@ -1,0 +1,77 @@
+/* CargoHub — charte : orange #F5A623, bleu marine #1B2A4A */
+:root {
+  --ch-orange: #f5a623;
+  --ch-navy: #1b2a4a;
+  --ch-navy-light: #2c406e;
+  --ch-gris: #f4f6fa;
+  --ch-rouge: #d9534f;
+  --ch-vert: #2e9e5b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--ch-gris);
+  color: var(--ch-navy);
+}
+
+.ch-header {
+  background: var(--ch-navy);
+  color: #fff;
+  padding: 0.8rem 1.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+.ch-header .logo { font-weight: 700; font-size: 1.2rem; color: var(--ch-orange); }
+.ch-header nav { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.ch-header a {
+  color: #fff; text-decoration: none; padding: 0.35rem 0.8rem; border-radius: 6px; font-size: 0.95rem;
+}
+.ch-header a.actif, .ch-header a:hover { background: var(--ch-orange); color: var(--ch-navy); }
+
+.ch-main { max-width: 1000px; margin: 1.2rem auto; padding: 0 1rem; }
+.ch-titre { font-size: 1.4rem; margin: 0 0 0.3rem; }
+.ch-sous-titre { color: #5b6b85; margin: 0 0 1rem; }
+
+.ch-carte {
+  background: #fff; border-radius: 10px; padding: 1rem 1.2rem;
+  box-shadow: 0 1px 4px rgba(27, 42, 74, 0.12); margin-bottom: 1rem;
+}
+
+.ch-tableau { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.ch-tableau th { text-align: left; color: #5b6b85; font-weight: 600; padding: 0.5rem 0.6rem; border-bottom: 2px solid var(--ch-navy); }
+.ch-tableau td { padding: 0.55rem 0.6rem; border-bottom: 1px solid #e4e8f0; }
+
+.ch-badge { padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+.ch-badge.vert { background: #e2f6ea; color: var(--ch-vert); }
+.ch-badge.orange { background: #fdf0d9; color: #a3700a; }
+.ch-badge.rouge { background: #fbe4e3; color: var(--ch-rouge); }
+
+.ch-bouton {
+  background: var(--ch-orange); color: var(--ch-navy); border: none; border-radius: 8px;
+  padding: 0.55rem 1.1rem; font-weight: 600; cursor: pointer; font-size: 0.95rem;
+}
+.ch-bouton:hover { filter: brightness(1.06); }
+.ch-bouton.secondaire { background: var(--ch-navy); color: #fff; }
+
+.ch-champ { display: block; margin-bottom: 0.8rem; }
+.ch-champ span { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem; }
+.ch-champ input, .ch-champ select {
+  width: 100%; padding: 0.5rem 0.65rem; border: 1px solid #c7cfe0; border-radius: 8px; font-size: 1rem;
+}
+.ch-erreur { color: var(--ch-rouge); font-size: 0.85rem; margin-top: 0.2rem; }
+.ch-alerte { background: #fbe4e3; color: var(--ch-rouge); border-radius: 8px; padding: 0.6rem 1rem; margin-bottom: 1rem; }
+.ch-succes { background: #e2f6ea; color: var(--ch-vert); border-radius: 8px; padding: 0.6rem 1rem; margin-bottom: 1rem; }
+
+.ch-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; }
+
+.ch-carte-map { height: 320px; border-radius: 10px; }
+
+@media (max-width: 640px) {
+  .ch-tableau { font-size: 0.85rem; }
+  .ch-main { padding: 0 0.6rem; }
+}

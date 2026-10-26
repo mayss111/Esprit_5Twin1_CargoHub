@@ -1,23 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Mes réservations{% endblock %}
+{% load trajets  cargohub %}
+{% block title %}{% tr "Mes réservations" %}{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
   <div>
-    <h1 class="page-title mb-1">Mes réservations</h1>
-    <p class="text-muted mb-0">{% if user.role == "TRANSPORTEUR" %}Les places réservées sur vos trajets.{% else %}Vos demandes de place dans les camions.{% endif %}</p>
+    <h1 class="page-title mb-1">{% tr "Mes réservations" %}</h1>
+    <p class="text-muted mb-0">{% if user.role == "TRANSPORTEUR" %}{% tr "Les places réservées sur vos trajets." %}{% else %}{% tr "Vos demandes de place dans les camions." %}{% endif %}</p>
   </div>
-  {% if user.role == "PME" %}<a class="btn btn-accent" href="{% url 'bookings:trouver' %}"><i class="bi bi-search" aria-hidden="true"></i> Trouver un camion</a>
-  {% elif user.role == "TRANSPORTEUR" %}<a class="btn btn-accent" href="{% url 'bookings:demandes' %}"><i class="bi bi-inbox" aria-hidden="true"></i> Demandes reçues</a>{% endif %}
+  {% if user.role == "PME" %}<a class="btn btn-accent" href="{% url 'bookings:trouver' %}"><i class="bi bi-search" aria-hidden="true"></i> {% tr "Trouver un camion" %}</a>
+  {% elif user.role == "TRANSPORTEUR" %}<a class="btn btn-accent" href="{% url 'bookings:demandes' %}"><i class="bi bi-inbox" aria-hidden="true"></i> {% tr "Demandes reçues" %}</a>{% endif %}
 </div>
 {% include "bookings/_filtre_statut.html" %}
 {% if object_list %}
 <div class="table-responsive"><table class="table table-ch align-middle">
-  <caption class="visually-hidden">Mes réservations{% if statut_actif %}, filtre : {{ statut_actif|lower }}{% endif %}</caption>
-  <thead><tr><th scope="col">N°</th><th scope="col">Trajet</th><th scope="col">{% if user.role == "TRANSPORTEUR" %}PME{% else %}Transporteur{% endif %}</th><th scope="col">Départ</th><th scope="col">Prix</th><th scope="col">Statut</th></tr></thead>
+  <caption class="visually-hidden">{% tr "Mes réservations" %}{% if statut_actif %}{% tr ", filtre :" %} {{ statut_actif|lower }}{% endif %}</caption>
+  <thead><tr><th scope="col">{% tr "N°" %}</th><th scope="col">{% tr "Trajet" %}</th><th scope="col">{% if user.role == "TRANSPORTEUR" %}{% tr "PME" %}{% else %}{% tr "Transporteur" %}{% endif %}</th><th scope="col">{% tr "Départ" %}</th><th scope="col">{% tr "Prix" %}</th><th scope="col">{% tr "Statut" %}</th></tr></thead>
   <tbody>{% for r in object_list %}
     <tr>
       <td><a href="{% url 'bookings:detail' r.pk %}">#{{ r.pk }}</a></td>
-      <td>{{ r.trajet.ville_depart }} → {{ r.trajet.ville_arrivee }}</td>
+      <td>{{ r.trajet|itineraire }}</td>
       <td>{% if user.role == "TRANSPORTEUR" %}{{ r.expedition.pme }}{% else %}{{ r.trajet.transporteur }}{% endif %}</td>
       <td>{{ r.trajet.date_depart|date:"d/m/Y" }}</td>
       <td>{% if r.prix_convenu %}{{ r.prix_convenu }} DT{% else %}—{% endif %}</td>
@@ -26,6 +27,6 @@
   </tbody></table></div>
 {% include "core/_pagination.html" %}
 {% else %}
-<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-calendar-check fs-1 d-block mb-2" aria-hidden="true"></i>Aucune réservation{% if statut_actif %} avec ce statut{% endif %}.</div>
+<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-calendar-check fs-1 d-block mb-2" aria-hidden="true"></i>{% tr "Aucune réservation" %}{% if statut_actif %} {% tr "avec ce statut" %}{% endif %}.</div>
 {% endif %}
 {% endblock %}

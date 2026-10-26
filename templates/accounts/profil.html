@@ -1,43 +1,44 @@
 {% extends "base.html" %}
-{% block title %}Mon profil{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr "Mon profil" %}{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-4">
-  <h1 class="page-title mb-0">Mon profil</h1>
-  <a class="btn btn-primary" href="{% url 'accounts:profil_modifier' %}"><i class="bi bi-pencil" aria-hidden="true"></i> Modifier mon profil</a>
+  <h1 class="page-title mb-0">{% tr "Mon profil" %}</h1>
+  <a class="btn btn-primary" href="{% url 'accounts:profil_modifier' %}"><i class="bi bi-pencil" aria-hidden="true"></i> {% tr "Modifier mon profil" %}</a>
 </div>
 <div class="card card-ch p-4 mb-3">
-  <h2 class="h5 mb-3">Compte</h2>
+  <h2 class="h5 mb-3">{% tr "Compte" %}</h2>
   <dl class="row mb-0">
-    <dt class="col-sm-3">Nom</dt><dd class="col-sm-9">{{ user.get_full_name|default:"—" }}</dd>
-    <dt class="col-sm-3">Email</dt><dd class="col-sm-9">{{ user.email }}</dd>
-    <dt class="col-sm-3">Rôle</dt><dd class="col-sm-9">{{ user.get_role_display }}</dd>
-    <dt class="col-sm-3">Téléphone</dt><dd class="col-sm-9">{{ user.telephone|default:"—" }}</dd>
+    <dt class="col-sm-3">{% tr "Nom" %}</dt><dd class="col-sm-9">{{ user.get_full_name|default:"—" }}</dd>
+    <dt class="col-sm-3">{% tr "Email" %}</dt><dd class="col-sm-9">{{ user.email }}</dd>
+    <dt class="col-sm-3">{% tr "Rôle" %}</dt><dd class="col-sm-9">{% tr user.get_role_display %}</dd>
+    <dt class="col-sm-3">{% tr "Téléphone" %}</dt><dd class="col-sm-9">{{ user.telephone|default:"—" }}</dd>
   </dl>
 </div>
 {% if user.profil_pme %}
 <div class="card card-ch p-4 mb-3">
-  <h2 class="h5 mb-3">Entreprise</h2>
+  <h2 class="h5 mb-3">{% tr "Entreprise" %}</h2>
   <dl class="row mb-0">
-    <dt class="col-sm-3">Raison sociale</dt><dd class="col-sm-9">{{ user.profil_pme.raison_sociale }}</dd>
-    <dt class="col-sm-3">Matricule fiscal</dt><dd class="col-sm-9">{{ user.profil_pme.matricule_fiscal|default:"—" }}</dd>
-    <dt class="col-sm-3">Secteur</dt><dd class="col-sm-9">{{ user.profil_pme.secteur|default:"—" }}</dd>
-    <dt class="col-sm-3">Adresse</dt><dd class="col-sm-9">{{ user.profil_pme.adresse|default:"—" }} {{ user.profil_pme.ville }}</dd>
+    <dt class="col-sm-3">{% tr "Raison sociale" %}</dt><dd class="col-sm-9">{{ user.profil_pme.raison_sociale }}</dd>
+    <dt class="col-sm-3">{% tr "Matricule fiscal" %}</dt><dd class="col-sm-9">{{ user.profil_pme.matricule_fiscal|default:"—" }}</dd>
+    <dt class="col-sm-3">{% tr "Secteur" %}</dt><dd class="col-sm-9">{{ user.profil_pme.secteur|default:"—" }}</dd>
+    <dt class="col-sm-3">{% tr "Adresse" %}</dt><dd class="col-sm-9">{{ user.profil_pme.adresse|default:"—" }} {{ user.profil_pme.ville }}</dd>
   </dl>
 </div>
 {% endif %}
 {% if user.profil_transporteur %}
 {% with p=user.profil_transporteur %}
 <div class="card card-ch p-4 mb-3">
-  <h2 class="h5 mb-3">Documents du transporteur</h2>
+  <h2 class="h5 mb-3">{% tr "Documents du transporteur" %}</h2>
   <dl class="row mb-0">
-    <dt class="col-sm-3">Validation</dt>
-    <dd class="col-sm-9"><span class="badge {% if p.statut_validation == 'VALIDE' %}text-bg-success{% elif p.statut_validation == 'REFUSE' %}text-bg-danger{% else %}text-bg-warning{% endif %}">{{ p.get_statut_validation_display }}</span></dd>
-    <dt class="col-sm-3">Numéro de permis</dt><dd class="col-sm-9">{{ p.numero_permis|default:"—" }}</dd>
-    <dt class="col-sm-3">Permis</dt><dd class="col-sm-9">{% if p.permis %}<a href="{{ p.permis.url }}" target="_blank" rel="noopener">Voir le permis<span class="visually-hidden"> (nouvel onglet)</span></a>{% else %}Non déposé{% endif %}</dd>
-    <dt class="col-sm-3">Carte grise</dt><dd class="col-sm-9">{% if p.carte_grise %}<a href="{{ p.carte_grise.url }}" target="_blank" rel="noopener">Voir la carte grise<span class="visually-hidden"> (nouvel onglet)</span></a>{% else %}Non déposée{% endif %}</dd>
+    <dt class="col-sm-3">{% tr "Validation" %}</dt>
+    <dd class="col-sm-9"><span class="badge {% if p.statut_validation == 'VALIDE' %}text-bg-success{% elif p.statut_validation == 'REFUSE' %}text-bg-danger{% else %}text-bg-warning{% endif %}">{% tr p.get_statut_validation_display %}</span></dd>
+    <dt class="col-sm-3">{% tr "Numéro de permis" %}</dt><dd class="col-sm-9">{{ p.numero_permis|default:"—" }}</dd>
+    <dt class="col-sm-3">{% tr "Permis" %}</dt><dd class="col-sm-9">{% if p.permis %}<a href="{{ p.permis.url }}" target="_blank" rel="noopener">{% tr "Voir le permis" %}<span class="visually-hidden"> {% tr "(nouvel onglet)" %}</span></a>{% else %}{% tr "Non déposé" %}{% endif %}</dd>
+    <dt class="col-sm-3">{% tr "Carte grise" %}</dt><dd class="col-sm-9">{% if p.carte_grise %}<a href="{{ p.carte_grise.url }}" target="_blank" rel="noopener">{% tr "Voir la carte grise" %}<span class="visually-hidden"> {% tr "(nouvel onglet)" %}</span></a>{% else %}{% tr "Non déposée" %}{% endif %}</dd>
   </dl>
 </div>
 {% endwith %}
 {% endif %}
-<p class="small"><a class="link-danger" href="{% url 'accounts:desactiver' %}">Désactiver mon compte</a></p>
+<p class="small"><a class="link-danger" href="{% url 'accounts:desactiver' %}">{% tr "Désactiver mon compte" %}</a></p>
 {% endblock %}

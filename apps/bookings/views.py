@@ -21,15 +21,19 @@ from apps.shipments.models import Expedition
 
 from .forms import AnnulationLitigeForm, FiltreReservationsForm
 from .models import Reservation
-from .services import ReservationImpossible, changer_statut, reserver, trajets_compatibles
+from .services import EXPEDITION_VIDE, ReservationImpossible, changer_statut, reserver, trajets_compatibles
 
 EN_COURS = [Reservation.Statut.EN_ATTENTE, Reservation.Statut.ACCEPTEE]
 
 
 def reservations_de(user):
     """Réservations où l'utilisateur est la PME ou le transporteur (une autre réservation → 404)."""
-    return Reservation.objects.filter(Q(expedition__pme=user) | Q(trajet__transporteur=user)).select_related(
-        "expedition__pme", "expedition__adresse_depart", "expedition__adresse_arrivee", "trajet__transporteur"
+    return (
+        Reservation.objects.filter(Q(expedition__pme=user) | Q(trajet__transporteur=user))
+        .select_related(
+            "expedition__pme", "expedition__adresse_depart", "expedition__adresse_arrivee", "trajet__transporteur"
+        )
+        .prefetch_related("trajet__etapes")  # « Sfax → Tunis, via Monastir » sans une requête par ligne
     )
 
 
@@ -55,6 +59,9 @@ class ExpeditionsAReserverView(RoleRequiredMixin, ListView):
             .order_by("date_souhaitee")
         )
 
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), "message_vide": EXPEDITION_VIDE}
+
 
 class CamionsCompatiblesView(RoleRequiredMixin, TemplateView):
     roles = [Role.PME]
@@ -68,10 +75,13 @@ class CamionsCompatiblesView(RoleRequiredMixin, TemplateView):
             pme=self.request.user,
         )
         publiee = expedition.statut == Expedition.Statut.PUBLIEE
+        vide = expedition.poids_total_kg <= 0
         ctx.update(
             expedition=expedition,
             publiee=publiee,
-            resultats=trajets_compatibles(expedition) if publiee else [],
+            vide=vide,
+            message_vide=EXPEDITION_VIDE,
+            resultats=trajets_compatibles(expedition) if publiee and not vide else [],
             deja_demandes=set(expedition.reservations.filter(statut__in=EN_COURS).values_list("trajet_id", flat=True)),
         )
         return ctx
@@ -88,11 +98,15 @@ class ReserverView(RoleRequiredMixin, View):
         elif expedition.reservations.filter(trajet=trajet, statut__in=EN_COURS).exists():
             messages.warning(request, "Vous avez déjà demandé une place sur ce trajet.")
         else:
-            reservation = reserver(expedition, trajet)
-            messages.success(
-                request, f"Demande envoyée au transporteur ({reservation}). Vous serez prévenu de sa réponse."
-            )
-            return redirect("bookings:detail", pk=reservation.pk)
+            try:
+                reservation = reserver(expedition, trajet)
+            except ReservationImpossible as erreur:  # ex. expédition de 0 kg
+                messages.error(request, str(erreur))
+            else:
+                messages.success(
+                    request, f"Demande envoyée au transporteur ({reservation}). Vous serez prévenu de sa réponse."
+                )
+                return redirect("bookings:detail", pk=reservation.pk)
         return redirect("bookings:camions", pk=pk)
 
 

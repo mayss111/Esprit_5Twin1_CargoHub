@@ -1,0 +1,93 @@
+{% extends "backoffice/base.html" %}
+{% load static  cargohub %}
+{% block title %}{% tr "Réservations de dépôt" %}{% endblock %}
+{% block extra_head %}<link href="{% static 'warehouses/css/relais.css' %}?v=20261025g" rel="stylesheet">{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <h1 class="page-title mb-1">{% tr "Gestion des réservations de dépôt" %}</h1>
+  <p class="text-muted mb-0">{{ page_obj.paginator.count }} {% tr "réservation" %}{{ page_obj.paginator.count|pluralize }}{% tr ". Le volume indiqué est prévisionnel." %}</p>
+</div>
+
+<form method="get" class="card card-ch p-3 mb-4" role="search" data-filtre-auto>
+  <div class="row g-3 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-reference">{% tr "Référence" %}</label>
+      <input class="form-control" id="filtre-reference" name="q" value="{{ filtre.q }}" maxlength="40" placeholder="{% tr "Expédition ou dépôt" %}" autocomplete="off">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-email">{% tr "E-mail" %}</label>
+      <input class="form-control" id="filtre-email" type="search" name="email" value="{{ filtre.email }}" maxlength="254" placeholder="{% tr "E-mail de la PME" %}" inputmode="email" autocomplete="off">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-entrepot">{% tr "Entrepôt" %}</label>
+      <select class="form-select" id="filtre-entrepot" name="entrepot">
+        <option value="">{% tr "Tous" %}</option>
+        {% for entrepot in entrepots %}
+          <option value="{{ entrepot.pk }}" {% if filtre.entrepot == entrepot.pk|stringformat:"s" %}selected{% endif %}>{{ entrepot.nom }} — {{ entrepot.ville }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-date">{% tr "Date du dépôt" %}</label>
+      <input class="form-control" id="filtre-date" type="date" name="date" value="{{ filtre.date }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="filtre-statut">{% tr "Statut" %}</label>
+      <select class="form-select" id="filtre-statut" name="statut">
+        <option value="">{% tr "Tous" %}</option>
+        {% for valeur, libelle in statuts %}
+          <option value="{{ valeur }}" {% if filtre.statut == valeur %}selected{% endif %}>{% tr libelle %}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  {% if recherche %}
+    <p class="mb-0 mt-2"><a href="{% url 'bo_warehouses:reservations' %}">{% tr "Effacer les filtres" %}</a></p>
+  {% endif %}
+</form>
+
+{% if reservations %}
+  <div class="table-responsive">
+    <table class="table table-ch align-middle">
+      <caption class="visually-hidden">{% tr "Toutes les réservations de dépôt" %}</caption>
+      <thead>
+        <tr>
+          <th>{% tr "Réservation" %}</th>
+          <th>{% tr "Expédition" %}</th>
+          <th>{% tr "PME" %}</th>
+          <th>{% tr "Entrepôt" %}</th>
+          <th>{% tr "Date" %}</th>
+          <th>{% tr "Créneau" %}</th>
+          <th>{% tr "Volume prévu" %}</th>
+          <th>{% tr "Statut" %}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for reservation in reservations %}
+          <tr>
+            <td class="col-chiffre"><a href="{% url 'bo_warehouses:reservation' reservation.pk %}">{{ reservation.reference }}</a></td>
+            <td class="col-chiffre">{{ reservation.expedition.reference }}</td>
+            <td>
+              {{ reservation.nom_pme }}
+              <div class="small text-muted">{{ reservation.expedition.pme.email }}</div>
+            </td>
+            <td>{{ reservation.entrepot.nom }}</td>
+            <td class="col-chiffre">{{ reservation.debut|date:"d/m/Y" }}</td>
+            <td class="col-chiffre">{{ reservation.debut|time:"H:i" }} – {{ reservation.fin|time:"H:i" }}</td>
+            <td class="col-chiffre">{% if reservation.volume_reserve is not None %}{{ reservation.volume_reserve }}{% else %}{{ reservation.volume_m3 }}{% endif %} m³</td>
+            <td><span class="badge-statut badge-{{ reservation.statut }}">{% tr reservation.get_statut_display %}</span></td>
+            <td><a href="{% url 'bo_warehouses:reservation' reservation.pk %}">{% tr "Détails" %}</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "core/_pagination.html" %}
+{% else %}
+  <p class="text-muted mb-0">
+    {% if recherche %}{% tr "Aucune réservation ne correspond à cette recherche." %}{% else %}{% tr "Aucune réservation." %}{% endif %}
+  </p>
+{% endif %}
+{% endblock %}
+{% block extra_js %}<script src="{% static 'shipments/js/filtre.js' %}"></script>{% endblock %}

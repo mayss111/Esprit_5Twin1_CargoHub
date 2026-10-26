@@ -1,12 +1,12 @@
 {% extends "backoffice/base.html" %}
-{% load humanize %}
-{% block title %}Tableau de bord{% endblock %}
+{% load humanize cargohub %}
+{% block title %}{% tr "Tableau de bord" %}{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-4">
-  <h1 class="page-title mb-0">Tableau de bord</h1>
+  <h1 class="page-title mb-0">{% tr "Tableau de bord" %}</h1>
   <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-outline-primary" href="{% url 'dashboard:export_excel' %}">Exporter Excel</a>
-    <a class="btn btn-outline-primary" href="{% url 'dashboard:export_pdf' %}">Exporter PDF</a>
+    <a class="btn btn-outline-primary" href="{% url 'dashboard:export_excel' %}">{% tr "Exporter Excel" %}</a>
+    <a class="btn btn-outline-primary" href="{% url 'dashboard:export_pdf' %}">{% tr "Exporter PDF" %}</a>
   </div>
 </div>
 <div class="row g-3 mb-4">
@@ -14,23 +14,23 @@
   <div class="col-sm-6 col-xl-4">
     <div class="kpi d-flex align-items-center gap-3">
       <span class="icon-tile" aria-hidden="true"><i class="bi bi-{{ icone }}"></i></span>
-      <div><div class="val">{{ valeur|intcomma }}</div><div class="text-muted small">{{ libelle }}</div></div>
+      <div><div class="val">{{ valeur|intcomma }}</div><div class="text-muted small">{% tr libelle %}</div></div>
     </div>
   </div>
   {% endfor %}
 </div>
-<p>Taux de remplissage moyen des trajets ouverts : <strong>{{ remplissage }} %</strong>.</p>
+<p>{% tr "Taux de remplissage moyen des trajets ouverts :" %} <strong>{{ remplissage }} %</strong>.</p>
 <div class="row g-4 mb-4">
   <div class="col-lg-7">
-    <h2 class="h5">Réservations et encaissements</h2>
-    <canvas id="graphique-pilotage" role="img" aria-label="Graphique des réservations et des encaissements sur six mois"></canvas>
+    <h2 class="h5">{% tr "Réservations et encaissements" %}</h2>
+    <canvas id="graphique-pilotage" role="img" aria-label="{% tr 'Graphique des réservations et des encaissements sur six mois' %}"></canvas>
   </div>
   <div class="col-lg-5">
-    <h2 class="h5">Mêmes chiffres, en tableau</h2>
+    <h2 class="h5">{% tr "Mêmes chiffres, en tableau" %}</h2>
     <div class="table-responsive">
       <table class="table table-ch">
-        <caption class="visually-hidden">Réservations et encaissements par mois</caption>
-        <thead><tr><th scope="col">Mois</th><th scope="col">Réservations</th><th scope="col">Encaissements (DT)</th></tr></thead>
+        <caption class="visually-hidden">{% tr "Réservations et encaissements par mois" %}</caption>
+        <thead><tr><th scope="col">{% tr "Mois" %}</th><th scope="col">{% tr "Réservations" %}</th><th scope="col">{% tr "Encaissements (DT)" %}</th></tr></thead>
         <tbody>
           {% for ligne in series %}
           <tr><td>{{ ligne.mois }}</td><td>{{ ligne.reservations }}</td><td>{{ ligne.encaissements|floatformat:0 }}</td></tr>
@@ -40,15 +40,15 @@
     </div>
   </div>
 </div>
-<h2 class="h5 fw-bold">Dernières réservations</h2>
+<h2 class="h5 fw-bold">{% tr "Dernières réservations" %}</h2>
 <div class="table-responsive">
   <table class="table table-ch">
-    <caption class="visually-hidden">Dernières réservations</caption>
-    <thead><tr><th scope="col">N°</th><th scope="col">Expédition</th><th scope="col">Trajet</th><th scope="col">Statut</th></tr></thead>
+    <caption class="visually-hidden">{% tr "Dernières réservations" %}</caption>
+    <thead><tr><th scope="col">{% tr "N°" %}</th><th scope="col">{% tr "Expédition" %}</th><th scope="col">{% tr "Trajet" %}</th><th scope="col">{% tr "Statut" %}</th></tr></thead>
     <tbody>
       {% for r in dernieres_reservations %}
-      <tr><td>{{ r.pk }}</td><td>{{ r.expedition }}</td><td>{{ r.trajet }}</td><td>{{ r.get_statut_display }}</td></tr>
-      {% empty %}<tr><td colspan="4" class="text-muted">Aucune réservation.</td></tr>{% endfor %}
+      <tr><td>{{ r.pk }}</td><td>{{ r.expedition }}</td><td>{{ r.trajet }}</td><td>{% tr r.get_statut_display %}</td></tr>
+      {% empty %}<tr><td colspan="4" class="text-muted">{% tr "Aucune réservation." %}</td></tr>{% endfor %}
     </tbody>
   </table>
 </div>
