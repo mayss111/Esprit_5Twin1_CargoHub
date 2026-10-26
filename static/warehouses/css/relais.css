@@ -11,6 +11,12 @@
 .relais-adresse { color: #475569; font-size: .92rem; }
 .relais-meta { color: #334155; font-size: .92rem; }
 .relais-distance:empty { display: none; }
+.reco-carte {
+  background: #fffaf5;
+  border: 1px solid #E87722;
+  border-radius: .7rem;
+  padding: .75rem .85rem;
+}
 .entrepot-faits { display: grid; gap: .85rem; margin: 0; }
 .entrepot-faits dt {
   margin: 0 0 .15rem;

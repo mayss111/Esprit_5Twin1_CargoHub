@@ -3,7 +3,7 @@
 {% block title %}{{ titre }}{% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<link href="{% static 'warehouses/css/relais.css' %}?v=20261025l" rel="stylesheet">
+<link href="{% static 'warehouses/css/relais.css' %}?v=20261026b" rel="stylesheet">
 {% endblock %}
 {% block content %}
 <div class="mb-3">
@@ -40,6 +40,58 @@
 </form>
 <p class="small text-muted" id="position-message" role="status">La position du navigateur n'est pas enregistrée. Seuls les entrepôts actifs sont proposés.</p>
 
+<section class="card card-ch p-3 mb-3" id="recommandation-entrepot">
+  <h2 class="h6 mb-1">Smart Warehouse Recommender</h2>
+  <p class="small text-muted mb-2">Choisissez une expédition. Le trajet, le volume et la date servent au classement. La capacité et les horaires sont vérifiés avant.</p>
+  <form method="post" action="{% url 'warehouses:recommander' %}" data-ia="Recherche des entrepôts…">
+    {% csrf_token %}
+    <div class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label" for="reco-expedition">Expédition</label>
+        <select class="form-select form-select-sm" id="reco-expedition" name="expedition" required>
+          <option value="">Choisir</option>
+          {% for item in expeditions %}
+            <option value="{{ item.pk }}" {% if recommandation.expedition and recommandation.expedition.pk == item.pk %}selected{% endif %}>{{ item.reference }} — {{ item.adresse_depart.ville }} → {{ item.adresse_arrivee.ville }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="reco-date">Date de dépôt</label>
+        <input class="form-control form-control-sm" id="reco-date" type="date" name="date" value="{{ jour_depot }}">
+      </div>
+      <div class="col-md-4">
+        <button class="btn btn-accent btn-sm" type="submit">Rechercher avec IA</button>
+      </div>
+    </div>
+  </form>
+  {% if recommandation.erreur %}
+    <div class="alert alert-warning mt-3 mb-0" role="alert">{{ recommandation.erreur }}</div>
+  {% elif recommandation.recommandations %}
+    <p class="small text-muted mt-3 mb-2">
+      {% if recommandation.modele == "sentence-transformers" %}
+        Classement par similarité sémantique (Sentence Transformers), après contrôle de la capacité et des horaires.
+      {% else %}
+        Le modèle Sentence Transformers n'est pas disponible. Le classement de secours compare le trajet de l'expédition aux fiches des entrepôts. La capacité et les horaires restent vérifiés.
+      {% endif %}
+    </p>
+    <div class="row g-2">
+      {% for ligne in recommandation.recommandations %}
+        <div class="col-md-4">
+          <article class="reco-carte h-100">
+            <h3 class="h6 mb-1">{{ forloop.counter }}. {{ ligne.entrepot.nom }}</h3>
+            <p class="mb-1">{{ ligne.entrepot.ville }}{% if ligne.entrepot.gouvernorat %} · {{ ligne.entrepot.gouvernorat }}{% endif %}</p>
+            <p class="mb-1">Score {{ ligne.score }} %</p>
+            <p class="mb-1">{{ ligne.disponible }} m³ disponibles</p>
+            <p class="mb-1">{% if ligne.distance is not None %}{{ ligne.distance|floatformat:1 }} km à vol d'oiseau{% else %}Distance indisponible{% endif %}</p>
+            <p class="small mb-2">{{ ligne.explication }}</p>
+            <a class="btn btn-sm btn-accent" href="{% url 'warehouses:reserver' ligne.entrepot.pk %}?expedition={{ recommandation.expedition.pk }}">Réserver</a>
+          </article>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+
 <div class="mb-4">
   <div id="carte-relais" class="carte-relais carte-relais-liste" role="region" aria-label="Carte des points relais"></div>
   <p class="small text-muted mt-1 mb-0">Fond de carte © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a></p>
@@ -74,9 +126,10 @@
   </div>
 {% endif %}
 {{ marqueurs|json_script:"marqueurs-entrepots" }}
+{{ recommandations_carte|json_script:"recommandations-entrepots" }}
 {% endblock %}
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="{% static 'shipments/js/filtre.js' %}"></script>
-<script src="{% static 'warehouses/js/carte.js' %}?v=20261025d"></script>
+<script src="{% static 'warehouses/js/carte.js' %}?v=20261026b"></script>
 {% endblock %}

@@ -1,6 +1,6 @@
 """Vues du module Entrepôts & points relais — Membre 2."""
 
-from datetime import date
+from datetime import date, datetime
 
 from django.contrib import messages
 from django.db.models import Q
@@ -18,6 +18,7 @@ from .forms import EntrepotForm
 from .models import Entrepot
 from .services.capacity import synthese_entrepot
 from .services.distance import distance_km
+from .services.recommander import recommander
 from .services.reservation import STATUTS_ELIGIBLES
 
 
@@ -91,6 +92,73 @@ def _marqueur(entrepot, url_reserver=""):
     return marqueur
 
 
+def _expeditions_reservables(utilisateur):
+    return Expedition.objects.filter(pme=utilisateur, statut__in=STATUTS_ELIGIBLES).select_related(
+        "adresse_depart", "adresse_arrivee"
+    )
+
+
+def _date_post(valeur):
+    texte = (valeur or "").strip()
+    if not texte:
+        return None
+    try:
+        return datetime.strptime(texte, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _marqueurs_recommandes(resultat):
+    expedition = resultat.get("expedition")
+    expedition_id = expedition.pk if expedition is not None else ""
+    points = []
+    for rang, ligne in enumerate(resultat["recommandations"], start=1):
+        entrepot = ligne.entrepot
+        if entrepot.latitude is None or entrepot.longitude is None:
+            continue
+        points.append(
+            {
+                "rang": rang,
+                "nom": entrepot.nom,
+                "ville": entrepot.ville,
+                "lat": entrepot.latitude,
+                "lng": entrepot.longitude,
+                "score": ligne.score,
+                "explication": ligne.explication,
+                "reserver": _url_reservation(entrepot, expedition_id),
+            }
+        )
+    return points
+
+
+def _contexte_carte(request):
+    lignes = _avec_distances(_entrepots_actifs(request), None)
+    expedition_id = _expedition_liee(request)
+    get = request.GET
+    return {
+        "titre": "Entrepôts & Points Relais",
+        "lignes": lignes,
+        "filtre": {
+            "q": _texte(get.get("q")),
+            "ville": _texte(get.get("ville")),
+            "gouvernorat": _texte(get.get("gouvernorat"), 40),
+        },
+        "gouvernorats": GOUVERNORATS,
+        "expedition_id": expedition_id,
+        "marqueurs": [
+            marqueur
+            for ligne in lignes
+            if (marqueur := _marqueur(ligne["entrepot"], _url_reservation(ligne["entrepot"], expedition_id)))
+        ],
+        "aucun_actif": not Entrepot.objects.filter(actif=True).exists(),
+        "recherche": any(get.get(nom) for nom in ("q", "ville", "gouvernorat")),
+        "expeditions": _expeditions_reservables(request.user),
+        "recommandation": None,
+        "jour_depot": "",
+        "recommandations_carte": [],
+    }
+
+
 class PointsRelaisView(RoleRequiredMixin, TemplateView):
     """Carte et liste des entrepôts actifs. La PME ne peut pas les modifier."""
 
@@ -99,28 +167,31 @@ class PointsRelaisView(RoleRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         contexte = super().get_context_data(**kwargs)
-        lignes = _avec_distances(_entrepots_actifs(self.request), None)
-        expedition_id = _expedition_liee(self.request)
-        get = self.request.GET
-        contexte.update(
-            titre="Entrepôts & Points Relais",
-            lignes=lignes,
-            filtre={
-                "q": _texte(get.get("q")),
-                "ville": _texte(get.get("ville")),
-                "gouvernorat": _texte(get.get("gouvernorat"), 40),
-            },
-            gouvernorats=GOUVERNORATS,
-            expedition_id=expedition_id,
-            marqueurs=[
-                marqueur
-                for ligne in lignes
-                if (marqueur := _marqueur(ligne["entrepot"], _url_reservation(ligne["entrepot"], expedition_id)))
-            ],
-            aucun_actif=not Entrepot.objects.filter(actif=True).exists(),
-            recherche=any(get.get(nom) for nom in ("q", "ville", "gouvernorat")),
-        )
+        contexte.update(_contexte_carte(self.request))
         return contexte
+
+
+class RecommanderEntrepotView(RoleRequiredMixin, View):
+    """Classe les entrepôts pour une expédition. La réservation reste le formulaire existant."""
+
+    roles = [Role.PME]
+
+    def get(self, request):
+        return redirect("warehouses:liste")
+
+    def post(self, request):
+        resultat = recommander(
+            request.user,
+            request.POST.get("expedition"),
+            _date_post(request.POST.get("date")),
+        )
+        contexte = _contexte_carte(request)
+        contexte.update(
+            recommandation=resultat,
+            jour_depot=resultat["jour"].isoformat() if resultat["jour"] else (request.POST.get("date") or ""),
+            recommandations_carte=_marqueurs_recommandes(resultat),
+        )
+        return render(request, "warehouses/liste.html", contexte)
 
 
 class DetailPointRelaisView(RoleRequiredMixin, DetailView):
