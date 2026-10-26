@@ -7,7 +7,10 @@ from apps.core.roles import Role
 
 from .models import ProfilPME, ProfilTransporteur, Utilisateur
 
-TELEPHONE_TN = RegexValidator(r"^(\+216\s?)?\d{2}\s?\d{3}\s?\d{3}$", "Numéro tunisien à 8 chiffres, ex. 22 123 456.")
+TELEPHONE_TN = RegexValidator(
+    r"^(\+216\s?)?\d{2}\s?\d{3}\s?\d{3}$",
+    "Numéro tunisien à 8 chiffres, ex. 22 123 456.",
+)
 EXTENSIONS_DOCUMENTS = ["pdf", "jpg", "jpeg", "png"]
 TAILLE_MAX_DOCUMENT = 5 * 1024 * 1024  # 5 Mo
 
@@ -22,10 +25,17 @@ def valider_document(fichier):
 class InscriptionForm(UserCreationForm):
     role = forms.ChoiceField(
         label="Je suis",
-        choices=[(Role.PME, "Une PME qui veut expédier"), (Role.TRANSPORTEUR, "Un transporteur")],
+        choices=[
+            (Role.PME, "Une PME qui veut expédier"),
+            (Role.TRANSPORTEUR, "Un transporteur"),
+        ],
         widget=forms.RadioSelect,
     )
-    raison_sociale = forms.CharField(label="Nom de l’entreprise", required=False, help_text="Obligatoire pour une PME.")
+    raison_sociale = forms.CharField(
+        label="Nom de l’entreprise",
+        required=False,
+        help_text="Obligatoire pour une PME.",
+    )
 
     class Meta:
         model = Utilisateur
@@ -51,7 +61,10 @@ class InscriptionForm(UserCreationForm):
         user = super().save(commit=commit)
         if commit:
             if user.role == Role.PME:
-                ProfilPME.objects.create(utilisateur=user, raison_sociale=self.cleaned_data["raison_sociale"])
+                ProfilPME.objects.create(
+                    utilisateur=user,
+                    raison_sociale=self.cleaned_data["raison_sociale"],
+                )
             else:
                 ProfilTransporteur.objects.create(utilisateur=user)
         return user
@@ -90,12 +103,16 @@ class ConnexionForm(AuthenticationForm):
     def clean_password(self):
         password = self.cleaned_data.get("password", "")
         if len(password) < 8:
-            raise forms.ValidationError("Le mot de passe doit contenir au moins 8 caractères.")
+            raise forms.ValidationError(
+                "Le mot de passe doit contenir au moins 8 caractères."
+            )
         return password
 
     def clean(self):
         data = super().clean()
-        if not self.data.get("username", "").strip() or not self.data.get("password", ""):
+        if not self.data.get("username", "").strip() or not self.data.get(
+            "password", ""
+        ):
             self.add_error(None, "Veuillez remplir l’adresse email et le mot de passe.")
         return data
 
@@ -123,7 +140,10 @@ class ProfilUtilisateurForm(forms.ModelForm):
         self.fields["first_name"].required = True
         self.fields["last_name"].required = True
         self.fields["telephone"].validators.append(TELEPHONE_TN)
-        self.fields["photo_profil"].validators += [FileExtensionValidator(["jpg", "jpeg", "png"]), valider_document]
+        self.fields["photo_profil"].validators += [
+            FileExtensionValidator(["jpg", "jpeg", "png"]),
+            valider_document,
+        ]
 
 
 class ProfilPMEForm(forms.ModelForm):
@@ -140,7 +160,10 @@ class ProfilPMEForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["matricule_fiscal"].validators.append(
-            RegexValidator(r"^\d{7}[A-Z](/[A-Z]/[A-Z]/\d{3})?$", "Format attendu : 1234567A/B/M/000.")
+            RegexValidator(
+                r"^\d{7}[A-Z](/[A-Z]/[A-Z]/\d{3})?$",
+                "Format attendu : 1234567A/B/M/000.",
+            )
         )
 
 
@@ -148,13 +171,23 @@ class ProfilTransporteurForm(forms.ModelForm):
     class Meta:
         model = ProfilTransporteur
         fields = ("numero_permis", "permis", "carte_grise")
-        labels = {"numero_permis": "Numéro de permis", "permis": "Permis de conduire", "carte_grise": "Carte grise"}
-        help_texts = {"permis": "PDF, JPG ou PNG, 5 Mo maximum.", "carte_grise": "PDF, JPG ou PNG, 5 Mo maximum."}
+        labels = {
+            "numero_permis": "Numéro de permis",
+            "permis": "Permis de conduire",
+            "carte_grise": "Carte grise",
+        }
+        help_texts = {
+            "permis": "PDF, JPG ou PNG, 5 Mo maximum.",
+            "carte_grise": "PDF, JPG ou PNG, 5 Mo maximum.",
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for champ in ("permis", "carte_grise"):
-            self.fields[champ].validators += [FileExtensionValidator(EXTENSIONS_DOCUMENTS), valider_document]
+            self.fields[champ].validators += [
+                FileExtensionValidator(EXTENSIONS_DOCUMENTS),
+                valider_document,
+            ]
             self.fields[champ].widget.attrs["accept"] = ".pdf,.jpg,.jpeg,.png"
 
     def save(self, commit=True):
