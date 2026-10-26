@@ -2,12 +2,14 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import RedirectView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 # (préfixe front-office, préfixe back-office, application)
 MODULES = [
     ("comptes/", "utilisateurs/", "accounts"),
     ("messagerie/", "support/", "messaging"),
+    ("reclamations/", "reclamations/", "reclamations"),
     ("contrats/", "contrats/", "contracts"),
     ("expeditions/", "expeditions/", "shipments"),
     ("entrepots/", "entrepots/", "warehouses"),
@@ -24,6 +26,7 @@ MODULES = [
 
 urlpatterns = [
     path("", include("apps.core.urls")),
+    path("comptes", RedirectView.as_view(pattern_name="accounts:accueil", permanent=False)),
     path("backoffice/", include("apps.dashboard.urls")),
     path("django-admin/", admin.site.urls),  # outil de développement, pas le back-office final
     # API REST (JWT) — utilisée par le matching M4 et les intégrations.

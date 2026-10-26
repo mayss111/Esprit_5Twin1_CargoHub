@@ -5,11 +5,16 @@ Quand vous ajoutez une page à votre module, ajoutez-la ici pour qu'elle
 apparaisse dans le menu. Format : (libellé, nom d'URL, icône Bootstrap Icons).
 """
 
+from apps.bookings.models import Notification
+from apps.messaging.models import Message
+
 from .roles import Role, est_admin
 from .traductions import traduire
 
 MENU_PME = [
     ("Mes expéditions", "shipments:liste", "box-seam"),
+    ("Mes réclamations", "reclamations:liste", "exclamation-circle"),
+    ("Mes sinistres", "insurance:liste", "shield-exclamation"),
     ("Trouver un camion", "bookings:trouver", "search"),
     ("Entrepôts & points relais", "warehouses:liste", "shop"),
     ("Mes dépôts", "warehouses:mes_depots", "calendar-event"),
@@ -33,6 +38,7 @@ GROUPES_PME = [
         [
             "payments:liste",
             "insurance:liste",
+            "reclamations:liste",
             "messaging:liste",
             "contracts:liste",
             "messaging:assistant",
@@ -43,7 +49,18 @@ GROUPES_PME = [
 GROUPES_TRANSPORTEUR = [
     ("Flotte", ["fleet:vehicules", "fleet:liste", "fleet:planificateur", "maintenance:liste"]),
     ("Activité", ["bookings:demandes", "bookings:liste", "tenders:liste", "tracking:liste"]),
-    ("Services", ["payments:liste", "messaging:liste", "contracts:liste", "messaging:assistant", "ecology:liste"]),
+    (
+        "Services",
+        [
+            "payments:liste",
+            "reclamations:liste",
+            "insurance:liste",
+            "messaging:liste",
+            "contracts:liste",
+            "messaging:assistant",
+            "ecology:liste",
+        ],
+    ),
 ]
 
 
@@ -73,6 +90,8 @@ def _traduit_menu(menu, langue):
 MENU_TRANSPORTEUR = [
     ("Mes véhicules", "fleet:vehicules", "truck"),
     ("Mes trajets", "fleet:liste", "signpost-split"),
+    ("Mes réclamations", "reclamations:liste", "exclamation-circle"),
+    ("Mes sinistres", "insurance:liste", "shield-exclamation"),
     ("Impact écologique", "fleet:impact", "tree"),
     ("Demandes reçues", "bookings:demandes", "inbox"),
     ("Planificateur IA", "fleet:planificateur", "stars"),
@@ -95,6 +114,8 @@ MENU_BACKOFFICE = [
         [
             ("Utilisateurs", "bo_accounts:liste", "people"),
             ("Support", "bo_messaging:liste", "life-preserver"),
+            ("Conversations", "bo_messaging:conversations", "chat-dots"),
+            ("Réclamations", "bo_reclamations:liste", "exclamation-circle"),
             ("Modération", "bo_messaging:moderation", "flag"),
             ("Contrats", "bo_contracts:liste", "file-earmark-text"),
         ],
@@ -158,6 +179,15 @@ def navigation(request):
     notifications = []
     if user.is_authenticated:
         notifications = list(user.notifications.filter(lu=False)[:5])
+    # Une seule requête pour le badge et le menu de la messagerie (borné à 99).
+    messages_non_lus = []
+    if user.is_authenticated:
+        messages_non_lus = list(
+            Message.objects.filter(conversation__participants=user, lu=False)
+            .exclude(auteur=user)
+            .select_related("auteur", "conversation")
+            .order_by("-created_at")[:99]
+        )
     backoffice = [(membre, couleur, _traduit_menu(liens, langue)) for membre, couleur, liens in MENU_BACKOFFICE]
     return {
         "menu_front": menu,
@@ -165,4 +195,9 @@ def navigation(request):
         "menu_backoffice": backoffice,
         "est_admin": est_admin(user),
         "notifications_non_lues": notifications,
+        "notifications_recentes": (
+            Notification.objects.filter(destinataire=user).order_by("-created_at")[:5] if user.is_authenticated else []
+        ),
+        "messages_non_lus": messages_non_lus[:5],
+        "messageries_non_lues": len(messages_non_lus),
     }

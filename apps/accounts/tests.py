@@ -8,6 +8,8 @@ from django.urls import reverse
 
 from apps.accounts.forms import TAILLE_MAX_DOCUMENT, valider_document
 from apps.accounts.models import ProfilPME, ProfilTransporteur, Utilisateur
+from apps.accounts.reliability import score_fiabilite
+from apps.bookings.models import Reservation
 from apps.core.roles import Role
 
 PDF = b"%PDF-1.4 test"
@@ -148,6 +150,24 @@ def test_pages_profil_par_role(client, request, fixture):
     assert client.get(reverse("accounts:profil_modifier")).status_code == 200
 
 
+def test_score_fiabilite_donnees_insuffisantes(pme):
+    resultat = score_fiabilite(pme)
+    assert resultat.score is None
+    assert resultat.explication == "Données insuffisantes"
+
+
+def test_score_fiabilite_est_calculé_en_python(expedition, trajet, pme):
+    Reservation.objects.create(
+        expedition=expedition,
+        trajet=trajet,
+        statut=Reservation.Statut.LIVREE,
+    )
+    resultat = score_fiabilite(pme)
+    assert resultat.score == 100
+    assert resultat.details["livraisons_reussies"] == 1
+    assert "1 livraison" in resultat.explication
+
+
 def test_modifier_profil_pme(client, pme):
     client.force_login(pme)
     reponse = client.post(reverse("accounts:profil_modifier"), _profil_pme())
@@ -156,6 +176,23 @@ def test_modifier_profil_pme(client, pme):
     assert pme.last_name == "Ben Ali" and pme.telephone == "22 123 456"
     assert pme.profil_pme.raison_sociale == "Atelier Sami SARL"
     assert pme.profil_pme.ville == "Monastir"
+
+
+def test_modifier_photo_profil(client, pme):
+    client.force_login(pme)
+    reponse = client.post(
+        reverse("accounts:profil_modifier"),
+        {
+            "compte-first_name": "Sami",
+            "compte-last_name": "Ben Ali",
+            "compte-telephone": "22 123 456",
+            "compte-photo_profil": SimpleUploadedFile("profil.jpg", b"fake-image", content_type="image/jpeg"),
+            **_profil_pme(),
+        },
+    )
+    assert reponse.status_code == 302
+    pme.refresh_from_db()
+    assert pme.photo_profil.name.endswith("profil.jpg")
 
 
 @pytest.mark.parametrize(

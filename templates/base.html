@@ -61,11 +61,14 @@
               {% empty %}
                 <li><span class="dropdown-item-text text-muted">{% tr "Aucune notification" %}</span></li>
               {% endfor %}
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-center" href="{% url 'bookings:notifications' %}">{% tr "Ouvrir toutes les notifications" %}</a></li>
             </ul>
           </li>
+          <li class="nav-item dropdown"><a class="nav-link position-relative" href="#" id="messagerie-indicateur" data-messagerie-notifications role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="{% tr 'Messagerie' %}"><i class="bi bi-chat-dots" aria-hidden="true"></i>{% if messageries_non_lues %}<span class="badge rounded-pill text-bg-warning" data-messagerie-badge>{{ messageries_non_lues }}</span>{% endif %}</a><ul class="dropdown-menu dropdown-menu-end shadow notification-menu" id="messagerie-menu"><li><h6 class="dropdown-header">{% tr "Messagerie" %}</h6></li>{% for message in messages_non_lus %}<li><a class="dropdown-item fw-semibold" href="{% url 'messaging:conversation' message.conversation.pk %}"><span class="d-block">{{ message.auteur }}</span><small class="text-muted">{{ message.contenu|truncatechars:75 }}</small></a></li>{% empty %}<li data-messagerie-vide><span class="dropdown-item-text text-muted">{% tr "Aucun nouveau message." %}</span></li>{% endfor %}<li><hr class="dropdown-divider"></li><li><a class="dropdown-item text-center" href="{% url 'messaging:liste' %}">{% tr "Ouvrir la messagerie" %}</a></li></ul></li>
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle nav-identite" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="bi bi-person-circle" aria-hidden="true"></i> {{ user }}
+            <a class="nav-link dropdown-toggle nav-identite d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              {% if user.photo_profil %}<img class="nav-avatar" src="{{ user.photo_profil.url }}" alt="">{% else %}<i class="bi bi-person-circle" aria-hidden="true"></i>{% endif %} {{ user }}
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
               <li><a class="dropdown-item" href="{% url 'accounts:profil' %}"><i class="bi bi-person" aria-hidden="true"></i> {% tr "Mon profil" %}</a></li>
@@ -92,7 +95,7 @@
 
 <main class="container py-4" id="contenu" tabindex="-1">
   {% for message in messages %}
-    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">{{ message }}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="status" aria-live="polite" aria-atomic="true">{{ message }}
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{% tr 'Fermer' %}"></button></div>
   {% endfor %}
   {% block content %}{% endblock %}
@@ -102,6 +105,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{% static 'js/cargohub.js' %}?v=20261026e"></script>
 <script src="{% static 'js/accessibilite.js' %}?v=20261026d"></script>
+<script src="{% static 'js/messagerie-global.js' %}" defer></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

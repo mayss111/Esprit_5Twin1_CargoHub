@@ -1,0 +1,6 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Conversations{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-end mb-4"><div><h1 class="page-title mb-1">Conversations</h1><p class="text-muted mb-0">Échanges PME ↔ transporteurs.</p></div><a class="btn btn-accent" href="{% url 'messaging:nouvelle' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> Nouvelle conversation</a></div>
+{% if conversations %}<div class="table-responsive"><table class="table table-ch align-middle"><thead><tr><th>Participants</th><th>Expédition / réservation</th><th>Dernier échange</th><th></th></tr></thead><tbody>{% for conversation in conversations %}<tr><td>{% for participant in conversation.participants.all %}{{ participant }}{% if not forloop.last %}, {% endif %}{% endfor %}</td><td>{% if conversation.reservation %}{{ conversation.reservation }}{% else %}<span class="text-muted">Conversation générale</span>{% endif %}</td><td>{% if conversation.dernier %}{{ conversation.dernier|date:"d/m/Y H:i" }}{% else %}—{% endif %}</td><td><a href="{% url 'bo_messaging:conversation' conversation.pk %}">Ouvrir</a></td></tr>{% endfor %}</tbody></table></div>{% include "core/_pagination.html" %}{% else %}<div class="text-center text-muted border rounded-3 py-5">Aucune conversation.</div>{% endif %}
+{% endblock %}

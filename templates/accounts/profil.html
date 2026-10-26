@@ -7,6 +7,7 @@
   <a class="btn btn-primary" href="{% url 'accounts:profil_modifier' %}"><i class="bi bi-pencil" aria-hidden="true"></i> {% tr "Modifier mon profil" %}</a>
 </div>
 <div class="card card-ch p-4 mb-3">
+  <div class="profil-avatar mb-3">{% if user.photo_profil %}<img src="{{ user.photo_profil.url }}" alt="Photo de {{ user }}">{% else %}<i class="bi bi-person-fill" aria-hidden="true"></i>{% endif %}</div>
   <h2 class="h5 mb-3">{% tr "Compte" %}</h2>
   <dl class="row mb-0">
     <dt class="col-sm-3">{% tr "Nom" %}</dt><dd class="col-sm-9">{{ user.get_full_name|default:"—" }}</dd>
@@ -15,6 +16,44 @@
     <dt class="col-sm-3">{% tr "Téléphone" %}</dt><dd class="col-sm-9">{{ user.telephone|default:"—" }}</dd>
   </dl>
 </div>
+{% if fiabilites_admin %}
+<div class="card card-ch p-4 mb-3">
+  <h2 class="h5 mb-1">Scores de fiabilité</h2>
+  <p class="small text-muted">Vue administrateur des PME et transporteurs.</p>
+  <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    <thead><tr><th>Compte</th><th>Rôle</th><th>Score</th><th>Explication</th></tr></thead>
+    <tbody>{% for compte, score in fiabilites_admin %}
+      <tr><td>{{ compte.email }}</td><td>{{ compte.get_role_display }}</td><td>{% if score.score is not None %}<strong>{{ score.score }}/100</strong>{% else %}Données insuffisantes{% endif %}</td><td>{{ score.explication }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+</div>
+{% elif fiabilite %}
+<div class="card card-ch p-4 mb-3">
+  <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+    <div>
+      <h2 class="h5 mb-1">Score de fiabilité</h2>
+      <p class="small text-muted mb-0">Calcul transparent à partir de l’historique CargoHub ; l’IA explique uniquement le résultat.</p>
+    </div>
+    {% if fiabilite.score is not None %}<span class="display-6 fw-bold text-primary">{{ fiabilite.score }}<small class="fs-6">/100</small></span>{% endif %}
+  </div>
+  <p class="mb-0 mt-3">{{ fiabilite.explication }}</p>
+  {% if fiabilite.score is not None %}
+  <div class="table-responsive mt-3">
+    <table class="table table-sm table-ch align-middle mb-0">
+      <caption class="visually-hidden">Détails du score de fiabilité</caption>
+      <thead><tr><th>Indicateur</th><th class="text-end">Valeur</th></tr></thead>
+      <tbody>
+        <tr><td>Livraisons réussies</td><td class="text-end fw-semibold">{{ fiabilite.details.livraisons_reussies }}</td></tr>
+        <tr><td>Dossiers clos</td><td class="text-end fw-semibold">{{ fiabilite.details.dossiers_clos }}</td></tr>
+        <tr><td>Retards confirmés</td><td class="text-end fw-semibold">{{ fiabilite.details.retards_confirmes }}</td></tr>
+        <tr><td>Réclamations confirmées</td><td class="text-end fw-semibold">{{ fiabilite.details.reclamations_confirmees }}</td></tr>
+        <tr><td>Sinistres imputables</td><td class="text-end fw-semibold">{{ fiabilite.details.sinistres_responsabilite_etablie }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
 {% if user.profil_pme %}
 <div class="card card-ch p-4 mb-3">
   <h2 class="h5 mb-3">{% tr "Entreprise" %}</h2>

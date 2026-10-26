@@ -16,8 +16,9 @@
 <ul class="list-group">
   {% for c in object_list %}
   <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
-    <div>
-      <a class="fw-semibold stretched-link" href="{% url 'messaging:conversation' c.pk %}">
+    <div class="d-flex align-items-center gap-2">
+      <div class="d-flex">{% for p in c.participants.all %}{% if p != user %}<span class="profil-avatar profil-avatar-sm me-1">{% if p.photo_profil %}<img src="{{ p.photo_profil.url }}" alt="Photo de {{ p }}">{% else %}<i class="bi bi-person-fill" aria-hidden="true"></i>{% endif %}</span>{% endif %}{% endfor %}</div>
+      <a class="{% if c.non_lus %}fw-bold{% else %}fw-normal{% endif %} stretched-link" href="{% url 'messaging:conversation' c.pk %}">
         {% for p in c.participants.all %}{% if p != user %}{{ p }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}
       </a>
       <div class="small text-muted">{% if c.reservation %}{{ c.reservation }} · {% endif %}{% if c.dernier %}{% tr "dernier message le" %} {{ c.dernier|date:"d/m/Y H:i" }}{% else %}{% tr "aucun message" %}{% endif %}</div>

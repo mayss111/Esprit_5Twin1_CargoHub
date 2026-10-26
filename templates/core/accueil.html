@@ -23,6 +23,25 @@
 {% else %}
   <div class="kicker">{% tr "Espace" %} {% tr user.get_role_display %}</div>
   <h1 class="page-title mt-1 mb-4">{% tr "Bonjour" %} {{ user.first_name|default:user.email }}</h1>
+  {% if fiabilite_accueil %}
+  <section class="card card-ch p-4 mb-4" aria-labelledby="fiabilite-accueil-titre">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+      <div><h2 class="h4 mb-1" id="fiabilite-accueil-titre">Score de fiabilité</h2><p class="text-muted small mb-0">Votre historique CargoHub, calculé avec des critères transparents.</p></div>
+      {% if fiabilite_accueil.score is not None %}<div class="reliability-score">{{ fiabilite_accueil.score }}<small>/100</small></div>{% endif %}
+    </div>
+    {% if fiabilite_accueil.score is not None %}
+    <div class="progress mb-3" role="progressbar" aria-label="Score de fiabilité" aria-valuenow="{{ fiabilite_accueil.score }}" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-primary" style="width: {{ fiabilite_accueil.score }}%"></div></div>
+    <div class="table-responsive"><table class="table table-sm table-ch align-middle mb-2"><thead><tr><th>Indicateur</th><th class="text-end">Valeur</th></tr></thead><tbody>
+      <tr><td>Livraisons réussies</td><td class="text-end fw-semibold">{{ fiabilite_accueil.details.livraisons_reussies }}</td></tr>
+      <tr><td>Dossiers clos</td><td class="text-end fw-semibold">{{ fiabilite_accueil.details.dossiers_clos }}</td></tr>
+      <tr><td>Retards confirmés</td><td class="text-end fw-semibold">{{ fiabilite_accueil.details.retards_confirmes }}</td></tr>
+      <tr><td>Réclamations confirmées</td><td class="text-end fw-semibold">{{ fiabilite_accueil.details.reclamations_confirmees }}</td></tr>
+      <tr><td>Sinistres imputables</td><td class="text-end fw-semibold">{{ fiabilite_accueil.details.sinistres_responsabilite_etablie }}</td></tr>
+    </tbody></table></div>
+    {% endif %}
+    <p class="small text-muted mb-0">{{ fiabilite_accueil.explication }}</p>
+  </section>
+  {% endif %}
   {% if est_admin and not menu_front %}
     <a href="{% url 'dashboard:accueil' %}" class="btn btn-primary"><i class="bi bi-speedometer2"></i> {% tr "Aller au back-office" %}</a>
   {% endif %}

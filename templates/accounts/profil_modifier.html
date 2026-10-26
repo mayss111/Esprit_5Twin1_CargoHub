@@ -8,6 +8,7 @@
     <fieldset class="card card-ch p-4 mb-3">
       <legend class="h5">{% tr "Compte" %}</legend>
       <p class="small text-muted">{% tr "Email :" %} {{ user.email }} {% tr "(non modifiable)" %}</p>
+      {% if user.photo_profil %}<img class="profil-avatar mb-3" src="{{ user.photo_profil.url }}" alt="Photo actuelle de {{ user }}">{% endif %}
       {{ form|crispy }}
     </fieldset>
     {% if form_profil %}
