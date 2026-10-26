@@ -41,6 +41,10 @@ class Reclamation(Horodate):
     reference = models.CharField(max_length=20, unique=True, default=generer_reference, editable=False)
     auteur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="reclamations")
     expedition = models.ForeignKey("shipments.Expedition", on_delete=models.PROTECT, related_name="reclamations")
+    partie_mise_en_cause = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT,
+        related_name="reclamations_mises_en_cause",
+    )
     titre = models.CharField(max_length=150)
     description = models.TextField(max_length=5000)
     type_reclamation = models.CharField(max_length=20, choices=Type.choices)

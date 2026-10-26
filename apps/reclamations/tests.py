@@ -88,6 +88,22 @@ def test_transporteur_voit_une_reclamation_de_son_transport(client, pme, transpo
     assert client.get(reverse("reclamations:detail", args=[reclamation.pk])).status_code == 200
 
 
+def test_transporteur_peut_creer_une_reclamation_sur_toute_expedition(client, transporteur, autre_pme, expedition):
+    autre_expedition = expedition.__class__.objects.create(
+        pme=autre_pme,
+        adresse_depart=expedition.adresse_depart,
+        adresse_arrivee=expedition.adresse_arrivee,
+        date_souhaitee=expedition.date_souhaitee,
+        date_arrivee=expedition.date_arrivee,
+    )
+    form = ReclamationForm(donnees(autre_expedition), user=transporteur)
+    assert form.is_valid(), form.errors
+    client.force_login(transporteur)
+    response = client.post(reverse("reclamations:creer"), donnees(autre_expedition))
+    assert response.status_code == 302
+    assert Reclamation.objects.filter(auteur=transporteur, expedition=autre_expedition).exists()
+
+
 def test_rejet_exige_une_justification(admin_user, pme, expedition):
     reclamation = Reclamation.objects.create(
         auteur=pme,

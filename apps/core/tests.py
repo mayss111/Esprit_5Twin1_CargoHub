@@ -37,6 +37,14 @@ def test_pages_transporteur(client, transporteur, nom):
     assert client.get(reverse(nom)).status_code == 200
 
 
+@pytest.mark.parametrize("fixture", ["pme", "transporteur"])
+def test_menu_affiche_mes_sinistres(client, db, request, fixture):
+    client.force_login(request.getfixturevalue(fixture))
+    html = client.get(reverse("core:accueil")).content.decode()
+    assert "Mes sinistres" in html
+    assert reverse("insurance:liste") in html
+
+
 def test_pme_ne_voit_pas_les_pages_transporteur(client, pme):
     client.force_login(pme)
     assert client.get(reverse("fleet:liste")).status_code == 403
