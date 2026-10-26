@@ -13,7 +13,9 @@ import environ
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env()
-environ.Env.read_env(BASE_DIR / ".env")
+# Le fichier .env prime sur les variables figées au démarrage du conteneur.
+# Sinon un ancien nom de modèle Gemini reste utilisé après correction du fichier.
+environ.Env.read_env(BASE_DIR / ".env", overwrite=True)
 
 SECRET_KEY = env("SECRET_KEY", default="dev-insecure-change-me")
 DEBUG = env.bool("DEBUG", default=False)
@@ -200,7 +202,7 @@ AI_API_KEY = env("AI_API_KEY", default="")
 AI_BASE_URL = env("AI_BASE_URL", default="https://api.groq.com/openai/v1")
 AI_MODEL = env("AI_MODEL", default="openai/gpt-oss-120b")
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
-GEMINI_MODEL = env("GEMINI_MODEL", default="gemini-3.5-flash-lite")
+GEMINI_MODEL = env("GEMINI_MODEL", default="gemini-3.1-flash-lite")
 # Modèle local de recommandation d'entrepôts. Les tests le laissent éteint.
 SENTENCE_TRANSFORMERS_ACTIF = env.bool("SENTENCE_TRANSFORMERS_ACTIF", default=True)
 SENTENCE_TRANSFORMERS_MODEL = env(

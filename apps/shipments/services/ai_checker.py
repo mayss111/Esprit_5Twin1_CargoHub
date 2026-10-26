@@ -4,7 +4,6 @@ import hashlib
 import json
 import logging
 import re
-import time
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -149,8 +148,7 @@ def _parser(texte, articles):
 def appeler_gemini(articles, regles):
     """Un seul appel pour tous les articles. La clé reste côté serveur."""
     try:
-        from google import genai
-        from google.genai import types
+        from apps.shipments.services.gemini_client import generer_texte
     except ImportError as exc:
         raise VerificationIndisponible(MESSAGE_INDISPONIBLE) from exc
 
@@ -173,22 +171,10 @@ def appeler_gemini(articles, regles):
         "Reprend chaque identifiant reçu, sans en ajouter ni en retirer. "
         f"Règles CargoHub actives : {regles_actives}. Articles : {json.dumps(contenu, ensure_ascii=False)}"
     )
-    client = genai.Client(
-        api_key=settings.GEMINI_API_KEY,
-        http_options=types.HttpOptions(timeout=20_000),
-    )
-    debut = time.perf_counter()
     try:
-        reponse = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=consigne,
-            config=types.GenerateContentConfig(temperature=0, response_mime_type="application/json"),
-        )
-        texte = reponse.text or ""
+        texte, duree = generer_texte(consigne)
     except Exception as exc:
-        logger.warning("Gemini indisponible après %d ms", (time.perf_counter() - debut) * 1000)
         raise VerificationIndisponible(MESSAGE_INDISPONIBLE) from exc
-    duree = int((time.perf_counter() - debut) * 1000)
     logger.info("Vérification Gemini en %d ms", duree)
     return _parser(texte, articles), duree
 

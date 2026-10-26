@@ -206,3 +206,23 @@ def test_date_passee_refusee(pme):
     expedition = _expedition(pme)
     resultat = service.recommander(pme, expedition.pk, jour=timezone.localdate() - timedelta(days=1))
     assert "passé" in resultat["erreur"]
+
+
+def test_la_recherche_quitte_la_requete_quand_celery_travaille(client, pme, settings, monkeypatch):
+    settings.CELERY_TASK_ALWAYS_EAGER = False
+    expedition = _expedition(pme, volume="1")
+    client.force_login(pme)
+
+    class Calcul:
+        def ready(self):
+            return False
+
+    monkeypatch.setattr(
+        "apps.warehouses.views.calculer_recommandation_entrepots.delay",
+        lambda *args, **kwargs: Calcul(),
+    )
+    reponse = client.post(reverse("warehouses:recommander"), {"expedition": expedition.pk})
+    corps = reponse.content.decode()
+    assert reponse.status_code == 200
+    assert "Recherche des entrepôts en cours" in corps
+    assert "recommandation-attente" in corps
