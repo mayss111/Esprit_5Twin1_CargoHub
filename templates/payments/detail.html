@@ -19,7 +19,7 @@
     {% if est_pme and paiement.statut == "EN_ATTENTE" %}
     <section class="card card-ch p-4 mb-3" aria-labelledby="titre-code">
       <h2 class="h5" id="titre-code">Code promo</h2>
-      <form method="post">{% csrf_token %}
+      <form method="post" novalidate data-controle>{% csrf_token %}
         <input type="hidden" name="action" value="code">
         {{ form_code|crispy }}
         <button class="btn btn-outline-primary" type="submit">Appliquer</button>
