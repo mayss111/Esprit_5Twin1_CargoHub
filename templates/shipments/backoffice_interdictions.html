@@ -1,33 +1,33 @@
 {% extends "backoffice/base.html" %}
-{% load static %}
-{% block title %}Interdictions{% endblock %}
+{% load static  cargohub %}
+{% block title %}{% tr "Interdictions" %}{% endblock %}
 {% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}?v=20261025h" rel="stylesheet">{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
   <div>
-    <h1 class="page-title mb-1">Marchandises interdites</h1>
-    <p class="text-muted mb-0">{{ regles|length }} règle{{ regles|length|pluralize }}.</p>
+    <h1 class="page-title mb-1">{% tr "Marchandises interdites" %}</h1>
+    <p class="text-muted mb-0">{{ regles|length }} {% tr "règle" %}{{ regles|length|pluralize }}.</p>
   </div>
-  <a class="btn btn-accent" href="{% url 'bo_shipments:interdiction_creer' %}">Ajouter une règle</a>
+  <a class="btn btn-accent" href="{% url 'bo_shipments:interdiction_creer' %}">{% tr "Ajouter une règle" %}</a>
 </div>
 
 <form method="get" class="card card-ch p-3 mb-4" role="search" data-filtre-auto>
   <div class="row g-3 align-items-end">
     <div class="col-md-8">
-      <label class="form-label" for="interdiction-recherche">Recherche</label>
-      <input class="form-control" id="interdiction-recherche" type="search" name="q" value="{{ filtre.q }}" maxlength="80" placeholder="Nom, motif ou mot-clé" autocomplete="off">
+      <label class="form-label" for="interdiction-recherche">{% tr "Recherche" %}</label>
+      <input class="form-control" id="interdiction-recherche" type="search" name="q" value="{{ filtre.q }}" maxlength="80" placeholder="{% tr "Nom, motif ou mot-clé" %}" autocomplete="off">
     </div>
     <div class="col-md-4">
-      <label class="form-label" for="interdiction-actif">État</label>
+      <label class="form-label" for="interdiction-actif">{% tr "État" %}</label>
       <select class="form-select" id="interdiction-actif" name="actif">
-        <option value="">Toutes</option>
-        <option value="1" {% if filtre.actif == "1" %}selected{% endif %}>Actives</option>
-        <option value="0" {% if filtre.actif == "0" %}selected{% endif %}>Inactives</option>
+        <option value="">{% tr "Toutes" %}</option>
+        <option value="1" {% if filtre.actif == "1" %}selected{% endif %}>{% tr "Actives" %}</option>
+        <option value="0" {% if filtre.actif == "0" %}selected{% endif %}>{% tr "Inactives" %}</option>
       </select>
     </div>
   </div>
   {% if recherche %}
-    <p class="mb-0 mt-2"><a href="{% url 'bo_shipments:interdictions' %}">Effacer les filtres</a></p>
+    <p class="mb-0 mt-2"><a href="{% url 'bo_shipments:interdictions' %}">{% tr "Effacer les filtres" %}</a></p>
   {% endif %}
 </form>
 
@@ -39,12 +39,12 @@
           <div class="regle-identite">
             <h2 class="regle-nom">{{ regle.nom }}</h2>
             {% if regle.actif %}
-              <span class="badge-statut badge-REFUSEE">Active</span>
+              <span class="badge-statut badge-REFUSEE">{% tr "Active" %}</span>
             {% else %}
-              <span class="badge-statut badge-BROUILLON">Inactive</span>
+              <span class="badge-statut badge-BROUILLON">{% tr "Inactive" %}</span>
             {% endif %}
           </div>
-          <a class="btn btn-sm btn-outline-secondary" href="{% url 'bo_shipments:interdiction_modifier' regle.pk %}">Modifier</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'bo_shipments:interdiction_modifier' regle.pk %}">{% tr "Modifier" %}</a>
         </div>
         <p class="regle-motif">{{ regle.motif }}</p>
         {% if regle.mots_cles %}
@@ -59,7 +59,7 @@
   </div>
 {% else %}
   <p class="verif-vide">
-    {% if recherche %}Aucune règle ne correspond à cette recherche.{% else %}Aucune règle d'interdiction.{% endif %}
+    {% if recherche %}{% tr "Aucune règle ne correspond à cette recherche." %}{% else %}{% tr "Aucune règle d'interdiction." %}{% endif %}
   </p>
 {% endif %}
 {% endblock %}

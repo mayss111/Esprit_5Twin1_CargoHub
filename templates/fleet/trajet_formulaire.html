@@ -1,19 +1,19 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
-{% block title %}{% if object %}Modifier le trajet{% else %}Publier un trajet{% endif %}{% endblock %}
+{% load crispy_forms_tags  cargohub %}
+{% block title %}{% if object %}{% tr "Modifier le trajet" %}{% else %}{% tr "Publier un trajet" %}{% endif %}{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-lg-7">
-  <h1 class="page-title mb-3">{% if object %}Modifier le trajet {{ object }}{% else %}Publier un trajet{% endif %}</h1>
+  <h1 class="page-title mb-3">{% if object %}{% tr "Modifier le trajet" %} {{ object }}{% else %}{% tr "Publier un trajet" %}{% endif %}</h1>
   <div class="card card-ch p-4">
     {% if not form.fields.vehicule.queryset.exists %}
-      <p class="mb-0">Aucun véhicule actif et conforme. <a href="{% url 'fleet:vehicules' %}">Ajoutez un véhicule ou mettez ses documents à jour</a>.</p>
+      <p class="mb-0">{% tr "Aucun véhicule actif et conforme." %} <a href="{% url 'fleet:vehicules' %}">{% tr "Ajoutez un véhicule ou mettez ses documents à jour" %}</a>.</p>
     {% else %}
-      {% if object and object.capacite_reservee_kg %}<p class="small text-muted">Déjà réservé : {{ object.capacite_reservee_kg|floatformat:0 }} kg · {{ object.capacite_reservee_m3|floatformat:1 }} m³.</p>{% endif %}
+      {% if object and object.capacite_reservee_kg %}<p class="small text-muted">{% tr "Déjà réservé :" %} {{ object.capacite_reservee_kg|floatformat:0 }} {% tr "kg ·" %} {{ object.capacite_reservee_m3|floatformat:1 }} {% tr "m³." %}</p>{% endif %}
       <form method="post">{% csrf_token %}
         {{ form|crispy }}
         <div class="d-flex flex-wrap gap-2">
-          <button class="btn btn-primary" type="submit">{% if object %}Enregistrer{% else %}Publier le trajet{% endif %}</button>
-          <a class="btn btn-outline-secondary" href="{% url 'fleet:liste' %}">Annuler</a>
+          <button class="btn btn-primary" type="submit">{% if object %}{% tr "Enregistrer" %}{% else %}{% tr "Publier le trajet" %}{% endif %}</button>
+          <a class="btn btn-outline-secondary" href="{% url 'fleet:liste' %}">{% tr "Annuler" %}</a>
         </div>
       </form>
     {% endif %}

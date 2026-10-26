@@ -1,14 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Supprimer le véhicule{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr "Supprimer le véhicule" %}{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-md-6">
   <div class="card card-ch p-4">
-    <h1 class="page-title h3 mb-3">Supprimer le véhicule {{ vehicule.immatriculation }} ?</h1>
-    <p>{{ vehicule }} et ses documents seront supprimés. Un véhicule qui a des trajets ne peut pas être supprimé.</p>
+    <h1 class="page-title h3 mb-3">{% tr "Supprimer le véhicule" %} {{ vehicule.immatriculation }} ?</h1>
+    <p>{{ vehicule }} {% tr "et ses documents seront supprimés. Un véhicule qui a des trajets ne peut pas être supprimé." %}</p>
     <form method="post">{% csrf_token %}
       <div class="d-flex flex-wrap gap-2">
-        <button class="btn btn-danger" type="submit">Supprimer</button>
-        <a class="btn btn-outline-secondary" href="{% url 'fleet:vehicules' %}">Annuler</a>
+        <button class="btn btn-danger" type="submit">{% tr "Supprimer" %}</button>
+        <a class="btn btn-outline-secondary" href="{% url 'fleet:vehicules' %}">{% tr "Annuler" %}</a>
       </div>
     </form>
   </div>

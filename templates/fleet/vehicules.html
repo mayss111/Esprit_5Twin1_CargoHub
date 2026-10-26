@@ -1,57 +1,58 @@
 {% extends "base.html" %}
-{% block title %}Mes véhicules{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr "Mes véhicules" %}{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
   <div>
-    <h1 class="page-title mb-1">Mes véhicules</h1>
-    <p class="text-muted mb-0">Vos camions, leurs documents et leur conformité. Un document expiré bloque la publication de trajets.</p>
+    <h1 class="page-title mb-1">{% tr "Mes véhicules" %}</h1>
+    <p class="text-muted mb-0">{% tr "Vos camions, leurs documents et leur conformité. Un document expiré bloque la publication de trajets." %}</p>
   </div>
   <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-outline-success" href="{% url 'fleet:impact' %}"><i class="bi bi-tree" aria-hidden="true"></i> Impact écologique</a>
-    <a class="btn btn-accent" href="{% url 'fleet:vehicule_creer' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> Ajouter un véhicule</a>
+    <a class="btn btn-outline-success" href="{% url 'fleet:impact' %}"><i class="bi bi-tree" aria-hidden="true"></i> {% tr "Impact écologique" %}</a>
+    <a class="btn btn-accent" href="{% url 'fleet:vehicule_creer' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> {% tr "Ajouter un véhicule" %}</a>
   </div>
 </div>
 {% if object_list %}
 <div class="table-responsive"><table class="table table-ch align-middle">
-  <caption class="visually-hidden">Mes véhicules</caption>
-  <thead><tr><th scope="col">Immatriculation</th><th scope="col">Type</th><th scope="col">Capacité</th><th scope="col">Statut</th><th scope="col">Documents</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+  <caption class="visually-hidden">{% tr "Mes véhicules" %}</caption>
+  <thead><tr><th scope="col">{% tr "Immatriculation" %}</th><th scope="col">{% tr "Type" %}</th><th scope="col">{% tr "Capacité" %}</th><th scope="col">{% tr "Statut" %}</th><th scope="col">{% tr "Documents" %}</th><th scope="col"><span class="visually-hidden">{% tr "Actions" %}</span></th></tr></thead>
   <tbody>{% for v in object_list %}
     <tr>
       <td class="fw-semibold">{{ v.immatriculation }}</td>
-      <td>{{ v.get_type_display }}</td>
-      <td>{{ v.capacite_kg }} kg · {{ v.capacite_m3|floatformat:1 }} m³</td>
+      <td>{% tr v.get_type_display %}</td>
+      <td>{{ v.capacite_kg }} {% tr "kg ·" %} {{ v.capacite_m3|floatformat:1 }} m³</td>
       <td>
         {% include "fleet/_statut.html" with statut=v.statut libelle=v.get_statut_display %}
         {% if v.motif_non_conformite %}<div class="text-danger small">{{ v.motif_non_conformite }}</div>{% endif %}
       </td>
       <td>
         {% for doc in v.documents.all %}
-          <span class="badge text-bg-light border">{{ doc.get_type_display }} · {{ doc.date_expiration|date:"d/m/Y" }}</span>
+          <span class="badge text-bg-light border">{% tr doc.get_type_display %} · {{ doc.date_expiration|date:"d/m/Y" }}</span>
         {% empty %}
-          <span class="text-muted small">Aucun document</span>
+          <span class="text-muted small">{% tr "Aucun document" %}</span>
         {% endfor %}
         <form method="post" enctype="multipart/form-data" action="{% url 'fleet:document_ajouter' v.pk %}" class="d-flex flex-wrap gap-1 mt-1">
           {% csrf_token %}
-          <label class="visually-hidden" for="type-{{ v.pk }}">Type de document pour {{ v.immatriculation }}</label>
+          <label class="visually-hidden" for="type-{{ v.pk }}">{% tr "Type de document pour" %} {{ v.immatriculation }}</label>
           <select id="type-{{ v.pk }}" name="type" class="form-select form-select-sm w-auto">
-            {% for valeur, libelle in types_documents %}<option value="{{ valeur }}">{{ libelle }}</option>{% endfor %}
+            {% for valeur, libelle in types_documents %}<option value="{{ valeur }}">{% tr libelle %}</option>{% endfor %}
           </select>
-          <label class="visually-hidden" for="expiration-{{ v.pk }}">Date d’expiration pour {{ v.immatriculation }}</label>
+          <label class="visually-hidden" for="expiration-{{ v.pk }}">{% tr "Date d’expiration pour" %} {{ v.immatriculation }}</label>
           <input id="expiration-{{ v.pk }}" type="date" name="date_expiration" min="{{ demain|date:'Y-m-d' }}" class="form-control form-control-sm w-auto" required>
-          <label class="visually-hidden" for="fichier-{{ v.pk }}">Fichier pour {{ v.immatriculation }}</label>
+          <label class="visually-hidden" for="fichier-{{ v.pk }}">{% tr "Fichier pour" %} {{ v.immatriculation }}</label>
           <input id="fichier-{{ v.pk }}" type="file" name="fichier" class="form-control form-control-sm w-auto" accept=".pdf,image/jpeg,image/png" required>
-          <button class="btn btn-sm btn-outline-primary" type="submit">Envoyer</button>
+          <button class="btn btn-sm btn-outline-primary" type="submit">{% tr "Envoyer" %}</button>
         </form>
       </td>
       <td class="text-end text-nowrap">
-        <a class="btn btn-sm btn-outline-secondary" href="{% url 'fleet:vehicule_modifier' v.pk %}">Modifier</a>
-        <a class="btn btn-sm btn-outline-success" href="{% url 'fleet:certificat' v.pk %}"><i class="bi bi-download" aria-hidden="true"></i> Certificat vert</a>
-        <a class="btn btn-sm btn-outline-danger" href="{% url 'fleet:vehicule_supprimer' v.pk %}">Supprimer</a>
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'fleet:vehicule_modifier' v.pk %}">{% tr "Modifier" %}</a>
+        <a class="btn btn-sm btn-outline-success" href="{% url 'fleet:certificat' v.pk %}"><i class="bi bi-download" aria-hidden="true"></i> {% tr "Certificat vert" %}</a>
+        <a class="btn btn-sm btn-outline-danger" href="{% url 'fleet:vehicule_supprimer' v.pk %}">{% tr "Supprimer" %}</a>
       </td>
     </tr>{% endfor %}
   </tbody></table></div>
 {% include "core/_pagination.html" %}
 {% else %}
-<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-truck fs-1 d-block mb-2" aria-hidden="true"></i>Aucun véhicule pour le moment.</div>
+<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-truck fs-1 d-block mb-2" aria-hidden="true"></i>{% tr "Aucun véhicule pour le moment." %}</div>
 {% endif %}
 {% endblock %}

@@ -6,6 +6,7 @@ apparaisse dans le menu. Format : (libellé, nom d'URL, icône Bootstrap Icons).
 """
 
 from .roles import Role, est_admin
+from .traductions import traduire
 
 MENU_PME = [
     ("Mes expéditions", "shipments:liste", "box-seam"),
@@ -26,7 +27,17 @@ GROUPES_PME = [
     ("Expéditions", ["shipments:liste", "bookings:trouver"]),
     ("Entrepôts", ["warehouses:liste", "warehouses:mes_depots"]),
     ("Transport", ["bookings:liste", "tenders:liste", "tracking:liste"]),
-    ("Services", ["payments:liste", "insurance:liste", "messaging:liste", "contracts:liste", "messaging:assistant", "loyalty:liste"]),
+    (
+        "Services",
+        [
+            "payments:liste",
+            "insurance:liste",
+            "messaging:liste",
+            "contracts:liste",
+            "messaging:assistant",
+            "loyalty:liste",
+        ],
+    ),
 ]
 GROUPES_TRANSPORTEUR = [
     ("Flotte", ["fleet:vehicules", "fleet:liste", "fleet:planificateur", "maintenance:liste"]),
@@ -35,7 +46,7 @@ GROUPES_TRANSPORTEUR = [
 ]
 
 
-def _menus_groupes(menu, groupes):
+def _menus_groupes(menu, groupes, langue):
     """Regroupe les liens connus. Un lien nouveau reste visible dans Plus."""
     par_url = {url: (libelle, url, icone) for libelle, url, icone in menu}
     utilises = set()
@@ -47,11 +58,15 @@ def _menus_groupes(menu, groupes):
             libelle, url, icone = liens[0]
             resultat.append({"titre": libelle, "url": url, "icone": icone, "liens": []})
         elif liens:
-            resultat.append({"titre": titre, "url": "", "icone": "", "liens": liens})
+            resultat.append({"titre": traduire(titre, langue), "url": "", "icone": "", "liens": liens})
     reste = [entree for entree in menu if entree[1] not in utilises]
     if reste:
-        resultat.append({"titre": "Plus", "url": "", "icone": "", "liens": reste})
+        resultat.append({"titre": traduire("Plus", langue), "url": "", "icone": "", "liens": reste})
     return resultat
+
+
+def _traduit_menu(menu, langue):
+    return [(traduire(libelle, langue), url, icone) for libelle, url, icone in menu]
 
 
 MENU_TRANSPORTEUR = [
@@ -127,23 +142,27 @@ MENU_BACKOFFICE = [
 
 def navigation(request):
     user = request.user
+    langue = getattr(request, "LANGUAGE_CODE", "fr")
     menu = []
     if user.is_authenticated:
         if user.role == Role.PME:
-            menu = MENU_PME
+            menu = _traduit_menu(MENU_PME, langue)
             groupes = GROUPES_PME
         elif user.role == Role.TRANSPORTEUR:
-            menu = MENU_TRANSPORTEUR
+            menu = _traduit_menu(MENU_TRANSPORTEUR, langue)
             groupes = GROUPES_TRANSPORTEUR
         else:
             groupes = []
     notifications = []
     if user.is_authenticated:
         notifications = list(user.notifications.filter(lu=False)[:5])
+    backoffice = [
+        (membre, couleur, _traduit_menu(liens, langue)) for membre, couleur, liens in MENU_BACKOFFICE
+    ]
     return {
         "menu_front": menu,
-        "menu_groupes": _menus_groupes(menu, groupes) if menu else [],
-        "menu_backoffice": MENU_BACKOFFICE,
+        "menu_groupes": _menus_groupes(menu, groupes, langue) if menu else [],
+        "menu_backoffice": backoffice,
         "est_admin": est_admin(user),
         "notifications_non_lues": notifications,
     }

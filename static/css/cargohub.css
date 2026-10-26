@@ -57,6 +57,58 @@ a { color: var(--ch-navy); }
 .kpi .val { font-size: 1.8rem; font-weight: 800; color: var(--ch-navy); }
 .todo { border: 1px dashed var(--ch-amber); background: #FFF8EA; border-radius: .7rem; padding: .7rem 1rem; font-size: .9rem; }
 
+/* Accessibilité dans la barre de navigation : langue, taille, lecture */
+.barre-acces {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem;
+  margin: 0;
+}
+.barre-acces-groupe { display: flex; gap: .25rem; margin: 0; }
+.barre-acces button {
+  border: 1px solid var(--ch-border);
+  background: #fff;
+  color: var(--ch-navy);
+  border-radius: .4rem;
+  padding: .15rem .5rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.barre-acces button[aria-current="true"],
+.barre-acces button[aria-pressed="true"] {
+  background: var(--ch-navy);
+  color: #fff;
+  border-color: var(--ch-navy);
+}
+.navbar-ch > .container { flex-wrap: wrap; }
+.navbar-ch .navbar-brand { order: 0; }
+.navbar-ch .barre-acces { order: 1; margin-inline-start: auto; }
+.navbar-ch .navbar-toggler { order: 2; margin-inline-start: .5rem; }
+.navbar-ch .navbar-collapse { order: 3; align-items: center; }
+.navbar-ch .barre-acces button {
+  background: transparent;
+  color: #DCE4F4;
+  border-color: rgba(220, 228, 244, .45);
+  font-size: .8rem;
+  min-width: 2rem;
+}
+.navbar-ch .barre-acces button[aria-current="true"],
+.navbar-ch .barre-acces button[aria-pressed="true"] {
+  background: var(--ch-amber);
+  color: var(--ch-navy);
+  border-color: var(--ch-amber);
+}
+@media (min-width: 992px) {
+  .navbar-ch .navbar-collapse { order: 1; flex-grow: 1; }
+  .navbar-ch .barre-acces { order: 2; margin-inline-start: .6rem; }
+  .navbar-ch .navbar-toggler { order: 3; }
+}
+@media (max-width: 991.98px) {
+  .navbar-ch .barre-acces button { padding: .1rem .35rem; font-size: .75rem; }
+}
+html[lang="ar"] body { font-family: "Noto Naskh Arabic", "Inter", system-ui, sans-serif; }
+
 /* Accessibilité (grille : focus visible, lien d'évitement, contraste) */
 .lien-evitement { position: absolute; left: -9999px; top: 0; z-index: 2000; background: var(--ch-amber);
   color: var(--ch-navy); font-weight: 700; padding: .6rem 1rem; border-radius: 0 0 .5rem 0; }

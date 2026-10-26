@@ -1,5 +1,6 @@
+{% load cargohub %}
 <div class="mb-2 champ-compact">
-  <label class="form-label" for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+  <label class="form-label" for="{{ champ.id_for_label }}">{% tr champ.label %}</label>
   {{ champ }}
   {% for erreur in champ.errors %}
     <div class="invalid-feedback d-block">{{ erreur }}</div>

@@ -1,24 +1,25 @@
 {% extends "base.html" %}
+{% load cargohub %}
 {% block title %}{{ reservation }}{% endblock %}
 {% block content %}
-<nav aria-label="Fil d’Ariane"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bookings:liste' %}">Mes réservations</a></li><li class="breadcrumb-item active" aria-current="page">{{ reservation }}</li></ol></nav>
+<nav aria-label="{% tr "Fil d’Ariane" %}"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bookings:liste' %}">{% tr "Mes réservations" %}</a></li><li class="breadcrumb-item active" aria-current="page">{{ reservation }}</li></ol></nav>
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
   <h1 class="page-title mb-0">{{ reservation }}</h1>
   <div class="d-flex flex-wrap gap-2">
     {% if est_transporteur and reservation.statut == "EN_ATTENTE" %}
     <form method="post" action="{% url 'bookings:repondre' reservation.pk %}" class="d-flex gap-2">{% csrf_token %}
       <input type="hidden" name="retour" value="detail">
-      <button class="btn btn-success" name="action" value="accepter" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> Accepter</button>
-      <button class="btn btn-outline-danger" name="action" value="refuser" type="submit"><i class="bi bi-x-lg" aria-hidden="true"></i> Refuser</button>
+      <button class="btn btn-success" name="action" value="accepter" type="submit"><i class="bi bi-check-lg" aria-hidden="true"></i> {% tr "Accepter" %}</button>
+      <button class="btn btn-outline-danger" name="action" value="refuser" type="submit"><i class="bi bi-x-lg" aria-hidden="true"></i> {% tr "Refuser" %}</button>
     </form>
     {% endif %}
-    {% if est_pme and reservation.annulable %}<a class="btn btn-outline-danger" href="{% url 'bookings:annuler' reservation.pk %}"><i class="bi bi-x-circle" aria-hidden="true"></i> Annuler la réservation</a>{% endif %}
-    {% if reservation.statut in "ACCEPTEE EN_TRANSIT LIVREE" %}<a class="btn btn-outline-primary" href="{% url 'contracts:liste' %}"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Contrat</a>{% endif %}
-    <a class="btn btn-outline-secondary" href="{% url 'messaging:nouvelle' %}?reservation={{ reservation.pk }}"><i class="bi bi-chat-dots" aria-hidden="true"></i> Écrire</a>
+    {% if est_pme and reservation.annulable %}<a class="btn btn-outline-danger" href="{% url 'bookings:annuler' reservation.pk %}"><i class="bi bi-x-circle" aria-hidden="true"></i> {% tr "Annuler la réservation" %}</a>{% endif %}
+    {% if reservation.statut in "ACCEPTEE EN_TRANSIT LIVREE" %}<a class="btn btn-outline-primary" href="{% url 'contracts:liste' %}"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> {% tr "Contrat" %}</a>{% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'messaging:nouvelle' %}?reservation={{ reservation.pk }}"><i class="bi bi-chat-dots" aria-hidden="true"></i> {% tr "Écrire" %}</a>
   </div>
 </div>
 <div class="row g-3">
-  <div class="col-lg-7"><div class="card card-ch p-4"><h2 class="h5 mb-3">Détails</h2>{% include "bookings/_resume.html" %}</div></div>
+  <div class="col-lg-7"><div class="card card-ch p-4"><h2 class="h5 mb-3">{% tr "Détails" %}</h2>{% include "bookings/_resume.html" %}</div></div>
   <div class="col-lg-5"><div class="card card-ch p-4">{% include "bookings/_historique.html" %}</div></div>
 </div>
 {% endblock %}
