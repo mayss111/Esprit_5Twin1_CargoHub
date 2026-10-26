@@ -8,6 +8,10 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
+    # Ancien nom de cette migration, déjà appliquée en production (Render).
+    # Sans cette ligne, Django la rejoue et échoue : la table existe déjà.
+    replaces = [("fleet", "0002_vehicule_documents_co2")]
+
     dependencies = [
         ('fleet', '0001_initial'),
     ]
