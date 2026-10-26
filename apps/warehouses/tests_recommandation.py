@@ -132,6 +132,18 @@ def test_trois_meilleurs_seulement(pme):
     assert all(ligne.score >= 0 for ligne in resultat["recommandations"])
 
 
+def test_sans_poids_locaux_le_classement_lexical_repond(pme, monkeypatch):
+    expedition = _expedition(pme, volume="1")
+    _entrepot(nom="Relais Proche", ville="Tunis", capacite_max_m3=Decimal("10"), latitude=36.8, longitude=10.2)
+    monkeypatch.setattr(service, "_modele_en_cache", lambda: False)
+
+    with override_settings(SENTENCE_TRANSFORMERS_ACTIF=True):
+        resultat = service.recommander(pme, expedition.pk)
+
+    assert resultat["modele"] == "repli"
+    assert resultat["recommandations"]
+
+
 def test_modele_sentence_transformers_classe_la_fiche_proche(pme, monkeypatch):
     expedition = _expedition(pme, volume="1")
     _entrepot(nom="Entrepôt Nord", ville="Tunis", capacite_max_m3=Decimal("10"))
@@ -210,6 +222,8 @@ def test_date_passee_refusee(pme):
 
 def test_la_recherche_quitte_la_requete_quand_celery_travaille(client, pme, settings, monkeypatch):
     settings.CELERY_TASK_ALWAYS_EAGER = False
+    settings.SENTENCE_TRANSFORMERS_ACTIF = True
+    monkeypatch.setattr("apps.warehouses.views.classement_immediat", lambda: False)
     expedition = _expedition(pme, volume="1")
     client.force_login(pme)
 
