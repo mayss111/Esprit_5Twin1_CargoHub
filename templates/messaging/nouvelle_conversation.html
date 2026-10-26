@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
-{% block title %}Nouvelle conversation{% endblock %}
+{% load crispy_forms_tags  cargohub %}
+{% block title %}{% tr "Nouvelle conversation" %}{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-lg-7">
-  <h1 class="page-title mb-3">Nouvelle conversation</h1>
+  <h1 class="page-title mb-3">{% tr "Nouvelle conversation" %}</h1>
   <div class="card card-ch p-4">
     <p class="small text-muted">Choisissez une PME ou un transporteur. La réservation est facultative ; si une conversation existe déjà, votre message y est ajouté.</p>
     <form method="post">{% csrf_token %}
       {{ form|crispy }}
       <div class="d-flex gap-2">
-        <button class="btn btn-primary" type="submit">Envoyer</button>
-        <a class="btn btn-outline-secondary" href="{% url 'messaging:liste' %}">Annuler</a>
+        <button class="btn btn-primary" type="submit">{% tr "Envoyer" %}</button>
+        <a class="btn btn-outline-secondary" href="{% url 'messaging:liste' %}">{% tr "Annuler" %}</a>
       </div>
     </form>
   </div>

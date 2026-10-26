@@ -4,9 +4,8 @@ import uuid
 
 from django.conf import settings
 from django.core.validators import MinValueValidator
-from django.utils import timezone
-
 from django.db import models
+from django.utils import timezone
 
 from apps.core.models import Horodate
 
@@ -58,19 +57,29 @@ class Sinistre(Horodate):
     }
 
     reference = models.CharField(max_length=20, unique=True, null=True, blank=True, editable=False)
-    auteur = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="sinistres")
-    expedition = models.ForeignKey("shipments.Expedition", null=True, blank=True, on_delete=models.PROTECT, related_name="sinistres")
-    police = models.ForeignKey(PoliceAssurance, null=True, blank=True, on_delete=models.SET_NULL, related_name="sinistres")
+    auteur = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="sinistres"
+    )
+    expedition = models.ForeignKey(
+        "shipments.Expedition", null=True, blank=True, on_delete=models.PROTECT, related_name="sinistres"
+    )
+    police = models.ForeignKey(
+        PoliceAssurance, null=True, blank=True, on_delete=models.SET_NULL, related_name="sinistres"
+    )
     titre = models.CharField(max_length=150, default="Sinistre")
     description = models.TextField()
     type_sinistre = models.CharField(max_length=20, choices=Type.choices, default=Type.AUTRE)
     date_incident = models.DateField(default=timezone.localdate)
     statut = models.CharField(max_length=20, choices=Statut.choices, default=Statut.A_VERIFIER)
-    montant_estime = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    montant_estime = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)]
+    )
     montant_rembourse = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     decision_admin = models.TextField(max_length=3000, blank=True)
     justification_decision = models.TextField(max_length=1500, blank=True)
-    assigne_a = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="sinistres_assignes")
+    assigne_a = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="sinistres_assignes"
+    )
     resolu_le = models.DateTimeField(null=True, blank=True)
 
     class Meta:

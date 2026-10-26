@@ -1,27 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Accueil{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr "Accueil" %}{% endblock %}
 {% block content %}
 {% if not user.is_authenticated %}
   <section class="hero p-5 mb-5">
     <div class="row align-items-center">
       <div class="col-lg-7">
-        <div class="kicker" style="color: var(--ch-amber)">Covoiturage de fret</div>
-        <h1 class="display-5 mt-2">Réservez la <span class="accent">place libre</span> dans les camions déjà en route.</h1>
-        <p class="lead mt-3" style="color:#DCE4F4">Les PME expédient moins cher, les transporteurs roulent plein, et moins de camions vides circulent.</p>
-        <a href="{% url 'accounts:inscription' %}" class="btn btn-accent btn-lg mt-2">Commencer</a>
-        <a href="{% url 'accounts:connexion' %}" class="btn btn-outline-light btn-lg mt-2 ms-2">Se connecter</a>
+        <div class="kicker" style="color: var(--ch-amber)">{% tr "Covoiturage de fret" %}</div>
+        <h1 class="display-5 mt-2">{% tr "Réservez la" %} <span class="accent">{% tr "place libre" %}</span> {% tr "dans les camions déjà en route." %}</h1>
+        <p class="lead mt-3" style="color:#DCE4F4">{% tr "Les PME expédient moins cher, les transporteurs roulent plein, et moins de camions vides circulent." %}</p>
+        <a href="{% url 'accounts:inscription' %}" class="btn btn-accent btn-lg mt-2">{% tr "Commencer" %}</a>
+        <a href="{% url 'accounts:connexion' %}" class="btn btn-outline-light btn-lg mt-2 ms-2">{% tr "Se connecter" %}</a>
       </div>
     </div>
   </section>
   <div class="row g-4">
-    <div class="col-md-3"><div class="card card-ch p-4 h-100"><span class="icon-tile mb-3"><i class="bi bi-box-seam"></i></span><h5 class="fw-bold">Publier</h5><p class="text-muted mb-0">La PME décrit son envoi, le transporteur son trajet et sa place libre.</p></div></div>
-    <div class="col-md-3"><div class="card card-ch p-4 h-100"><span class="icon-tile mb-3"><i class="bi bi-shuffle"></i></span><h5 class="fw-bold">Matcher</h5><p class="text-muted mb-0">CargoHub classe les camions compatibles avec l’envoi.</p></div></div>
-    <div class="col-md-3"><div class="card card-ch p-4 h-100"><span class="icon-tile mb-3"><i class="bi bi-calendar-check"></i></span><h5 class="fw-bold">Réserver</h5><p class="text-muted mb-0">Plusieurs PME partagent le même camion.</p></div></div>
-    <div class="col-md-3"><div class="card card-ch p-4 h-100"><span class="icon-tile mb-3"><i class="bi bi-geo-alt"></i></span><h5 class="fw-bold">Livrer &amp; payer</h5><p class="text-muted mb-0">Suivi en temps réel, preuve de livraison, paiement en ligne.</p></div></div>
+    <div class="col-md-3"><div class="card card-ch p-4 h-100"><span class="icon-tile mb-3"><i class="bi bi-box-seam"></i></span><h5 class="fw-bold">{% tr "Publier" %}</h5><p class="text-muted mb-0">{% tr "La PME décrit son envoi, le transporteur son trajet et sa place libre." %}</p></div></div>
+    <div class="col-md-3"><div class="card card-ch p-4 h-100"><span class="icon-tile mb-3"><i class="bi bi-shuffle"></i></span><h5 class="fw-bold">{% tr "Matcher" %}</h5><p class="text-muted mb-0">{% tr "CargoHub classe les camions compatibles avec l’envoi." %}</p></div></div>
+    <div class="col-md-3"><div class="card card-ch p-4 h-100"><span class="icon-tile mb-3"><i class="bi bi-calendar-check"></i></span><h5 class="fw-bold">{% tr "Réserver" %}</h5><p class="text-muted mb-0">{% tr "Plusieurs PME partagent le même camion." %}</p></div></div>
+    <div class="col-md-3"><div class="card card-ch p-4 h-100"><span class="icon-tile mb-3"><i class="bi bi-geo-alt"></i></span><h5 class="fw-bold">{% tr "Livrer & payer" %}</h5><p class="text-muted mb-0">{% tr "Suivi en temps réel, preuve de livraison, paiement en ligne." %}</p></div></div>
   </div>
 {% else %}
-  <div class="kicker">Espace {{ user.get_role_display }}</div>
-  <h1 class="page-title mt-1 mb-4">Bonjour {{ user.first_name|default:user.email }}</h1>
+  <div class="kicker">{% tr "Espace" %} {% tr user.get_role_display %}</div>
+  <h1 class="page-title mt-1 mb-4">{% tr "Bonjour" %} {{ user.first_name|default:user.email }}</h1>
   {% if fiabilite_accueil %}
   <section class="card card-ch p-4 mb-4" aria-labelledby="fiabilite-accueil-titre">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
@@ -42,14 +43,14 @@
   </section>
   {% endif %}
   {% if est_admin and not menu_front %}
-    <a href="{% url 'dashboard:accueil' %}" class="btn btn-primary"><i class="bi bi-speedometer2"></i> Aller au back-office</a>
+    <a href="{% url 'dashboard:accueil' %}" class="btn btn-primary"><i class="bi bi-speedometer2"></i> {% tr "Aller au back-office" %}</a>
   {% endif %}
   <div class="row g-3">
     {% for libelle, url, icone in menu_front %}
       <div class="col-sm-6 col-lg-4">
         <a href="{% url url %}" class="card card-ch p-4 h-100 text-decoration-none">
           <span class="icon-tile mb-3"><i class="bi bi-{{ icone }}"></i></span>
-          <span class="fw-bold fs-5" style="color: var(--ch-navy)">{{ libelle }}</span>
+          <span class="fw-bold fs-5" style="color: var(--ch-navy)">{% tr libelle %}</span>
         </a>
       </div>
     {% endfor %}

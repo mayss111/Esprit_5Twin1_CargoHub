@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static cargohub %}
 {% block title %}Conversation{% endblock %}
 {% block content %}
 
@@ -99,7 +99,7 @@
       {% endif %}
     </li>
     {% empty %}
-    <li class="text-muted" data-vide>Aucun message pour le moment.</li>
+    <li class="text-muted" data-vide>{% tr "Aucun message pour le moment." %}</li>
     {% endfor %}
   </ol>
 </div>

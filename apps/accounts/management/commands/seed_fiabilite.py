@@ -118,7 +118,12 @@ class Command(BaseCommand):
 
         reservations = []
         for index, statut in enumerate(
-            [Reservation.Statut.LIVREE, Reservation.Statut.LIVREE, Reservation.Statut.LIVREE, Reservation.Statut.ANNULEE],
+            [
+                Reservation.Statut.LIVREE,
+                Reservation.Statut.LIVREE,
+                Reservation.Statut.LIVREE,
+                Reservation.Statut.ANNULEE,
+            ],
             start=1,
         ):
             expedition, _ = Expedition.objects.get_or_create(
@@ -129,7 +134,9 @@ class Command(BaseCommand):
                     "adresse_arrivee": arrivee,
                     "date_souhaitee": timezone.localdate() + timedelta(days=index),
                     "date_arrivee": timezone.localdate() + timedelta(days=index + 1),
-                    "statut": Expedition.Statut.LIVREE if statut == Reservation.Statut.LIVREE else Expedition.Statut.ANNULEE,
+                    "statut": Expedition.Statut.LIVREE
+                    if statut == Reservation.Statut.LIVREE
+                    else Expedition.Statut.ANNULEE,
                 },
             )
             reservation, _ = Reservation.objects.get_or_create(

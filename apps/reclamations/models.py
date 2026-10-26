@@ -74,4 +74,3 @@ class Reclamation(Horodate):
 
     def peut_passer_a(self, nouveau_statut):
         return nouveau_statut == self.statut or nouveau_statut in self.TRANSITIONS.get(self.statut, set())
-

@@ -8,9 +8,7 @@ from apps.core.models import Horodate
 
 class Conversation(Horodate):
     participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="conversations")
-    bloquee_par = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, blank=True, related_name="conversations_bloquees"
-    )
+    bloquee_par = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="conversations_bloquees")
     reservation = models.ForeignKey(
         "bookings.Reservation", null=True, blank=True, on_delete=models.SET_NULL, related_name="conversations"
     )

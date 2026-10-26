@@ -4,19 +4,18 @@ from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponse
 from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
-from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
-from apps.core.roles import Role
 from apps.bookings.notification_service import notifier_dossier
 from apps.core.audio import AudioIndisponible, tts_http_response
-from apps.core.roles import est_admin
+from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
+from apps.core.roles import Role, est_admin
 
 from .forms import PieceJustificativeForm, SinistreForm, TraitementSinistreForm
 from .models import PieceJustificative, Sinistre
@@ -128,7 +127,11 @@ class SinistreModifierView(MesSinistresMixin, UpdateView):
     template_name = "insurance/formulaire.html"
 
     def get_queryset(self):
-        return super().get_queryset().filter(auteur=self.request.user, statut__in=[Sinistre.Statut.A_VERIFIER, Sinistre.Statut.DOCUMENTS])
+        return (
+            super()
+            .get_queryset()
+            .filter(auteur=self.request.user, statut__in=[Sinistre.Statut.A_VERIFIER, Sinistre.Statut.DOCUMENTS])
+        )
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -222,7 +225,11 @@ class BackofficeSinistreDetailView(AdminRequiredMixin, UpdateView):
         ancienne_version = Sinistre.objects.get(pk=self.object.pk)
         ancien_statut = ancienne_version.statut
         ancienne_decision = ancienne_version.decision_admin
-        if form.cleaned_data.get("statut") in {Sinistre.Statut.ACCEPTE, Sinistre.Statut.REFUSE, Sinistre.Statut.CLOTURE}:
+        if form.cleaned_data.get("statut") in {
+            Sinistre.Statut.ACCEPTE,
+            Sinistre.Statut.REFUSE,
+            Sinistre.Statut.CLOTURE,
+        }:
             form.instance.resolu_le = form.instance.resolu_le or timezone.now()
         if not form.instance.assigne_a_id and form.cleaned_data.get("statut") != Sinistre.Statut.A_VERIFIER:
             form.instance.assigne_a = self.request.user

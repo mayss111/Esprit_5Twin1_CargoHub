@@ -13,14 +13,18 @@ def notifier_dossier(dossier, titre, message, lien="", *, lien_admin="", adminis
     administrateur_ids = set()
     if administrateurs:
         administrateur_ids.update(
-            get_user_model()
-            .objects.filter(is_active=True)
-            .filter(role="ADMIN")
-            .values_list("pk", flat=True)
+            get_user_model().objects.filter(is_active=True).filter(role="ADMIN").values_list("pk", flat=True)
         )
-        administrateur_ids.update(get_user_model().objects.filter(is_superuser=True, is_active=True).values_list("pk", flat=True))
+        administrateur_ids.update(
+            get_user_model().objects.filter(is_superuser=True, is_active=True).values_list("pk", flat=True)
+        )
         utilisateur_ids.update(administrateur_ids)
 
     for utilisateur_id in utilisateur_ids - set(exclure):
         if utilisateur_id:
-            notifier.delay(utilisateur_id, titre, message, lien_admin if utilisateur_id in administrateur_ids and lien_admin else lien)
+            notifier.delay(
+                utilisateur_id,
+                titre,
+                message,
+                lien_admin if utilisateur_id in administrateur_ids and lien_admin else lien,
+            )

@@ -1,6 +1,5 @@
 from django import forms
 from django.db.models import Q
-from django.utils import timezone
 
 from apps.accounts.models import Utilisateur
 from apps.core.roles import Role, est_admin
@@ -22,7 +21,9 @@ class ReclamationForm(forms.ModelForm):
         widgets = {
             "expedition": forms.Select(attrs={"class": "form-select"}),
             "titre": forms.TextInput(attrs={"class": "form-control", "minlength": 5, "maxlength": 150}),
-            "description": forms.Textarea(attrs={"class": "form-control", "rows": 6, "minlength": 20, "maxlength": 5000}),
+            "description": forms.Textarea(
+                attrs={"class": "form-control", "rows": 6, "minlength": 20, "maxlength": 5000}
+            ),
             "type_reclamation": forms.Select(attrs={"class": "form-select"}),
         }
 
@@ -35,7 +36,9 @@ class ReclamationForm(forms.ModelForm):
             queryset = Expedition.objects.filter(pme=user)
         else:
             queryset = Expedition.objects.filter(reservations__trajet__transporteur=user).distinct()
-        self.fields["expedition"].queryset = queryset.select_related("pme", "adresse_depart", "adresse_arrivee").order_by("-created_at")
+        self.fields["expedition"].queryset = queryset.select_related(
+            "pme", "adresse_depart", "adresse_arrivee"
+        ).order_by("-created_at")
         self.fields["expedition"].label_from_instance = lambda expedition: (
             f"{expedition.reference} — PME : {expedition.pme} — "
             f"{expedition.adresse_depart.ville} → {expedition.adresse_arrivee.ville}"
@@ -95,4 +98,3 @@ class TraitementReclamationForm(forms.ModelForm):
         if statut == Reclamation.Statut.RESOLUE and not data.get("reponse_admin", "").strip():
             self.add_error("reponse_admin", "Écrivez une réponse avant de résoudre la réclamation.")
         return data
-

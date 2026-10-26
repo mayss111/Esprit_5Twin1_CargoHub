@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.core.roles import est_admin
 
 from .models import Conversation
-from .services import ConversationBloquee, TEXTE_MASQUE, envoyer_message
+from .services import TEXTE_MASQUE, ConversationBloquee, envoyer_message
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):

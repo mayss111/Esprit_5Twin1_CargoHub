@@ -157,7 +157,7 @@ def test_score_fiabilite_donnees_insuffisantes(pme):
 
 
 def test_score_fiabilite_est_calculé_en_python(expedition, trajet, pme):
-    reservation = Reservation.objects.create(
+    Reservation.objects.create(
         expedition=expedition,
         trajet=trajet,
         statut=Reservation.Statut.LIVREE,

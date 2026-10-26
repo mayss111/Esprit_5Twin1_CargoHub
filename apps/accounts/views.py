@@ -14,7 +14,6 @@ from django.views.generic import CreateView, DeleteView, DetailView, TemplateVie
 from apps.core.mixins import AdminRequiredMixin
 from apps.core.roles import Role
 from apps.core.views import ListeBackofficeView
-from .reliability import score_fiabilite
 
 from .forms import (
     BackofficeUtilisateurForm,
@@ -26,6 +25,7 @@ from .forms import (
     ValidationTransporteurForm,
 )
 from .models import ProfilPME, ProfilTransporteur, Utilisateur
+from .reliability import score_fiabilite
 
 
 class InscriptionView(CreateView):
@@ -167,9 +167,7 @@ class BackofficeUtilisateursView(ListeBackofficeView):
         ctx["roles"] = Role.choices
         for utilisateur in ctx["object_list"]:
             utilisateur.fiabilite = (
-                score_fiabilite(utilisateur)
-                if utilisateur.role in {Role.PME, Role.TRANSPORTEUR}
-                else None
+                score_fiabilite(utilisateur) if utilisateur.role in {Role.PME, Role.TRANSPORTEUR} else None
             )
         return ctx
 
@@ -183,11 +181,7 @@ class BackofficeUtilisateurDetailView(AdminRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         profil = getattr(self.object, "profil_transporteur", None) if self.object.role == Role.TRANSPORTEUR else None
         ctx["profil_transporteur"] = profil
-        ctx["fiabilite"] = (
-            score_fiabilite(self.object)
-            if self.object.role in {Role.PME, Role.TRANSPORTEUR}
-            else None
-        )
+        ctx["fiabilite"] = score_fiabilite(self.object) if self.object.role in {Role.PME, Role.TRANSPORTEUR} else None
         if profil:
             ctx["form_validation"] = ValidationTransporteurForm(instance=profil)
         return ctx

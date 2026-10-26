@@ -2,19 +2,18 @@ from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponse
 from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse, reverse_lazy
+from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
-from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
-from apps.core.roles import Role
 from apps.bookings.notification_service import notifier_dossier
 from apps.core.audio import AudioIndisponible, tts_http_response
-from apps.core.roles import est_admin
+from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
+from apps.core.roles import Role, est_admin
 
 from .forms import ReclamationForm, TraitementReclamationForm
 from .models import Reclamation
@@ -136,7 +135,11 @@ class ReclamationModifierView(MesReclamationsMixin, UpdateView):
     template_name = "reclamations/formulaire.html"
 
     def get_queryset(self):
-        return super().get_queryset().filter(auteur=self.request.user, statut__in=[Reclamation.Statut.EN_ATTENTE, Reclamation.Statut.INFOS])
+        return (
+            super()
+            .get_queryset()
+            .filter(auteur=self.request.user, statut__in=[Reclamation.Statut.EN_ATTENTE, Reclamation.Statut.INFOS])
+        )
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -229,13 +232,17 @@ class BackofficeReclamationDetailView(AdminRequiredMixin, UpdateView):
         if nouveau_statut != ancien_statut or self.object.reponse_admin != ancien_reponse:
             if nouveau_statut == Reclamation.Statut.INFOS:
                 titre = "Informations complémentaires demandées"
-                message = f"Des informations complémentaires sont demandées pour la réclamation {self.object.reference}."
+                message = (
+                    f"Des informations complémentaires sont demandées pour la réclamation {self.object.reference}."
+                )
             elif nouveau_statut in {Reclamation.Statut.RESOLUE, Reclamation.Statut.REJETEE}:
                 titre = "Décision concernant votre réclamation"
                 message = f"La réclamation {self.object.reference} a été traitée : {self.object.get_statut_display()}."
             else:
                 titre = "Statut de votre réclamation mis à jour"
-                message = f"La réclamation {self.object.reference} est maintenant « {self.object.get_statut_display()} »."
+                message = (
+                    f"La réclamation {self.object.reference} est maintenant « {self.object.get_statut_display()} »."
+                )
             notifier_dossier(
                 self.object,
                 titre,
@@ -247,4 +254,3 @@ class BackofficeReclamationDetailView(AdminRequiredMixin, UpdateView):
 
     def get_success_url(self):
         return reverse("bo_reclamations:detail", args=[self.object.pk])
-

@@ -10,8 +10,8 @@ import mimetypes
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.contrib import messages
-from django.http import FileResponse, HttpResponse, JsonResponse
 from django.db.models import Count, Max, Q
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -19,15 +19,15 @@ from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, UpdateView
 
 from apps.core import ai
+from apps.core.audio import AudioIndisponible, tts_http_response
 from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
 from apps.core.roles import Role
-from apps.core.audio import AudioIndisponible, tts_http_response
 from apps.core.views import ListeBackofficeView, ListeFrontView
 
 from .ai import REPONSE_PAR_DEFAUT, repondre_support
 from .forms import MessageForm, NouvelleConversationForm, QuestionSupportForm, TicketForm, TraitementTicketForm
 from .models import Conversation, Message, TicketSupport
-from .services import ConversationBloquee, TEXTE_MASQUE, envoyer_message, texte_visible
+from .services import TEXTE_MASQUE, ConversationBloquee, envoyer_message, texte_visible
 from .tasks import repondre_ticket
 
 logger = logging.getLogger(__name__)
@@ -117,8 +117,12 @@ class ConversationDetailView(RoleRequiredMixin, View):
             return self.afficher(conversation, form)
         try:
             message = envoyer_message(
-                conversation, request.user, form.cleaned_data["contenu"], form.cleaned_data.get("piece_jointe"),
-                form.cleaned_data.get("fichier_audio"), "",
+                conversation,
+                request.user,
+                form.cleaned_data["contenu"],
+                form.cleaned_data.get("piece_jointe"),
+                form.cleaned_data.get("fichier_audio"),
+                "",
             )
         except ConversationBloquee:
             messages.error(request, "Cette conversation est bloquée.")
@@ -168,7 +172,9 @@ class NouvelleConversationView(RoleRequiredMixin, FormView):
             conversation = Conversation.objects.filter(reservation=reservation).first()
             if conversation is None:
                 conversation = Conversation.objects.create(reservation=reservation)
-            conversation.participants.add(reservation.expedition.pme, reservation.trajet.transporteur, self.request.user)
+            conversation.participants.add(
+                reservation.expedition.pme, reservation.trajet.transporteur, self.request.user
+            )
         else:
             conversation = (
                 Conversation.objects.filter(reservation__isnull=True, participants=self.request.user)
@@ -394,8 +400,12 @@ class BackofficeConversationDetailView(AdminRequiredMixin, View):
             return self.afficher(conversation, form)
         try:
             message = envoyer_message(
-                conversation, request.user, form.cleaned_data["contenu"], form.cleaned_data.get("piece_jointe"),
-                form.cleaned_data.get("fichier_audio"), "",
+                conversation,
+                request.user,
+                form.cleaned_data["contenu"],
+                form.cleaned_data.get("piece_jointe"),
+                form.cleaned_data.get("fichier_audio"),
+                "",
             )
         except ConversationBloquee:
             messages.error(request, "Cette conversation est bloquée. Débloquez-la avant d’écrire.")

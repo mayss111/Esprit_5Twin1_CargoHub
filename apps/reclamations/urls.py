@@ -18,4 +18,3 @@ backoffice_urlpatterns = [
     path("<int:pk>/", views.BackofficeReclamationDetailView.as_view(), name="detail"),
     path("<int:pk>/ecouter/", views.ReclamationEcouterView.as_view(), name="ecouter"),
 ]
-

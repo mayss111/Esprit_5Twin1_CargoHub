@@ -24,7 +24,11 @@ class MessageForm(forms.ModelForm):
     class Meta:
         model = Message
         fields = ("contenu", "piece_jointe", "fichier_audio")
-        labels = {"contenu": "Votre message", "piece_jointe": "Pièce jointe (facultatif)", "fichier_audio": "Message vocal (facultatif)"}
+        labels = {
+            "contenu": "Votre message",
+            "piece_jointe": "Pièce jointe (facultatif)",
+            "fichier_audio": "Message vocal (facultatif)",
+        }
         widgets = {"contenu": forms.Textarea(attrs={"rows": 2, "maxlength": 2000})}
         help_texts = {
             "contenu": "Facultatif si vous envoyez une pièce jointe.",
@@ -39,7 +43,9 @@ class MessageForm(forms.ModelForm):
         self.fields["piece_jointe"].widget.attrs["accept"] = ".pdf,.jpg,.jpeg,.png"
         self.fields["fichier_audio"].required = False
         self.fields["fichier_audio"].validators += [FileExtensionValidator(EXTENSIONS_AUDIO), valider_audio]
-        self.fields["fichier_audio"].widget.attrs.update({"accept": "audio/*", "capture": "user", "data-audio-input": ""})
+        self.fields["fichier_audio"].widget.attrs.update(
+            {"accept": "audio/*", "capture": "user", "data-audio-input": ""}
+        )
 
     def clean_contenu(self):
         return self.cleaned_data.get("contenu", "").strip()

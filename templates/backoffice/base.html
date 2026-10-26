@@ -1,44 +1,54 @@
-{% load static %}<!doctype html>
-<html lang="fr">
+{% load static cargohub %}<!doctype html>
+<html lang="{{ request.LANGUAGE_CODE|default:'fr' }}" dir="ltr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Back-office{% endblock %} · CargoHub admin</title>
+  <title>{% block title %}{% tr "Back-office" %}{% endblock %} {% tr "· CargoHub admin" %}</title>
   <link rel="icon" href="{% static 'img/icone.svg' %}">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Naskh+Arabic:wght@500;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="{% static 'css/cargohub.css' %}?v=2" rel="stylesheet">
+  <link href="{% static 'css/cargohub.css' %}?v=20261026e" rel="stylesheet">
+  <script>
+    try {
+      var echelle = localStorage.getItem("cargohub-texte");
+      if (echelle) document.documentElement.style.fontSize = echelle;
+    } catch (erreur) {}
+  </script>
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
-<a href="#contenu" class="lien-evitement">Aller au contenu</a>
+<a href="#contenu" class="lien-evitement">{% tr "Aller au contenu" %}</a>
 <div class="d-flex">
-  <aside class="bo-sidebar p-3 collapse d-md-block" id="menuBo" aria-label="Menu du back-office">
-    <a href="{% url 'dashboard:accueil' %}"><img src="{% static 'img/logo-sombre.svg' %}" alt="CargoHub, tableau de bord" class="mb-2" style="height:40px"></a>
-    <nav class="nav flex-column" aria-label="Modules">
-      <a class="nav-link" href="{% url 'dashboard:accueil' %}"><i class="bi bi-speedometer2" aria-hidden="true"></i> Tableau de bord</a>
+  <aside class="bo-sidebar p-3 collapse d-md-block" id="menuBo" aria-label="{% tr 'Menu du back-office' %}">
+    <a href="{% url 'dashboard:accueil' %}"><img src="{% static 'img/logo-sombre.svg' %}" alt="{% tr "CargoHub" %}" class="mb-2" style="height:40px"></a>
+    <nav class="nav flex-column" aria-label="{% tr 'Modules' %}">
+      <a class="nav-link" href="{% url 'dashboard:accueil' %}"><i class="bi bi-speedometer2" aria-hidden="true"></i> {% tr "Tableau de bord" %}</a>
       {% for membre, couleur, liens in menu_backoffice %}
         <div class="bo-group" style="color: {{ couleur }}">{{ membre }}</div>
         {% for libelle, url, icone in liens %}
-          <a class="nav-link" href="{% url url %}"><i class="bi bi-{{ icone }}" aria-hidden="true"></i> {{ libelle }}</a>
+          <a class="nav-link" href="{% url url %}"><i class="bi bi-{{ icone }}" aria-hidden="true"></i> {% tr libelle %}</a>
         {% endfor %}
       {% endfor %}
       <hr class="border-secondary">
-      <a class="nav-link" href="{% url 'core:accueil' %}"><i class="bi bi-house" aria-hidden="true"></i> Retour au site</a>
+      <a class="nav-link" href="{% url 'core:accueil' %}"><i class="bi bi-house" aria-hidden="true"></i> {% tr "Retour au site" %}</a>
     </nav>
   </aside>
   <div class="flex-grow-1">
     <header class="border-bottom px-4 py-2 d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-sm btn-outline-secondary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#menuBo" aria-controls="menuBo" aria-expanded="false" aria-label="Ouvrir le menu"><i class="bi bi-list" aria-hidden="true"></i></button>
-        <span class="kicker">Back-office administrateur</span>
+        <button class="btn btn-sm btn-outline-secondary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#menuBo" aria-controls="menuBo" aria-expanded="false" aria-label="{% tr 'Ouvrir le menu' %}"><i class="bi bi-list" aria-hidden="true"></i></button>
+        <span class="kicker">{% tr "Back-office administrateur" %}</span>
       </div>
+      <div class="d-flex align-items-center gap-3 flex-wrap justify-content-end">
+      {% include "core/_accessibilite.html" %}
       <form method="post" action="{% url 'accounts:deconnexion' %}" class="d-flex align-items-center gap-3">{% csrf_token %}
-        <div class="d-flex align-items-center gap-3"><div class="dropdown"><a class="small text-muted text-decoration-none position-relative" href="#" id="messagerie-indicateur" data-messagerie-notifications role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Messagerie"><i class="bi bi-chat-dots" aria-hidden="true"></i> Messagerie{% if messageries_non_lues %} <span class="badge text-bg-warning" data-messagerie-badge>{{ messageries_non_lues }}</span>{% endif %}</a><ul class="dropdown-menu dropdown-menu-end shadow notification-menu" id="messagerie-menu"><li><h6 class="dropdown-header">Messagerie</h6></li>{% for message in messages_non_lus %}<li><a class="dropdown-item fw-semibold" href="{% url 'messaging:conversation' message.conversation.pk %}"><span class="d-block">{{ message.auteur }}</span><small class="text-muted">{{ message.contenu|truncatechars:75 }}</small></a></li>{% empty %}<li data-messagerie-vide><span class="dropdown-item-text text-muted">Aucun nouveau message.</span></li>{% endfor %}<li><hr class="dropdown-divider"></li><li><a class="dropdown-item text-center" href="{% url 'messaging:liste' %}">Ouvrir la messagerie</a></li></ul></div>
-        <div class="dropdown"><a class="small text-muted text-decoration-none" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-bell" aria-hidden="true"></i> Notifications{% if notifications_non_lues %} <span class="badge text-bg-danger">{{ notifications_non_lues }}</span>{% endif %}</a><ul class="dropdown-menu dropdown-menu-end shadow notification-menu">{% for notification in notifications_recentes %}<li><a class="dropdown-item {% if not notification.lu %}fw-semibold{% endif %}" href="{% if notification.lien %}{{ notification.lien }}{% else %}{% url 'bookings:notifications' %}{% endif %}"><span class="d-block">{{ notification.titre }}</span><small class="text-muted">{{ notification.message|truncatechars:75 }}</small></a></li>{% empty %}<li><span class="dropdown-item-text text-muted">Aucune notification.</span></li>{% endfor %}<li><hr class="dropdown-divider"></li><li><a class="dropdown-item text-center" href="{% url 'bookings:notifications' %}">Ouvrir toutes les notifications</a></li></ul></div></div>
-        <span class="small text-muted d-flex align-items-center gap-2">{% if user.photo_profil %}<img class="nav-avatar" src="{{ user.photo_profil.url }}" alt="Photo de {{ user }}">{% else %}<i class="bi bi-shield-lock" aria-hidden="true"></i>{% endif %} {{ user }}</span>
-        <button class="btn btn-sm btn-outline-secondary" type="submit">Déconnexion</button>
+        <div class="d-flex align-items-center gap-3"><div class="dropdown"><a class="small text-muted text-decoration-none position-relative" href="#" id="messagerie-indicateur" data-messagerie-notifications role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="{% tr 'Messagerie' %}"><i class="bi bi-chat-dots" aria-hidden="true"></i> {% tr "Messagerie" %}{% if messageries_non_lues %} <span class="badge text-bg-warning" data-messagerie-badge>{{ messageries_non_lues }}</span>{% endif %}</a><ul class="dropdown-menu dropdown-menu-end shadow notification-menu" id="messagerie-menu"><li><h6 class="dropdown-header">{% tr "Messagerie" %}</h6></li>{% for message in messages_non_lus %}<li><a class="dropdown-item fw-semibold" href="{% url 'messaging:conversation' message.conversation.pk %}"><span class="d-block">{{ message.auteur }}</span><small class="text-muted">{{ message.contenu|truncatechars:75 }}</small></a></li>{% empty %}<li data-messagerie-vide><span class="dropdown-item-text text-muted">{% tr "Aucun nouveau message." %}</span></li>{% endfor %}<li><hr class="dropdown-divider"></li><li><a class="dropdown-item text-center" href="{% url 'messaging:liste' %}">{% tr "Ouvrir la messagerie" %}</a></li></ul></div>
+        <div class="dropdown"><a class="small text-muted text-decoration-none" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-bell" aria-hidden="true"></i> {% tr "Notifications" %}{% if notifications_non_lues %} <span class="badge text-bg-danger">{{ notifications_non_lues|length }}</span>{% endif %}</a><ul class="dropdown-menu dropdown-menu-end shadow notification-menu">{% for notification in notifications_recentes %}<li><a class="dropdown-item {% if not notification.lu %}fw-semibold{% endif %}" href="{% if notification.lien %}{{ notification.lien }}{% else %}{% url 'bookings:notifications' %}{% endif %}"><span class="d-block">{{ notification.titre }}</span><small class="text-muted">{{ notification.message|truncatechars:75 }}</small></a></li>{% empty %}<li><span class="dropdown-item-text text-muted">{% tr "Aucune notification." %}</span></li>{% endfor %}<li><hr class="dropdown-divider"></li><li><a class="dropdown-item text-center" href="{% url 'bookings:notifications' %}">{% tr "Ouvrir toutes les notifications" %}</a></li></ul></div></div>
+        <span class="small text-muted d-flex align-items-center gap-2">{% if user.photo_profil %}<img class="nav-avatar" src="{{ user.photo_profil.url }}" alt="">{% else %}<i class="bi bi-shield-lock" aria-hidden="true"></i>{% endif %} {{ user }}</span>
+        <button class="btn btn-sm btn-outline-secondary" type="submit">{% tr "Déconnexion" %}</button>
       </form>
+      </div>
     </header>
     <main class="p-4" id="contenu" tabindex="-1">
       {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}" role="status" aria-live="polite" aria-atomic="true">{{ message }}</div>{% endfor %}
@@ -47,7 +57,8 @@
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="{% static 'js/cargohub.js' %}"></script>
+<script src="{% static 'js/cargohub.js' %}?v=20261026e"></script>
+<script src="{% static 'js/accessibilite.js' %}?v=20261026d"></script>
 <script src="{% static 'js/messagerie-global.js' %}" defer></script>
 {% block extra_js %}{% endblock %}
 </body>

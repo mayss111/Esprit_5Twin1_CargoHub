@@ -6,8 +6,8 @@ import pytest
 from asgiref.sync import async_to_sync
 from channels.routing import URLRouter
 from channels.testing import WebsocketCommunicator
-from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
 
 from apps.accounts.models import Utilisateur
 from apps.bookings.models import Notification, Reservation
@@ -284,7 +284,12 @@ def test_participant_peut_bloquer_une_conversation(client, conversation, pme, tr
     assert client.post(reverse("messaging:conversation_bloquer", args=[conversation.pk])).status_code == 302
     conversation.refresh_from_db()
     assert conversation.est_bloquee_pour(pme)
-    assert client.post(reverse("messaging:conversation", args=[conversation.pk]), {"contenu": "Encore un message"}).status_code == 302
+    assert (
+        client.post(
+            reverse("messaging:conversation", args=[conversation.pk]), {"contenu": "Encore un message"}
+        ).status_code
+        == 302
+    )
     assert conversation.messages.count() == 0
     client.force_login(transporteur)
     assert client.get(reverse("messaging:conversation", args=[conversation.pk])).status_code == 200

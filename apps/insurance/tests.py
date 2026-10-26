@@ -1,12 +1,10 @@
 from datetime import timedelta
-from decimal import Decimal
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.bookings.models import Reservation
-from apps.bookings.models import Notification
+from apps.bookings.models import Notification, Reservation
 
 from .forms import SinistreForm, TraitementSinistreForm
 from .models import PieceJustificative, Sinistre
@@ -131,7 +129,13 @@ def test_refus_admin_exige_une_justification(admin_user, pme, expedition):
         statut=Sinistre.Statut.EN_COURS,
     )
     form = TraitementSinistreForm(
-        {"statut": Sinistre.Statut.REFUSE, "assigne_a": admin_user.pk, "decision_admin": "", "justification_decision": "", "montant_rembourse": ""},
+        {
+            "statut": Sinistre.Statut.REFUSE,
+            "assigne_a": admin_user.pk,
+            "decision_admin": "",
+            "justification_decision": "",
+            "montant_rembourse": "",
+        },
         instance=sinistre,
     )
     assert not form.is_valid()
@@ -150,7 +154,13 @@ def test_admin_accepte_un_sinistre(client, admin_user, pme, expedition):
     client.force_login(admin_user)
     response = client.post(
         reverse("bo_insurance:detail", args=[sinistre.pk]),
-        {"statut": Sinistre.Statut.ACCEPTE, "assigne_a": admin_user.pk, "decision_admin": "Indemnisation acceptée.", "justification_decision": "Les preuves sont suffisantes.", "montant_rembourse": "300.00"},
+        {
+            "statut": Sinistre.Statut.ACCEPTE,
+            "assigne_a": admin_user.pk,
+            "decision_admin": "Indemnisation acceptée.",
+            "justification_decision": "Les preuves sont suffisantes.",
+            "montant_rembourse": "300.00",
+        },
     )
     assert response.status_code == 302
     sinistre.refresh_from_db()
@@ -176,7 +186,13 @@ def test_demande_documents_notifie_auteur(client, admin_user, pme, expedition):
     client.force_login(admin_user)
     response = client.post(
         reverse("bo_insurance:detail", args=[sinistre.pk]),
-        {"statut": Sinistre.Statut.DOCUMENTS, "assigne_a": admin_user.pk, "decision_admin": "", "justification_decision": "", "montant_rembourse": ""},
+        {
+            "statut": Sinistre.Statut.DOCUMENTS,
+            "assigne_a": admin_user.pk,
+            "decision_admin": "",
+            "justification_decision": "",
+            "montant_rembourse": "",
+        },
     )
     assert response.status_code == 302
     sinistre.refresh_from_db()

@@ -1,7 +1,6 @@
 from django.urls import reverse
 
-from apps.bookings.models import Reservation
-from apps.bookings.models import Notification
+from apps.bookings.models import Notification, Reservation
 
 from .forms import ReclamationForm, TraitementReclamationForm
 from .models import Reclamation
@@ -99,7 +98,12 @@ def test_rejet_exige_une_justification(admin_user, pme, expedition):
         statut=Reclamation.Statut.EN_COURS,
     )
     form = TraitementReclamationForm(
-        {"statut": Reclamation.Statut.REJETEE, "assigne_a": admin_user.pk, "reponse_admin": "", "justification_decision": ""},
+        {
+            "statut": Reclamation.Statut.REJETEE,
+            "assigne_a": admin_user.pk,
+            "reponse_admin": "",
+            "justification_decision": "",
+        },
         instance=reclamation,
     )
     assert not form.is_valid()
@@ -118,7 +122,12 @@ def test_admin_traite_une_reclamation(client, admin_user, pme, expedition):
     client.force_login(admin_user)
     response = client.post(
         reverse("bo_reclamations:detail", args=[reclamation.pk]),
-        {"statut": Reclamation.Statut.EN_COURS, "assigne_a": admin_user.pk, "reponse_admin": "Nous analysons le dossier.", "justification_decision": ""},
+        {
+            "statut": Reclamation.Statut.EN_COURS,
+            "assigne_a": admin_user.pk,
+            "reponse_admin": "Nous analysons le dossier.",
+            "justification_decision": "",
+        },
     )
     assert response.status_code == 302
     reclamation.refresh_from_db()
@@ -144,7 +153,12 @@ def test_decision_reclamation_notifie_auteur(client, admin_user, pme, expedition
     client.force_login(admin_user)
     response = client.post(
         reverse("bo_reclamations:detail", args=[reclamation.pk]),
-        {"statut": Reclamation.Statut.RESOLUE, "assigne_a": admin_user.pk, "reponse_admin": "Dossier traité.", "justification_decision": "Analyse terminée."},
+        {
+            "statut": Reclamation.Statut.RESOLUE,
+            "assigne_a": admin_user.pk,
+            "reponse_admin": "Dossier traité.",
+            "justification_decision": "Analyse terminée.",
+        },
     )
     assert response.status_code == 302
     reclamation.refresh_from_db()

@@ -40,9 +40,7 @@ def _reservations_de(utilisateur):
 
 def _mesures(utilisateur):
     reservations = _reservations_de(utilisateur)
-    conclues = reservations.filter(
-        statut__in=[Reservation.Statut.LIVREE, Reservation.Statut.ANNULEE]
-    )
+    conclues = reservations.filter(statut__in=[Reservation.Statut.LIVREE, Reservation.Statut.ANNULEE])
     livrees = conclues.filter(statut=Reservation.Statut.LIVREE).count()
     total_conclues = conclues.count()
     retards = Incident.objects.filter(
@@ -50,14 +48,22 @@ def _mesures(utilisateur):
         type=Incident.Type.RETARD,
         statut=Incident.Statut.RESOLU,
     ).count()
-    reclamations = Reclamation.objects.filter(
-        expedition__reservations__in=reservations,
-        statut=Reclamation.Statut.RESOLUE,
-    ).distinct().count()
-    sinistres = Sinistre.objects.filter(
-        expedition__reservations__in=reservations,
-        statut__in=[Sinistre.Statut.ACCEPTE, Sinistre.Statut.CLOTURE],
-    ).distinct().count()
+    reclamations = (
+        Reclamation.objects.filter(
+            expedition__reservations__in=reservations,
+            statut=Reclamation.Statut.RESOLUE,
+        )
+        .distinct()
+        .count()
+    )
+    sinistres = (
+        Sinistre.objects.filter(
+            expedition__reservations__in=reservations,
+            statut__in=[Sinistre.Statut.ACCEPTE, Sinistre.Statut.CLOTURE],
+        )
+        .distinct()
+        .count()
+    )
     return {
         "livraisons_reussies": livrees,
         "dossiers_clos": total_conclues,
@@ -118,7 +124,10 @@ def _expliquer_par_groq(score, mesures, cle_cache):
             messages=[
                 {
                     "role": "system",
-                    "content": "Explique en français un score de fiabilité. Une seule phrase courte, factuelle, sans inventer de données.",
+                    "content": (
+                        "Explique en français un score de fiabilité. "
+                        "Une seule phrase courte, factuelle, sans inventer de données."
+                    ),
                 },
                 {
                     "role": "user",
