@@ -296,10 +296,7 @@ AR = {
     (
         "L'assistant propose les champs. Vous vérifiez, vous complétez, "
         "puis vous enregistrez. Rien n'est publié avant votre confirmation."
-    ): (
-        "يقترح المساعد الحقول. تراجعونها، تكملونها، ثم تحفظونها. "
-        "لا يُنشر شيء قبل تأكيدكم."
-    ),
+    ): ("يقترح المساعد الحقول. تراجعونها، تكملونها، ثم تحفظونها. لا يُنشر شيء قبل تأكيدكم."),
     "Décrivez l'expédition": "صف الشحنة",
     (
         "Exemple : 5 cartons d'ordinateurs portables et 3 écrans, de Tunis à Sousse, "

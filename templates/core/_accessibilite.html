@@ -2,7 +2,7 @@
 <div class="barre-acces" role="group" aria-label="{% tr 'Accessibilité' %}">
   <form method="post" action="{% url 'core:langue' %}" class="barre-acces-groupe">
     {% csrf_token %}
-    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <input type="hidden" name="next" value="{% url_retour %}">
     <span class="visually-hidden">{% tr "Langue" %}</span>
     <button type="submit" name="langue" value="fr" lang="fr" {% if request.LANGUAGE_CODE == "fr" %}aria-current="true"{% endif %}>FR</button>
     <button type="submit" name="langue" value="ar" lang="ar" {% if request.LANGUAGE_CODE == "ar" %}aria-current="true"{% endif %}>AR</button>

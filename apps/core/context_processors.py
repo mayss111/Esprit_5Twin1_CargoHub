@@ -156,9 +156,7 @@ def navigation(request):
     notifications = []
     if user.is_authenticated:
         notifications = list(user.notifications.filter(lu=False)[:5])
-    backoffice = [
-        (membre, couleur, _traduit_menu(liens, langue)) for membre, couleur, liens in MENU_BACKOFFICE
-    ]
+    backoffice = [(membre, couleur, _traduit_menu(liens, langue)) for membre, couleur, liens in MENU_BACKOFFICE]
     return {
         "menu_front": menu,
         "menu_groupes": _menus_groupes(menu, groupes, langue) if menu else [],
