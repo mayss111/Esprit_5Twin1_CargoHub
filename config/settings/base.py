@@ -175,6 +175,11 @@ OPENAI_TRANSCRIPTION_MODEL = env("OPENAI_TRANSCRIPTION_MODEL", default="gpt-tran
 OPENAI_TTS_MODEL = env("OPENAI_TTS_MODEL", default="gpt-4o-mini-tts")
 OPENAI_TTS_VOICE = env("OPENAI_TTS_VOICE", default="coral")
 
+# Explication des scores de fiabilité (clé conservée uniquement dans .env).
+GROQ_API_KEY = env("GROQ_API_KEY", default="")
+GROQ_BASE_URL = env("GROQ_BASE_URL", default="https://api.groq.com/openai/v1")
+GROQ_MODEL = env("GROQ_MODEL", default="llama-3.3-70b-versatile")
+
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY", default="")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")

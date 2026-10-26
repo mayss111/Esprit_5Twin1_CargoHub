@@ -14,6 +14,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, TemplateVie
 from apps.core.mixins import AdminRequiredMixin
 from apps.core.roles import Role
 from apps.core.views import ListeBackofficeView
+from .reliability import score_fiabilite
 
 from .forms import (
     BackofficeUtilisateurForm,
@@ -51,6 +52,17 @@ class DeconnexionView(LogoutView):
 
 class ProfilView(LoginRequiredMixin, TemplateView):
     template_name = "accounts/profil.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.user.role == Role.ADMIN:
+            comptes = Utilisateur.objects.filter(role__in=[Role.PME, Role.TRANSPORTEUR]).order_by("role", "email")
+            context["fiabilites_admin"] = [(compte, score_fiabilite(compte)) for compte in comptes]
+            context["fiabilite"] = None
+        else:
+            context["fiabilite"] = score_fiabilite(self.request.user)
+            context["fiabilites_admin"] = []
+        return context
 
 
 def profil_de(user):
@@ -153,6 +165,12 @@ class BackofficeUtilisateursView(ListeBackofficeView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["roles"] = Role.choices
+        for utilisateur in ctx["object_list"]:
+            utilisateur.fiabilite = (
+                score_fiabilite(utilisateur)
+                if utilisateur.role in {Role.PME, Role.TRANSPORTEUR}
+                else None
+            )
         return ctx
 
 
@@ -165,6 +183,11 @@ class BackofficeUtilisateurDetailView(AdminRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         profil = getattr(self.object, "profil_transporteur", None) if self.object.role == Role.TRANSPORTEUR else None
         ctx["profil_transporteur"] = profil
+        ctx["fiabilite"] = (
+            score_fiabilite(self.object)
+            if self.object.role in {Role.PME, Role.TRANSPORTEUR}
+            else None
+        )
         if profil:
             ctx["form_validation"] = ValidationTransporteurForm(instance=profil)
         return ctx

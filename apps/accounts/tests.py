@@ -8,6 +8,8 @@ from django.urls import reverse
 
 from apps.accounts.forms import TAILLE_MAX_DOCUMENT, valider_document
 from apps.accounts.models import ProfilPME, ProfilTransporteur, Utilisateur
+from apps.accounts.reliability import score_fiabilite
+from apps.bookings.models import Reservation
 from apps.core.roles import Role
 
 PDF = b"%PDF-1.4 test"
@@ -146,6 +148,24 @@ def test_pages_profil_par_role(client, request, fixture):
     client.force_login(request.getfixturevalue(fixture))
     assert client.get(reverse("accounts:profil")).status_code == 200
     assert client.get(reverse("accounts:profil_modifier")).status_code == 200
+
+
+def test_score_fiabilite_donnees_insuffisantes(pme):
+    resultat = score_fiabilite(pme)
+    assert resultat.score is None
+    assert resultat.explication == "Données insuffisantes"
+
+
+def test_score_fiabilite_est_calculé_en_python(expedition, trajet, pme):
+    reservation = Reservation.objects.create(
+        expedition=expedition,
+        trajet=trajet,
+        statut=Reservation.Statut.LIVREE,
+    )
+    resultat = score_fiabilite(pme)
+    assert resultat.score == 100
+    assert resultat.details["livraisons_reussies"] == 1
+    assert "1 livraison" in resultat.explication
 
 
 def test_modifier_profil_pme(client, pme):

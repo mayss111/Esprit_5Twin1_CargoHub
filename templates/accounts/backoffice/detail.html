@@ -20,6 +20,14 @@
     {% if utilisateur.profil_pme %}<dt class="col-sm-3">Entreprise</dt><dd class="col-sm-9">{{ utilisateur.profil_pme.raison_sociale }}{% if utilisateur.profil_pme.matricule_fiscal %} ({{ utilisateur.profil_pme.matricule_fiscal }}){% endif %}</dd>{% endif %}
   </dl>
 </div>
+{% if fiabilite %}
+<div class="card card-ch p-4 mb-3">
+  <h2 class="h5 mb-1">Score de fiabilité</h2>
+  <p class="small text-muted">Calculé en Python à partir des données CargoHub ; Groq fournit uniquement une explication.</p>
+  {% if fiabilite.score is not None %}<p class="display-6 fw-bold text-primary mb-2">{{ fiabilite.score }}<small class="fs-6">/100</small></p>{% endif %}
+  <p class="mb-0">{{ fiabilite.explication }}</p>
+</div>
+{% endif %}
 {% if profil_transporteur %}
 <div class="card card-ch p-4">
   <h2 class="h5">Validation des documents</h2>

@@ -18,11 +18,12 @@
 {% if object_list %}
 <div class="table-responsive"><table class="table table-ch align-middle">
   <caption class="visually-hidden">Liste des utilisateurs</caption>
-  <thead><tr><th scope="col">Email</th><th scope="col">Nom</th><th scope="col">Rôle</th><th scope="col">Actif</th><th scope="col">Inscrit le</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+  <thead><tr><th scope="col">Email</th><th scope="col">Nom</th><th scope="col">Rôle</th><th scope="col">Fiabilité</th><th scope="col">Actif</th><th scope="col">Inscrit le</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
   <tbody>{% for u in object_list %}
     <tr>
       <td>{{ u.email }}</td><td>{{ u.get_full_name|default:"—" }}</td>
       <td>{{ u.get_role_display }}{% if u.profil_transporteur.statut_validation == "EN_ATTENTE" %} <span class="badge text-bg-warning">à valider</span>{% endif %}</td>
+      <td>{% if u.fiabilite.score is not None %}<strong>{{ u.fiabilite.score }}/100</strong>{% else %}<span class="text-muted">Données insuffisantes</span>{% endif %}</td>
       <td>{{ u.is_active|yesno:"Oui,Non" }}</td><td>{{ u.date_joined|date:"d/m/Y" }}</td>
       <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'bo_accounts:detail' u.pk %}">Voir<span class="visually-hidden"> {{ u.email }}</span></a></td>
     </tr>{% endfor %}
