@@ -1,0 +1,20 @@
+{% extends "backoffice/base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Incident {{ incident.pk }}{% endblock %}
+{% block content %}
+<nav aria-label="Fil d’Ariane"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'bo_tracking:liste' %}">Incidents</a></li>
+  <li class="breadcrumb-item active" aria-current="page">#{{ incident.pk }}</li>
+</ol></nav>
+<h1 class="page-title h3 mb-3">Incident #{{ incident.pk }}</h1>
+<p>Réservation #{{ incident.reservation_id }} — déclaré par {{ incident.declare_par }}.</p>
+<form method="post" class="card card-ch p-4 mb-3">{% csrf_token %}
+  <input type="hidden" name="action" value="enregistrer">
+  {{ form|crispy }}
+  <button class="btn btn-primary" type="submit">Enregistrer</button>
+</form>
+<form method="post">{% csrf_token %}
+  <input type="hidden" name="action" value="supprimer">
+  <button class="btn btn-outline-danger" type="submit">Supprimer l’incident</button>
+</form>
+{% endblock %}

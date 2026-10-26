@@ -1,0 +1,30 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Codes promo{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <h1 class="page-title mb-0">Codes promo</h1>
+  <a class="btn btn-accent" href="{% url 'bo_loyalty:creer' %}">Nouveau code</a>
+</div>
+{% if object_list %}
+<div class="table-responsive">
+  <table class="table table-ch align-middle">
+    <caption class="visually-hidden">Codes promo</caption>
+    <thead><tr><th scope="col">Code</th><th scope="col">Type</th><th scope="col">Valeur</th><th scope="col">Actif</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+    <tbody>
+      {% for code in object_list %}
+      <tr>
+        <td>{{ code.code }}</td>
+        <td>{{ code.get_type_display }}</td>
+        <td>{{ code.valeur }}</td>
+        <td>{% if code.actif %}Oui{% else %}Non{% endif %}</td>
+        <td>
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'bo_loyalty:modifier' code.pk %}">Modifier</a>
+          <a class="btn btn-sm btn-outline-danger" href="{% url 'bo_loyalty:supprimer' code.pk %}">Supprimer</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<p class="text-muted">Aucun code. Créez le premier.</p>{% endif %}
+{% endblock %}

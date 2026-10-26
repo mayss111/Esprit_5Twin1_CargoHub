@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ titre }}{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">{{ titre }}</h1>
+<p class="text-muted">{{ sous_titre }}</p>
+{% if object_list %}
+<div class="table-responsive">
+  <table class="table table-ch align-middle">
+    <caption class="visually-hidden">Liste des paiements</caption>
+    <thead><tr><th scope="col">N°</th><th scope="col">Réservation</th><th scope="col">Montant (DT)</th><th scope="col">Statut</th><th scope="col"><span class="visually-hidden">Action</span></th></tr></thead>
+    <tbody>
+      {% for paiement in object_list %}
+      <tr>
+        <td>{{ paiement.pk }}</td>
+        <td>{{ paiement.reservation }}</td>
+        <td>{{ paiement.montant }}</td>
+        <td>{{ paiement.get_statut_display }}</td>
+        <td><a class="btn btn-sm btn-primary" href="{% url 'payments:detail' paiement.pk %}">Ouvrir</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted border rounded-3 p-4 text-center mb-0">Aucun paiement. Préparez-le depuis le suivi d’une réservation acceptée.</p>
+{% endif %}
+{% endblock %}
