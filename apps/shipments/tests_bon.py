@@ -94,6 +94,7 @@ def test_liste_et_detail_affichent_le_bouton(client, pme, expedition):
     assert "Télécharger le bon d'expédition PDF" in detail
 
 
+@pytest.mark.django_db
 def test_verification_invalide(client):
     page = client.get(reverse("shipments:verifier", kwargs={"jeton": "jeton-inconnu"})).content.decode()
     assert "Référence invalide" in page

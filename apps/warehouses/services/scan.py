@@ -1,6 +1,6 @@
 """Scan du QR Code du bon d'expédition.
 
-Le jeton est celui du PDF (clé primaire signée, sans adresse). Lire un QR Code
+Le QR Code contient la référence publique du bon. Lire un QR Code
 ne crée aucun mouvement : seule la confirmation POST enregistre l'entrée ou la sortie.
 Le créneau réservé peut durer une heure. L'arrivée est normale pendant les
 2 heures qui suivent son début. Au-delà, un administrateur doit valider
