@@ -1,15 +1,19 @@
 """Vues du module Entrepôts & points relais — Membre 2."""
 
+import secrets
 from datetime import date, datetime
 
+from django.conf import settings
 from django.contrib import messages
 from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
 
 from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
+from apps.core.resultat_ia import ecrire, lire
 from apps.core.roles import Role
 from apps.shipments.forms import GOUVERNORATS
 from apps.shipments.models import Expedition
@@ -18,8 +22,9 @@ from .forms import EntrepotForm
 from .models import Entrepot
 from .services.capacity import synthese_entrepot
 from .services.distance import distance_km
-from .services.recommander import recommander
+from .services.recommander import depuis_json
 from .services.reservation import STATUTS_ELIGIBLES
+from .tasks import calculer_recommandation_entrepots
 
 
 def _texte(parametre, limite=80):
@@ -156,7 +161,40 @@ def _contexte_carte(request):
         "recommandation": None,
         "jour_depot": "",
         "recommandations_carte": [],
+        "recommandation_statut": "",
+        "recommandation_jeton": "",
     }
+
+
+def _cle_recommandation(jeton):
+    return f"reco:{jeton}"
+
+
+def _appliquer_recommandation(contexte, utilisateur, jeton):
+    """Pose le résultat déjà calculé, ou l'attente, si le jeton appartient à la personne."""
+    if not jeton:
+        return
+    payload = lire(_cle_recommandation(jeton)) or {}
+    if payload.get("user_id") != utilisateur.pk:
+        return
+    contexte["recommandation_jeton"] = jeton
+    contexte["recommandation_statut"] = payload.get("statut") or ""
+    if payload.get("statut") == "PRET":
+        resultat = depuis_json(payload["resultat"])
+        contexte.update(
+            recommandation=resultat,
+            jour_depot=resultat["jour"].isoformat() if resultat["jour"] else "",
+            recommandations_carte=_marqueurs_recommandes(resultat),
+        )
+    elif payload.get("statut") == "ERREUR":
+        contexte["recommandation"] = {
+            "recommandations": [],
+            "erreur": payload.get("erreur") or "La recherche n'a pas abouti. Réessayez.",
+            "expedition": None,
+            "jour": None,
+            "modele": "",
+            "duree_ms": 0,
+        }
 
 
 class PointsRelaisView(RoleRequiredMixin, TemplateView):
@@ -168,6 +206,7 @@ class PointsRelaisView(RoleRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         contexte = super().get_context_data(**kwargs)
         contexte.update(_contexte_carte(self.request))
+        _appliquer_recommandation(contexte, self.request.user, self.request.GET.get("reco", ""))
         return contexte
 
 
@@ -180,18 +219,43 @@ class RecommanderEntrepotView(RoleRequiredMixin, View):
         return redirect("warehouses:liste")
 
     def post(self, request):
-        resultat = recommander(
-            request.user,
-            request.POST.get("expedition"),
-            _date_post(request.POST.get("date")),
+        jeton = secrets.token_urlsafe(16)
+        jour = _date_post(request.POST.get("date"))
+        ecrire(
+            _cle_recommandation(jeton),
+            {"statut": "EN_COURS", "user_id": request.user.pk},
         )
+        try:
+            calculer_recommandation_entrepots.delay(
+                request.user.pk,
+                request.POST.get("expedition"),
+                jour.isoformat() if jour else "",
+                jeton,
+            )
+        except Exception:
+            messages.error(request, "La recherche n'a pas pu démarrer. Réessayez dans un instant.")
+            return redirect("warehouses:liste")
         contexte = _contexte_carte(request)
-        contexte.update(
-            recommandation=resultat,
-            jour_depot=resultat["jour"].isoformat() if resultat["jour"] else (request.POST.get("date") or ""),
-            recommandations_carte=_marqueurs_recommandes(resultat),
-        )
+        if settings.CELERY_TASK_ALWAYS_EAGER:
+            _appliquer_recommandation(contexte, request.user, jeton)
+        else:
+            contexte["recommandation_statut"] = "EN_COURS"
+            contexte["recommandation_jeton"] = jeton
+            contexte["jour_depot"] = request.POST.get("date") or ""
         return render(request, "warehouses/liste.html", contexte)
+
+
+class StatutRecommandationEntrepotView(RoleRequiredMixin, View):
+    """Le navigateur interroge cette adresse tant que le classement n'est pas fini."""
+
+    roles = [Role.PME]
+
+    def get(self, request):
+        jeton = (request.GET.get("jeton") or "").strip()
+        payload = lire(_cle_recommandation(jeton)) or {}
+        if payload.get("user_id") != request.user.pk:
+            return JsonResponse({"statut": "INCONNU"}, status=404)
+        return JsonResponse({"statut": payload.get("statut") or "INCONNU"})
 
 
 class DetailPointRelaisView(RoleRequiredMixin, DetailView):

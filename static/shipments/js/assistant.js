@@ -25,10 +25,13 @@
     })
       .then(function (reponse) {
         return reponse.json().then(function (data) {
-          return { ok: reponse.ok, data: data };
+          return { ok: reponse.ok, status: reponse.status, data: data };
         });
       })
       .then(function (resultat) {
+        if (resultat.status === 202 && resultat.data.statut === "EN_COURS") {
+          return attendre(resultat.data.jeton);
+        }
         if (!resultat.ok) {
           afficherMessage(resultat.data.erreur || "L'assistant n'a pas pu analyser le texte.", true);
           return;
@@ -44,6 +47,49 @@
         chargement.classList.remove("d-flex");
       });
   });
+
+  function attendre(jeton) {
+    const url = bloc.dataset.statutUrl + "?jeton=" + encodeURIComponent(jeton);
+    let essais = 0;
+    return new Promise(function (resolve) {
+      const tour = function () {
+        essais += 1;
+        fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } })
+          .then(function (reponse) {
+            return reponse.json().then(function (data) {
+              return { ok: reponse.ok, data: data };
+            });
+          })
+          .then(function (resultat) {
+            if (resultat.data.statut === "PRET") {
+              remplir(resultat.data.resultat);
+              resolve();
+              return;
+            }
+            if (resultat.data.statut === "ERREUR" || !resultat.ok) {
+              afficherMessage(resultat.data.erreur || "L'assistant n'a pas pu analyser le texte.", true);
+              resolve();
+              return;
+            }
+            if (essais >= 110) {
+              afficherMessage("L'assistant met trop de temps. Réessayez ou saisissez le formulaire.", true);
+              resolve();
+              return;
+            }
+            setTimeout(tour, 1000);
+          })
+          .catch(function () {
+            if (essais >= 110) {
+              afficherMessage("L'assistant n'a pas répondu. Réessayez ou saisissez le formulaire.", true);
+              resolve();
+              return;
+            }
+            setTimeout(tour, 1000);
+          });
+      };
+      setTimeout(tour, 1000);
+    });
+  }
 
   function remplir(data) {
     Object.entries(data.champs || {}).forEach(function (entree) {

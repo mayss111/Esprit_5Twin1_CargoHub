@@ -111,6 +111,63 @@ def _echec(message, expedition=None, jour=None):
     }
 
 
+def vers_json(resultat):
+    """Forme transportable vers le worker. Les objets Django n'y entrent pas."""
+    jour = resultat["jour"]
+    expedition = resultat["expedition"]
+    return {
+        "erreur": resultat["erreur"],
+        "expedition_id": expedition.pk if expedition is not None else None,
+        "jour": jour.isoformat() if jour else "",
+        "modele": resultat["modele"],
+        "duree_ms": resultat["duree_ms"],
+        "recommandations": [
+            {
+                "entrepot_id": ligne.entrepot.pk,
+                "distance": ligne.distance,
+                "disponible": str(ligne.disponible),
+                "score": ligne.score,
+                "explication": ligne.explication,
+            }
+            for ligne in resultat["recommandations"]
+        ],
+    }
+
+
+def depuis_json(payload):
+    """Reconstruit le résultat à partir des identifiants, pour le template."""
+    identifiants = [ligne["entrepot_id"] for ligne in payload["recommandations"]]
+    entrepots = {entrepot.pk: entrepot for entrepot in Entrepot.objects.filter(pk__in=identifiants)}
+    lignes = []
+    for ligne in payload["recommandations"]:
+        entrepot = entrepots.get(ligne["entrepot_id"])
+        if entrepot is None:
+            continue
+        lignes.append(
+            Recommandation(
+                entrepot=entrepot,
+                distance=ligne["distance"],
+                disponible=Decimal(ligne["disponible"]),
+                score=ligne["score"],
+                explication=ligne["explication"],
+            )
+        )
+    expedition = None
+    if payload.get("expedition_id"):
+        expedition = Expedition.objects.filter(pk=payload["expedition_id"]).first()
+    jour = None
+    if payload.get("jour"):
+        jour = datetime.strptime(payload["jour"], "%Y-%m-%d").date()
+    return {
+        "recommandations": lignes,
+        "erreur": payload.get("erreur") or "",
+        "expedition": expedition,
+        "jour": jour,
+        "modele": payload.get("modele") or "",
+        "duree_ms": payload.get("duree_ms") or 0,
+    }
+
+
 def _expedition(utilisateur, expedition_id):
     if not str(expedition_id or "").isdigit():
         return None
@@ -180,7 +237,10 @@ def _charger_modele():
         try:
             from sentence_transformers import SentenceTransformer
 
-            _MODELE = SentenceTransformer(settings.SENTENCE_TRANSFORMERS_MODEL)
+            _MODELE = SentenceTransformer(
+                settings.SENTENCE_TRANSFORMERS_MODEL,
+                local_files_only=True,
+            )
         except Exception as exc:
             raise ModeleIndisponible("Sentence Transformers est indisponible.") from exc
     return _MODELE

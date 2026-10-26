@@ -3,6 +3,7 @@
 import json
 from datetime import date
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
@@ -22,12 +23,20 @@ from apps.warehouses.services.reservation import STATUTS_ELIGIBLES, depot_pour_a
 from .forms import ImportExpeditionsForm, RegleInterditeForm, SaisieExpedition
 from .models import Expedition, RegleInterdite
 from .services.ai_checker import trancher_verification
-from .services.ai_form_assistant import AssistantIndisponible, AssistantInvalide, analyser_description
 from .services.bon_pdf import generer_pdf, jeton_bon, lire_jeton, url_verification
 from .services.import_expeditions import contenu_xlsx, importer, message_bilan
 
 
 def annoncer_verification(request, expedition, publier):
+    from apps.core.resultat_ia import lire
+
+    etat = lire(f"verif:{expedition.pk}") or {}
+    if etat.get("statut") == "EN_COURS":
+        messages.info(
+            request,
+            "Vérification des marchandises en cours. La page se met à jour toute seule.",
+        )
+        return
     if not publier and expedition.statut == Expedition.Statut.BROUILLON:
         messages.success(request, f"Le brouillon {expedition.reference} est enregistré.")
         return
@@ -204,6 +213,10 @@ class DetailExpeditionView(ExpeditionAccesMixin, DetailView):
         contexte["jeton_bon"] = jeton_bon(self.object)
         contexte["depot"] = depot_pour_affichage(self.object)
         contexte["peut_reserver"] = self.object.statut in STATUTS_ELIGIBLES and contexte["depot"] is None
+        from apps.core.resultat_ia import lire
+
+        etat = lire(f"verif:{self.object.pk}") or {}
+        contexte["verification_en_cours"] = etat.get("statut") == "EN_COURS"
         return contexte
 
 
@@ -568,14 +581,56 @@ class AssistantSaisieView(ExpeditionAccesMixin, View):
     """Propose des champs. L'expédition n'est enregistrée que par le formulaire existant."""
 
     def post(self, request):
+        import secrets
+
+        from apps.core.resultat_ia import ecrire, lire
+        from apps.shipments.tasks import preparer_assistant
+
         try:
             corps = json.loads(request.body.decode() or "{}")
         except json.JSONDecodeError:
             return JsonResponse({"erreur": "Requête invalide."}, status=400)
+        jeton = secrets.token_urlsafe(16)
+        cle = f"assistant:{jeton}"
+        ecrire(cle, {"statut": "EN_COURS", "user_id": request.user.pk})
         try:
-            resultat = analyser_description(corps.get("description"), request.user.pk)
-        except AssistantInvalide as exc:
-            return JsonResponse({"erreur": str(exc)}, status=400)
-        except AssistantIndisponible as exc:
-            return JsonResponse({"erreur": str(exc)}, status=503)
-        return JsonResponse(resultat)
+            preparer_assistant.delay(corps.get("description"), request.user.pk, jeton)
+        except Exception:
+            return JsonResponse(
+                {"erreur": "L'assistant est momentanément indisponible. Saisissez le formulaire manuellement."},
+                status=503,
+            )
+        if settings.CELERY_TASK_ALWAYS_EAGER:
+            return _reponse_assistant(lire(cle) or {})
+        return JsonResponse({"statut": "EN_COURS", "jeton": jeton}, status=202)
+
+
+class StatutAssistantView(ExpeditionAccesMixin, View):
+    """Le navigateur interroge cette adresse tant que Gemini n'a pas répondu."""
+
+    def get(self, request):
+        from apps.core.resultat_ia import lire
+
+        jeton = (request.GET.get("jeton") or "").strip()
+        payload = lire(f"assistant:{jeton}") or {}
+        if payload.get("user_id") != request.user.pk:
+            return JsonResponse({"statut": "INCONNU"}, status=404)
+        if payload.get("statut") == "PRET":
+            return JsonResponse({"statut": "PRET", "resultat": payload["resultat"]})
+        if payload.get("statut") == "ERREUR":
+            return JsonResponse(
+                {"statut": "ERREUR", "erreur": payload.get("erreur") or ""},
+                status=payload.get("code") or 503,
+            )
+        return JsonResponse({"statut": payload.get("statut") or "EN_COURS"})
+
+
+def _reponse_assistant(payload):
+    if payload.get("statut") == "ERREUR":
+        return JsonResponse({"erreur": payload.get("erreur") or ""}, status=payload.get("code") or 503)
+    if payload.get("statut") == "PRET":
+        return JsonResponse(payload["resultat"])
+    return JsonResponse(
+        {"erreur": "L'assistant est momentanément indisponible. Saisissez le formulaire manuellement."},
+        status=503,
+    )

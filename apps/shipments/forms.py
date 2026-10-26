@@ -316,15 +316,36 @@ class SaisieExpedition:
             self.articles.instance = expedition
             self.articles.save()
             if reverifier:
-                try:
-                    appliquer_verification(expedition)
-                except VerificationIndisponible as exc:
-                    expedition.statut = Expedition.Statut.BROUILLON
-                    expedition.motif_decision = str(exc)
-                    expedition.empreinte_verification = ""
-                    expedition.save(update_fields=["statut", "motif_decision", "empreinte_verification", "updated_at"])
+                self._verifier(expedition)
         expedition.refresh_from_db()
         return expedition
+
+    def _verifier(self, expedition):
+        """En test, la vérification reste dans la requête. Avec Redis, Celery la prend."""
+        from django.conf import settings
+
+        from apps.core.resultat_ia import ecrire
+        from apps.shipments.tasks import verifier_expedition
+
+        if settings.CELERY_TASK_ALWAYS_EAGER:
+            try:
+                appliquer_verification(expedition)
+            except VerificationIndisponible as exc:
+                expedition.statut = Expedition.Statut.BROUILLON
+                expedition.motif_decision = str(exc)
+                expedition.empreinte_verification = ""
+                expedition.save(update_fields=["statut", "motif_decision", "empreinte_verification", "updated_at"])
+            return
+        ecrire(f"verif:{expedition.pk}", {"statut": "EN_COURS"})
+        identifiant = expedition.pk
+
+        def envoyer(identifiant=identifiant):
+            try:
+                verifier_expedition.delay(identifiant)
+            except Exception:
+                ecrire(f"verif:{identifiant}", {"statut": "ERREUR"})
+
+        transaction.on_commit(envoyer)
 
 
 class ImportExpeditionsForm(forms.Form):

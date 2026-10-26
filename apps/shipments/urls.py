@@ -9,6 +9,7 @@ urlpatterns = [
     path("nouvelle/", views.CreerExpeditionView.as_view(), name="creer"),
     path("importer/", views.ImporterExpeditionsView.as_view(), name="importer"),
     path("assistant/", views.AssistantSaisieView.as_view(), name="assistant"),
+    path("assistant/statut/", views.StatutAssistantView.as_view(), name="assistant_statut"),
     path("verifier/<str:jeton>/", views.VerifierBonView.as_view(), name="verifier"),
     path("<int:pk>/bon/", views.BonExpeditionView.as_view(), name="bon"),
     path("<int:pk>/", views.DetailExpeditionView.as_view(), name="detail"),

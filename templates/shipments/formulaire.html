@@ -12,7 +12,7 @@
 {% if not expedition %}
 <div class="row g-3 mb-3 saisie-outils">
   <div class="col-lg-7">
-    <section class="card card-ch assistant-ia p-3 h-100" id="assistant-saisie" data-url="{% url 'shipments:assistant' %}">
+    <section class="card card-ch assistant-ia p-3 h-100" id="assistant-saisie" data-url="{% url 'shipments:assistant' %}" data-statut-url="{% url 'shipments:assistant_statut' %}">
       <h2 class="h6 mb-1">{% tr "Créer mon expédition avec l'IA" %}</h2>
       <p class="small text-muted mb-2">{% tr "L'assistant propose les champs. Vous vérifiez, vous complétez, puis vous enregistrez. Rien n'est publié avant votre confirmation." %}</p>
       {% csrf_token %}
@@ -111,6 +111,6 @@
 {% block extra_js %}
 <script src="{% static 'shipments/js/articles.js' %}"></script>
 {% if not expedition %}
-<script src="{% static 'shipments/js/assistant.js' %}?v=20261025p"></script>
+<script src="{% static 'shipments/js/assistant.js' %}?v=20261026h"></script>
 {% endif %}
 {% endblock %}
