@@ -187,7 +187,9 @@ def navigation(request):
             .select_related("auteur", "conversation")
             .order_by("-created_at")[:99]
         )
-    backoffice = [(membre, couleur, _traduit_menu(liens, langue)) for membre, couleur, liens in MENU_BACKOFFICE]
+    backoffice = [
+        (membre, couleur, _traduit_menu(liens, langue)) for membre, couleur, liens in MENU_BACKOFFICE
+    ]
     return {
         "menu_front": menu,
         "menu_groupes": _menus_groupes(menu, groupes, langue) if menu else [],
@@ -195,7 +197,9 @@ def navigation(request):
         "est_admin": est_admin(user),
         "notifications_non_lues": notifications,
         "notifications_recentes": (
-            Notification.objects.filter(destinataire=user).order_by("-created_at")[:5] if user.is_authenticated else []
+            Notification.objects.filter(destinataire=user).order_by("-created_at")[:5]
+            if user.is_authenticated
+            else []
         ),
         "messages_non_lus": messages_non_lus[:5],
         "messageries_non_lues": len(messages_non_lus),
