@@ -42,7 +42,10 @@ class Reclamation(Horodate):
     auteur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="reclamations")
     expedition = models.ForeignKey("shipments.Expedition", on_delete=models.PROTECT, related_name="reclamations")
     partie_mise_en_cause = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT,
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
         related_name="reclamations_mises_en_cause",
     )
     titre = models.CharField(max_length=150)

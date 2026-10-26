@@ -91,9 +91,7 @@ class ConnexionForm(AuthenticationForm):
         super().__init__(*args, **kwargs)
         self.use_required_attribute = False
         self.fields["password"].label = "Mot de passe"
-        self.fields["password"].widget.attrs.update(
-            {"minlength": 8, "autocomplete": "current-password"}
-        )
+        self.fields["password"].widget.attrs.update({"minlength": 8, "autocomplete": "current-password"})
         # La validation est faite par Django après l'envoi ; pas de blocage
         # HTML5/JavaScript avant la soumission.
 

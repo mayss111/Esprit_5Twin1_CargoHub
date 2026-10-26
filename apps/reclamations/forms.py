@@ -73,9 +73,7 @@ class ReclamationForm(forms.ModelForm):
         ).order_by("email")
         self.fields["partie_mise_en_cause"].required = False
         self.fields["partie_mise_en_cause"].help_text = (
-            "Sélectionnez le transporteur concerné."
-            if user.role == Role.PME
-            else "Sélectionnez l'expéditeur concerné."
+            "Sélectionnez le transporteur concerné." if user.role == Role.PME else "Sélectionnez l'expéditeur concerné."
         )
 
     def clean_titre(self):

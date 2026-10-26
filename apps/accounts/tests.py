@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
-from apps.accounts.forms import ConnexionForm, TAILLE_MAX_DOCUMENT, valider_document
+from apps.accounts.forms import TAILLE_MAX_DOCUMENT, ConnexionForm, valider_document
 from apps.accounts.models import ProfilPME, ProfilTransporteur, Utilisateur
 from apps.accounts.reliability import score_fiabilite
 from apps.bookings.models import Reservation
