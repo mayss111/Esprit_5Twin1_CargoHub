@@ -10,6 +10,7 @@ from django.utils import timezone
 from apps.bookings import services
 from apps.bookings.forms import FiltreReservationsForm
 from apps.bookings.models import HistoriqueStatut, Notification, Reservation
+from apps.ecology.models import EmpreinteCarbone
 from apps.fleet.models import Trajet
 from apps.shipments.models import Expedition
 
@@ -73,6 +74,19 @@ def test_transition_interdite(expedition, trajet):
     reservation = services.reserver(expedition, trajet)
     with pytest.raises(services.ReservationImpossible):
         services.changer_statut(reservation, S.LIVREE)
+
+
+def test_livraison_calcule_empreinte_carbone(expedition, trajet, transporteur):
+    reservation = Reservation.objects.create(expedition=expedition, trajet=trajet)
+    services.changer_statut(reservation, S.ACCEPTEE, par=transporteur)
+    services.changer_statut(reservation, S.EN_TRANSIT, par=transporteur)
+    services.changer_statut(reservation, S.LIVREE, par=transporteur)
+
+    empreinte = EmpreinteCarbone.objects.get(reservation=reservation)
+    assert empreinte.distance_km == 160
+    assert empreinte.co2_dedie_kg == 40
+    assert empreinte.co2_partage_kg == 4
+    assert empreinte.co2_economise_kg == 36
 
 
 def test_historique_et_motif(reservation, admin_user):

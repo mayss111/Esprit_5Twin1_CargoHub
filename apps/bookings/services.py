@@ -116,6 +116,11 @@ def changer_statut(reservation: Reservation, nouveau: str, par=None, motif: str 
     reservation.statut = nouveau
     reservation.save(update_fields=["statut", "updated_at"])
 
+    if nouveau == Reservation.Statut.LIVREE:
+        from apps.ecology.services import enregistrer_empreinte_reservation
+
+        enregistrer_empreinte_reservation(reservation)
+
     transaction.on_commit(
         lambda: notifier.delay(
             reservation.expedition.pme_id,

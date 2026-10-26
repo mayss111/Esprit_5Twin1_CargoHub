@@ -10,6 +10,8 @@ Les tests automatiques correspondants sont dans `apps/fleet/tests.py` (`pytest a
 docker compose up --build -d      # ou : python manage.py runserver
 python manage.py migrate
 python manage.py donnees_demo     # comptes + données de démonstration
+python manage.py donnees_demo_co2 # trajets terminés + livraison pour tester les bilans
+python manage.py donnees_demo_co2 # trajets terminés + livraison pour les rapports CO₂
 ```
 
 Comptes de démo (mot de passe : `cargohub2026`) :
@@ -65,9 +67,10 @@ Comptes de démo (mot de passe : `cargohub2026`) :
 
 | # | Action | Résultat attendu |
 |---|---|---|
-| 5.1 | Ouvrir **Impact écologique** (bouton de « Mes véhicules ») | Total de la flotte + bilan par véhicule (trajets terminés, CO₂, points éco) |
-| 5.2 | **Planificateur IA** : Sousse → Tunis, 2000 kg, 10 m³, 140 km | Véhicules classés (capacité 55 %, CO₂ 25 %, entretien 20 %) |
-| 5.3 | Même mission avec un poids supérieur à tous les véhicules | Message « Aucun véhicule actif et conforme… » |
+| 5.1 | Ouvrir **Impact écologique** depuis le menu transporteur | Total de la flotte, graphique et bilan par véhicule (trajets terminés, CO₂, points éco) |
+| 5.2 | Ouvrir **CO₂ économisé** après une réservation livrée | Rapport partagé contre transport dédié, visible sur `/ecologie/` |
+| 5.3 | **Planificateur IA** : Sousse → Tunis, 2000 kg, 10 m³, 140 km | Véhicules classés (capacité 55 %, CO₂ 25 %, entretien 20 %) |
+| 5.4 | Même mission avec un poids supérieur à tous les véhicules | Message « Aucun véhicule actif et conforme… » |
 
 ## 6. Back-office (admin)
 
@@ -79,9 +82,9 @@ Comptes de démo (mot de passe : `cargohub2026`) :
 | 6.4 | Menu M3 → **Trajets** | Tous les trajets de tous les transporteurs |
 | 6.5 | Facteurs CO₂ par type de véhicule | Modifiables dans l'admin Django (`FacteurEmission`) |
 
-## 7. API REST (JWT) et SPA React
+## 7. API REST (JWT)
 
-SPA (optionnelle) : `cd frontend && npm install && npm run dev` (http://localhost:5173), ou le service `frontend` de `docker compose`.
+L'interface web est rendue par Django sur `http://localhost:8000`.
 Détail des routes : `apps/fleet/README.md`. Tests automatiques : `apps/fleet/tests_api.py`.
 
 ```bash
@@ -102,7 +105,7 @@ curl "http://localhost:8000/api/fleet/trajets/compatibles/?ville_depart=Sousse&v
 
 | # | Action | Résultat attendu |
 |---|---|---|
-| 7.1 | Créer un trajet via l'API | Statut `OUVERT`, visible dans « Mes trajets » (pages Django) et dans le SPA |
+| 7.1 | Créer un trajet via l'API | Statut `OUVERT`, visible dans « Mes trajets » |
 | 7.2 | Capacité supérieure au véhicule, date passée, véhicule d'un autre transporteur | 422 / 422 / 403 |
 | 7.3 | Après une réservation acceptée, `PATCH` avec `capacite_totale_kg` sous la part réservée | 422 |
 | 7.4 | `DELETE` d'un trajet qui a une réservation acceptée | 422 ; sans réservation : 204, statut `ANNULE` |

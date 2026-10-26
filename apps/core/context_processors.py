@@ -20,10 +20,12 @@ MENU_PME = [
     ("Contrats", "contracts:liste", "file-earmark-text"),
     ("Aide et support", "messaging:assistant", "life-preserver"),
     ("Fidélité", "loyalty:liste", "gift"),
+    ("CO₂ économisé", "ecology:liste", "tree"),
 ]
 MENU_TRANSPORTEUR = [
     ("Mes véhicules", "fleet:vehicules", "truck"),
     ("Mes trajets", "fleet:liste", "signpost-split"),
+    ("Impact écologique", "fleet:impact", "tree"),
     ("Demandes reçues", "bookings:demandes", "inbox"),
     ("Planificateur IA", "fleet:planificateur", "stars"),
     ("Réservations", "bookings:liste", "calendar-check"),
@@ -34,7 +36,7 @@ MENU_TRANSPORTEUR = [
     ("Messagerie", "messaging:liste", "chat-dots"),
     ("Contrats", "contracts:liste", "file-earmark-text"),
     ("Aide et support", "messaging:assistant", "life-preserver"),
-    ("Mon bilan CO₂", "ecology:liste", "tree"),
+    ("CO₂ économisé", "ecology:liste", "leaf"),
 ]
 
 # Back-office : groupé par membre de l'équipe (même couleur que la présentation)

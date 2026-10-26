@@ -26,7 +26,7 @@ urlpatterns = [
     path("", include("apps.core.urls")),
     path("backoffice/", include("apps.dashboard.urls")),
     path("django-admin/", admin.site.urls),  # outil de développement, pas le back-office final
-    # API REST (JWT) — utilisée par le SPA React (frontend/)
+    # API REST (JWT) — utilisée par le matching M4 et les intégrations.
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/fleet/", include("apps.fleet.api_urls")),
