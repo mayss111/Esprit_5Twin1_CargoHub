@@ -12,6 +12,7 @@ def test_exports_reserves_a_l_admin(client, admin_user, pme):
     assert excel.content[:2] == b"PK"
     assert pdf.status_code == 200
     assert pdf.content.startswith(b"%PDF")
+    assert b"/Image" in pdf.content
     page = client.get(reverse("dashboard:accueil"))
     assert page.status_code == 200
     assert "Taux de remplissage" in page.content.decode()

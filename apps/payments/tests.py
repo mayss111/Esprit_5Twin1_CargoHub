@@ -84,7 +84,9 @@ def test_pme_paie_depuis_la_page(client, reservation, pme):
     facture = client.get(reverse("payments:facture", args=[preuve_reservee.pk]))
     assert facture.status_code == 200
     assert facture["Content-Type"] == "application/pdf"
-    assert b"".join(facture.streaming_content).startswith(b"%PDF")
+    contenu = b"".join(facture.streaming_content)
+    assert contenu.startswith(b"%PDF")
+    assert b"/Image" in contenu
 
 
 def test_transporteur_ne_peut_pas_encaisser(client, reservation, transporteur):

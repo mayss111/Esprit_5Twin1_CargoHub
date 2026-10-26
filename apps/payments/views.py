@@ -23,6 +23,7 @@ from .services import (
     encaisser,
     lancer_checkout,
     paiements_de,
+    rafraichir_pdf,
     rembourser,
     verser_commission,
 )
@@ -136,8 +137,9 @@ class FactureView(RoleRequiredMixin, View):
     def get(self, request, pk):
         paiement = get_object_or_404(paiements_de(request.user), pk=pk)
         facture = getattr(paiement, "facture", None)
-        if facture is None or not facture.fichier:
+        if facture is None:
             raise Http404("Facture introuvable.")
+        rafraichir_pdf(facture)
         return FileResponse(facture.fichier.open("rb"), as_attachment=True, filename=f"{facture.numero}.pdf")
 
 

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="row justify-content-center"><div class="col-lg-7">
   <h1 class="page-title h3 mb-3">Modifier l’avis</h1>
-  <form method="post" class="card card-ch p-4" data-ia="Analyse du sentiment…">{% csrf_token %}
+  <form method="post" class="card card-ch p-4" novalidate data-controle data-ia="Analyse du sentiment…">{% csrf_token %}
     {{ form|crispy }}
     <div class="d-flex flex-wrap gap-2">
       <button class="btn btn-primary" type="submit">Enregistrer</button>
