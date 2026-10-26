@@ -1,22 +1,100 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags static  cargohub %}
-{% block title %}{% tr "Conversation" %}{% endblock %}
+{% load static cargohub %}
+{% block title %}Conversation{% endblock %}
 {% block content %}
-<nav aria-label="{% tr "Fil d’Ariane" %}"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'messaging:liste' %}">{% tr "Messagerie" %}</a></li><li class="breadcrumb-item active" aria-current="page">{% tr "Conversation #" %}{{ conversation.pk }}</li></ol></nav>
-<h1 class="page-title h3 mb-1">{% tr "Avec" %} {% for p in interlocuteurs %}{{ p }}{% if not forloop.last %}, {% endif %}{% empty %}{% tr "vous seul" %}{% endfor %}</h1>
-{% if conversation.reservation %}<p class="text-muted">{% tr "À propos de la" %} {{ conversation.reservation|lower }}</p>{% endif %}
 
+<nav aria-label="Fil d'Ariane">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'messaging:liste' %}">Messagerie</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Conversation #{{ conversation.pk }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
+  <div>
+    <h1 class="page-title h3 mb-0">
+      Avec {% for p in interlocuteurs %}{{ p }}{% if not forloop.last %}, {% endif %}{% empty %}vous seul{% endfor %}
+    </h1>
+    {% if conversation.reservation %}<p class="text-muted mb-0 small">À propos de la {{ conversation.reservation|lower }}</p>{% endif %}
+  </div>
+
+  {# Bouton Bloquer / Débloquer #}
+  <div>
+    {% if bloquee_par_moi %}
+      <button type="button" class="btn btn-sm btn-outline-success" id="btn-debloquer-conv"
+              data-action-url="{% url 'messaging:conversation_debloquer' conversation.pk %}"
+              data-bs-toggle="modal" data-bs-target="#modalDebloquer">
+        <i class="bi bi-unlock me-1" aria-hidden="true"></i>Débloquer
+      </button>
+    {% elif not conversation.est_bloquee %}
+      <button type="button" class="btn btn-sm btn-outline-danger" id="btn-bloquer-conv"
+              data-action-url="{% url 'messaging:conversation_bloquer' conversation.pk %}"
+              data-bs-toggle="modal" data-bs-target="#modalBloquer">
+        <i class="bi bi-slash-circle me-1" aria-hidden="true"></i>Bloquer
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+{% if conversation.est_bloquee %}
+<div class="alert alert-warning d-flex align-items-center gap-2">
+  <i class="bi bi-slash-circle-fill fs-5" aria-hidden="true"></i>
+  <span>Cette conversation est bloquée. Aucun nouveau message ne peut être envoyé.</span>
+</div>
+{% endif %}
+
+{# ===== FIL DES MESSAGES ===== #}
 <div class="card card-ch p-3 mb-3 chat-fil">
-  <ol class="list-unstyled mb-0" id="fil" data-conversation="{{ conversation.pk }}" data-moi="{{ user.pk }}" aria-live="polite" aria-label="{% tr "Messages de la conversation" %}">
+  <ol class="list-unstyled mb-0" id="fil"
+      data-conversation="{{ conversation.pk }}"
+      data-moi="{{ user.pk }}"
+      role="log" aria-live="polite" aria-relevant="additions text" aria-label="Messages de la conversation">
     {% for m, texte in fil %}
     <li class="chat-message {% if m.auteur_id == user.pk %}chat-moi{% endif %}"{% if forloop.last %} id="dernier"{% endif %}>
-      <div class="small text-muted">{{ m.auteur }} · {{ m.created_at|date:"d/m H:i" }}
-        {% if m.signale and m.auteur_id == user.pk %}<span class="badge text-bg-danger ms-1">{% tr "Signalé :" %} {{ m.raison_signalement|default:"modération" }}</span>{% endif %}</div>
-      <div class="chat-bulle {% if m.signale %}fst-italic{% endif %}">{{ texte|linebreaksbr }}</div>
-      {% if m.piece_jointe and not m.signale %}<a class="small" href="{{ m.piece_jointe.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip" aria-hidden="true"></i> {% tr "Pièce jointe" %}<span class="visually-hidden"> {% tr "(nouvel onglet)" %}</span></a>{% endif %}
+      <div class="chat-auteur">
+        <span class="profil-avatar profil-avatar-sm">
+          {% if m.auteur.photo_profil %}<img src="{{ m.auteur.photo_profil.url }}" alt="Photo de {{ m.auteur }}">{% else %}<i class="bi bi-person-fill" aria-hidden="true"></i>{% endif %}
+        </span>
+        <span class="small text-muted">
+          {{ m.auteur }} · {{ m.created_at|date:"d/m H:i" }}
+          {% if m.auteur_id == user.pk %}<span class="message-etat ms-2">{% if m.lu %}Lu{% else %}Envoyé{% endif %}</span>{% endif %}
+        </span>
+        {% if m.signale and m.auteur_id == user.pk %}<span class="badge text-bg-danger ms-1">Signalé : {{ m.raison_signalement|default:"modération" }}</span>{% endif %}
+      </div>
+      <div class="chat-bulle {% if m.signale %}fst-italic{% endif %}">
+        {% if texte %}{{ texte|linebreaksbr }}{% endif %}
+        {% if m.fichier_audio and not m.signale %}
+        <div class="chat-audio mt-1">
+          <span class="visually-hidden">Message vocal de {{ m.auteur }}</span>
+          <audio controls preload="metadata" src="{% url 'messaging:message_audio' m.pk %}">
+            <span>Votre navigateur ne prend pas en charge l'audio.</span>
+          </audio>
+        </div>
+        {% endif %}
+      </div>
+
+      {# Bouton Écouter (TTS via SpeechSynthesis) - seulement s'il y a du texte #}
+      {% if not m.signale and m.contenu %}
+      <button type="button"
+              class="btn btn-sm btn-link px-0 btn-ecouter"
+              data-tts-text="{{ m.contenu|force_escape }}"
+              aria-label="Écouter ce message">
+        <i class="bi bi-volume-up" aria-hidden="true"></i> Écouter
+      </button>
+      {% endif %}
+
+      {% if m.piece_jointe and not m.signale %}
+      <a class="small ms-2" href="{{ m.piece_jointe.url }}" target="_blank" rel="noopener">
+        <i class="bi bi-paperclip" aria-hidden="true"></i> Pièce jointe<span class="visually-hidden"> (nouvel onglet)</span>
+      </a>
+      {% endif %}
+
       {% if m.auteur_id == user.pk %}
-      <form method="post" action="{% url 'messaging:message_supprimer' m.pk %}" class="d-inline">{% csrf_token %}
-        <button class="btn btn-link btn-sm p-0 text-danger" type="submit" aria-label="Supprimer ce message du {{ m.created_at|date:'d/m H:i' }}"><i class="bi bi-trash" aria-hidden="true"></i></button>
+      <form method="post" action="{% url 'messaging:message_supprimer' m.pk %}" class="d-inline ms-1">{% csrf_token %}
+        <button class="btn btn-link btn-sm p-0 text-danger" type="submit"
+                aria-label="Supprimer ce message du {{ m.created_at|date:'d/m H:i' }}">
+          <i class="bi bi-trash" aria-hidden="true"></i>
+        </button>
       </form>
       {% endif %}
     </li>
@@ -26,12 +104,130 @@
   </ol>
 </div>
 
-<form method="post" enctype="multipart/form-data" class="card card-ch p-3">{% csrf_token %}
-  {{ form|crispy }}
-  <p class="small text-muted">{% tr "Les messages sont vérifiés automatiquement : pas de numéro de téléphone ni de paiement en dehors de CargoHub." %}</p>
-  <button class="btn btn-primary" type="submit"><i class="bi bi-send" aria-hidden="true"></i> {% tr "Envoyer" %}</button>
+{# ===== BARRE ENREGISTREMENT VOCAL ===== #}
+<p id="messagerie-annonce" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+
+{# ===== FORMULAIRE D'ENVOI ===== #}
+<form method="post" action="{% url 'messaging:conversation' conversation.pk %}" enctype="multipart/form-data" class="card card-ch p-3" id="form-message" data-envoi-message>
+  {% csrf_token %}
+
+  {# Champ contenu #}
+  <div class="mb-3">
+    <label for="id_contenu" class="form-label">Votre message</label>
+    <textarea name="contenu" cols="40" rows="2" maxlength="2000" class="form-control" id="id_contenu"></textarea>
+    <div class="form-text">Facultatif si vous envoyez une pièce jointe ou un message vocal.</div>
+  </div>
+
+  {# Champ pièce jointe #}
+  <div class="mb-3">
+    <label for="id_piece_jointe" class="form-label">Pièce jointe (facultatif)</label>
+    <input type="file" name="piece_jointe" accept=".pdf,.jpg,.jpeg,.png" class="form-control" id="id_piece_jointe">
+    <div class="form-text">PDF, JPG ou PNG, 5 Mo maximum.</div>
+  </div>
+
+  {# Enregistreur vocal : l'envoi démarre automatiquement à l'arrêt #}
+  <div class="mb-3">
+    <label class="form-label" for="btn-enregistrer-vocal">Message vocal (facultatif)</label>
+    <div class="d-flex flex-wrap align-items-center gap-2" data-enregistreur-vocal>
+      <button type="button" class="btn btn-outline-danger" id="btn-enregistrer-vocal"
+              data-enregistrer-vocal{% if conversation.est_bloquee %} disabled{% endif %}>
+        <i class="bi bi-mic" aria-hidden="true"></i> Enregistrer un vocal
+      </button>
+      <span class="small text-muted" data-statut-vocal role="status" aria-live="polite">Cliquez pour commencer.</span>
+    </div>
+    <div class="vocal-preview d-none mt-2" data-apercu-vocal>
+      <audio controls preload="metadata" data-audio-apercu aria-label="Aperçu du message vocal"></audio>
+      <span class="small text-muted d-block mt-1" data-duree-vocal>Durée : —</span>
+      <div class="d-flex flex-wrap gap-2 mt-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-supprimer-vocal>
+          <i class="bi bi-trash" aria-hidden="true"></i> Supprimer
+        </button>
+        <button type="button" class="btn btn-sm btn-primary" data-envoyer-vocal>
+          <i class="bi bi-send" aria-hidden="true"></i> Envoyer le vocal
+        </button>
+      </div>
+    </div>
+    <div class="form-text">Le vocal est envoyé directement à l'utilisateur concerné à l'arrêt de l'enregistrement.</div>
+  </div>
+
+  {# Repli pour les navigateurs sans MediaRecorder ou pour choisir un fichier existant #}
+  <div class="mb-3">
+    <label for="id_fichier_audio" class="form-label">Ou choisir un fichier audio</label>
+    <input type="file" name="fichier_audio" id="id_fichier_audio" accept="audio/*" class="form-control">
+    <div class="form-text">MP3, WAV, OGG, WebM ou M4A, 25 Mo maximum.</div>
+  </div>
+
+  <p class="small text-muted">Les messages sont vérifiés automatiquement : pas de numéro de téléphone ni de paiement en dehors de CargoHub.</p>
+  <button class="btn btn-primary" type="submit" id="btn-envoyer"{% if conversation.est_bloquee %} disabled{% endif %}>
+    <i class="bi bi-send" aria-hidden="true"></i> Envoyer
+  </button>
 </form>
+
 {% endblock %}
+
+{# ===== MODALS BLOQUER / DÉBLOQUER ===== #}
 {% block extra_js %}
-<script src="{% static 'js/messagerie.js' %}" defer></script>
+
+{# Modal — Bloquer #}
+<div class="modal fade" id="modalBloquer" tabindex="-1" aria-labelledby="modalBloquerLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white border-0">
+        <h5 class="modal-title" id="modalBloquerLabel">
+          <i class="bi bi-slash-circle me-2" aria-hidden="true"></i>Bloquer la conversation
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-1">Voulez-vous vraiment <strong>bloquer</strong> cette conversation ?</p>
+        <p class="text-muted small mb-0">
+          <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+          Plus aucun message ne pourra être envoyé tant que la conversation est bloquée.
+          Vous pourrez la débloquer à tout moment.
+        </p>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <form method="post" action="{% url 'messaging:conversation_bloquer' conversation.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-slash-circle me-1" aria-hidden="true"></i>Confirmer le blocage
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Modal — Débloquer #}
+<div class="modal fade" id="modalDebloquer" tabindex="-1" aria-labelledby="modalDebloquerLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-success text-white border-0">
+        <h5 class="modal-title" id="modalDebloquerLabel">
+          <i class="bi bi-unlock me-2" aria-hidden="true"></i>Débloquer la conversation
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-1">Voulez-vous <strong>débloquer</strong> cette conversation ?</p>
+        <p class="text-muted small mb-0">
+          <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+          Les échanges entre participants redeviendront possibles.
+        </p>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <form method="post" action="{% url 'messaging:conversation_debloquer' conversation.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-unlock me-1" aria-hidden="true"></i>Confirmer le déblocage
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'js/messagerie.js' %}?v=10"></script>
 {% endblock %}

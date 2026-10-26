@@ -10,7 +10,10 @@ class PoliceAssuranceAdmin(admin.ModelAdmin):
 
 @admin.register(Sinistre)
 class SinistreAdmin(admin.ModelAdmin):
-    pass
+    list_display = ("reference", "titre", "auteur", "type_sinistre", "statut", "date_incident")
+    list_filter = ("type_sinistre", "statut")
+    search_fields = ("reference", "titre", "description", "auteur__email")
+    readonly_fields = ("reference", "created_at", "updated_at", "resolu_le")
 
 
 @admin.register(PieceJustificative)

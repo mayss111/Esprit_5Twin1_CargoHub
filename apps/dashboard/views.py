@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.views.generic import TemplateView, View
 
 from apps.accounts.models import Utilisateur
+from apps.accounts.reliability import score_fiabilite
 from apps.bookings.models import Reservation
 from apps.core.mixins import AdminRequiredMixin
 from apps.core.roles import Role
@@ -82,6 +83,10 @@ class AccueilBackofficeView(AdminRequiredMixin, TemplateView):
         ctx["dernieres_reservations"] = Reservation.objects.select_related("trajet", "expedition", "expedition__pme")[
             :8
         ]
+        ctx["scores_fiabilite"] = []
+        for utilisateur in Utilisateur.objects.filter(role__in=[Role.PME, Role.TRANSPORTEUR]).order_by("role", "email"):
+            resultat = score_fiabilite(utilisateur)
+            ctx["scores_fiabilite"].append({"utilisateur": utilisateur, "resultat": resultat})
         return ctx
 
 

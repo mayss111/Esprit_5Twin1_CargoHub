@@ -19,11 +19,12 @@
 {% if object_list %}
 <div class="table-responsive"><table class="table table-ch align-middle">
   <caption class="visually-hidden">{% tr "Liste des utilisateurs" %}</caption>
-  <thead><tr><th scope="col">{% tr "Email" %}</th><th scope="col">{% tr "Nom" %}</th><th scope="col">{% tr "Rôle" %}</th><th scope="col">{% tr "Actif" %}</th><th scope="col">{% tr "Inscrit le" %}</th><th scope="col"><span class="visually-hidden">{% tr "Actions" %}</span></th></tr></thead>
+  <thead><tr><th scope="col">{% tr "Email" %}</th><th scope="col">{% tr "Nom" %}</th><th scope="col">{% tr "Rôle" %}</th><th scope="col">{% tr "Fiabilité" %}</th><th scope="col">{% tr "Actif" %}</th><th scope="col">{% tr "Inscrit le" %}</th><th scope="col"><span class="visually-hidden">{% tr "Actions" %}</span></th></tr></thead>
   <tbody>{% for u in object_list %}
     <tr>
       <td>{{ u.email }}</td><td>{{ u.get_full_name|default:"—" }}</td>
       <td>{% tr u.get_role_display %}{% if u.profil_transporteur.statut_validation == "EN_ATTENTE" %} <span class="badge text-bg-warning">{% tr "à valider" %}</span>{% endif %}</td>
+      <td>{% if u.fiabilite.score is not None %}<strong>{{ u.fiabilite.score }}/100</strong>{% else %}<span class="text-muted">{% tr "Données insuffisantes" %}</span>{% endif %}</td>
       <td>{{ u.is_active|yesno:"Oui,Non" }}</td><td>{{ u.date_joined|date:"d/m/Y" }}</td>
       <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'bo_accounts:detail' u.pk %}">{% tr "Voir" %}<span class="visually-hidden"> {{ u.email }}</span></a></td>
     </tr>{% endfor %}

@@ -51,6 +51,7 @@ LOCAL_APPS = [
     "apps.core",  # partagé : base, rôles, couche IA
     "apps.accounts",  # M1 — Comptes & sécurité
     "apps.messaging",  # M1 — Messagerie & support
+    "apps.reclamations",  # M1 — Réclamations
     "apps.contracts",  # M1 — Contrats & documents
     "apps.shipments",  # M2 — Expéditions
     "apps.warehouses",  # M2 — Entrepôts & points relais
@@ -209,6 +210,17 @@ SENTENCE_TRANSFORMERS_MODEL = env(
     "SENTENCE_TRANSFORMERS_MODEL",
     default="paraphrase-multilingual-MiniLM-L12-v2",
 )
+
+# Audio : clé OpenAI séparée, car Groq/Ollama ne proposent pas tous les mêmes endpoints audio.
+OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
+OPENAI_TRANSCRIPTION_MODEL = env("OPENAI_TRANSCRIPTION_MODEL", default="gpt-transcribe")
+OPENAI_TTS_MODEL = env("OPENAI_TTS_MODEL", default="gpt-4o-mini-tts")
+OPENAI_TTS_VOICE = env("OPENAI_TTS_VOICE", default="coral")
+
+# Explication des scores de fiabilité (clé conservée uniquement dans .env).
+GROQ_API_KEY = env("GROQ_API_KEY", default="")
+GROQ_BASE_URL = env("GROQ_BASE_URL", default="https://api.groq.com/openai/v1")
+GROQ_MODEL = env("GROQ_MODEL", default="llama-3.3-70b-versatile")
 
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY", default="")
