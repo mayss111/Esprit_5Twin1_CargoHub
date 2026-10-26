@@ -67,6 +67,22 @@ def test_transporteur_voit_ses_sinistres(client, transporteur, expedition):
     assert sinistre.reference in client.get(reverse("insurance:liste")).content.decode()
 
 
+def test_transporteur_peut_declarer_un_sinistre_sur_toute_expedition(client, transporteur, autre_pme, expedition):
+    autre = expedition.__class__.objects.create(
+        pme=autre_pme,
+        adresse_depart=expedition.adresse_depart,
+        adresse_arrivee=expedition.adresse_arrivee,
+        date_souhaitee=expedition.date_souhaitee,
+        date_arrivee=expedition.date_arrivee,
+    )
+    form = SinistreForm(donnees(autre), user=transporteur)
+    assert form.is_valid(), form.errors
+    client.force_login(transporteur)
+    response = client.post(reverse("insurance:creer"), donnees(autre))
+    assert response.status_code == 302
+    assert Sinistre.objects.filter(auteur=transporteur, expedition=autre).exists()
+
+
 def test_transporteur_voit_un_sinistre_de_son_transport(client, pme, transporteur, expedition, trajet):
     Reservation.objects.create(expedition=expedition, trajet=trajet)
     sinistre = Sinistre.objects.create(

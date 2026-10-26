@@ -45,6 +45,13 @@ class ConnexionView(LoginView):
     template_name = "accounts/connexion.html"
     redirect_authenticated_user = True
 
+    def form_invalid(self, form):
+        email = self.request.POST.get("username", "").strip()
+        mot_de_passe = self.request.POST.get("password", "")
+        if email and mot_de_passe:
+            messages.error(self.request, "Connexion impossible : vérifiez votre adresse email et votre mot de passe.")
+        return super().form_invalid(form)
+
 
 class DeconnexionView(LogoutView):
     pass

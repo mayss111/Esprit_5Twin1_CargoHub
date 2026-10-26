@@ -58,11 +58,46 @@ class InscriptionForm(UserCreationForm):
 
 
 class ConnexionForm(AuthenticationForm):
-    username = forms.EmailField(label="Adresse email", widget=forms.EmailInput(attrs={"autofocus": True}))
+    error_messages = {
+        "invalid_login": "Adresse email ou mot de passe incorrect.",
+        "inactive": "Ce compte est désactivé.",
+    }
+    username = forms.EmailField(
+        label="Adresse email",
+        widget=forms.EmailInput(
+            attrs={
+                "autofocus": True,
+                "autocomplete": "email",
+                "maxlength": 254,
+                "inputmode": "email",
+            }
+        ),
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.use_required_attribute = False
         self.fields["password"].label = "Mot de passe"
+        self.fields["password"].widget.attrs.update(
+            {"minlength": 8, "autocomplete": "current-password"}
+        )
+        # La validation est faite par Django après l'envoi ; pas de blocage
+        # HTML5/JavaScript avant la soumission.
+
+    def clean_username(self):
+        return self.cleaned_data["username"].strip().lower()
+
+    def clean_password(self):
+        password = self.cleaned_data.get("password", "")
+        if len(password) < 8:
+            raise forms.ValidationError("Le mot de passe doit contenir au moins 8 caractères.")
+        return password
+
+    def clean(self):
+        data = super().clean()
+        if not self.data.get("username", "").strip() or not self.data.get("password", ""):
+            self.add_error(None, "Veuillez remplir l’adresse email et le mot de passe.")
+        return data
 
 
 # ---------------------------------------------------------------- profil, documents, back-office

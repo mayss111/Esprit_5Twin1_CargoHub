@@ -78,7 +78,7 @@
               <li><hr class="dropdown-divider"></li>
               <li>
                 <form method="post" action="{% url 'accounts:deconnexion' %}">{% csrf_token %}
-                  <button class="dropdown-item" type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> {% tr "Déconnexion" %}</button>
+                  <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#modalDeconnexion"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> {% tr "Déconnexion" %}</button>
                 </form>
               </li>
             </ul>
@@ -100,6 +100,14 @@
   {% endfor %}
   {% block content %}{% endblock %}
 </main>
+
+<div class="modal fade" id="modalDeconnexion" tabindex="-1" aria-labelledby="modalDeconnexionLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header"><h2 class="modal-title fs-5" id="modalDeconnexionLabel">{% tr "Confirmer la déconnexion" %}</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% tr 'Annuler' %}"></button></div>
+    <div class="modal-body">{% tr "Voulez-vous vraiment vous déconnecter ?" %}</div>
+    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% tr "Annuler" %}</button><form method="post" action="{% url 'accounts:deconnexion' %}">{% csrf_token %}<button class="btn btn-danger" type="submit">{% tr "Se déconnecter" %}</button></form></div>
+  </div></div>
+</div>
 
 <footer class="border-top py-3 mt-5 text-center small text-muted">{% tr "CargoHub ·" %} {% tr "Projet d’équipe Django" %} · 2026–2027</footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

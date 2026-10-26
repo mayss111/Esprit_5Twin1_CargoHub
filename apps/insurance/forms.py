@@ -38,6 +38,7 @@ class SinistreForm(forms.ModelForm):
         model = Sinistre
         fields = (
             "expedition",
+            "partie_mise_en_cause",
             "titre",
             "description",
             "type_sinistre",
@@ -47,6 +48,7 @@ class SinistreForm(forms.ModelForm):
         )
         labels = {
             "expedition": "Expédition concernée",
+            "partie_mise_en_cause": "Sinistre contre",
             "titre": "Titre",
             "description": "Description détaillée",
             "type_sinistre": "Type de sinistre",
@@ -55,6 +57,7 @@ class SinistreForm(forms.ModelForm):
         }
         widgets = {
             "expedition": forms.Select(attrs={"class": "form-select"}),
+            "partie_mise_en_cause": forms.Select(attrs={"class": "form-select"}),
             "titre": forms.TextInput(attrs={"class": "form-control", "minlength": 5, "maxlength": 150}),
             "description": forms.Textarea(
                 attrs={"class": "form-control", "rows": 6, "minlength": 20, "maxlength": 5000}
@@ -72,7 +75,10 @@ class SinistreForm(forms.ModelForm):
         elif user.role == Role.PME:
             queryset = Expedition.objects.filter(pme=user)
         else:
-            queryset = Expedition.objects.filter(reservations__trajet__transporteur=user).distinct()
+            # Un transporteur peut déclarer un sinistre dès qu'il identifie
+            # l'expédition concernée, même si aucune réservation n'est encore
+            # enregistrée à son nom.
+            queryset = Expedition.objects.all()
         self.fields["expedition"].queryset = queryset.select_related(
             "pme", "adresse_depart", "adresse_arrivee"
         ).order_by("-created_at")
@@ -87,6 +93,16 @@ class SinistreForm(forms.ModelForm):
         else:
             self.fields["montant_estime"].label = "Montant estimé de la perte (DT)"
             self.fields["montant_estime"].help_text = "Montant de la perte estimé par la PME."
+        cible_role = Role.TRANSPORTEUR if user.role == Role.PME else Role.PME
+        self.fields["partie_mise_en_cause"].queryset = Utilisateur.objects.filter(
+            role=cible_role, is_active=True
+        ).order_by("email")
+        self.fields["partie_mise_en_cause"].required = False
+        self.fields["partie_mise_en_cause"].help_text = (
+            "Sélectionnez le transporteur concerné."
+            if user.role == Role.PME
+            else "Sélectionnez l'expéditeur concerné."
+        )
 
     def clean_titre(self):
         titre = self.cleaned_data.get("titre", "").strip()
@@ -115,6 +131,15 @@ class SinistreForm(forms.ModelForm):
         if not self.fields["expedition"].queryset.filter(pk=expedition.pk).exists():
             raise forms.ValidationError("Cette expédition ne vous est pas accessible.")
         return expedition
+
+    def clean(self):
+        data = super().clean()
+        cible = data.get("partie_mise_en_cause")
+        if cible:
+            role_attendu = Role.TRANSPORTEUR if self.user.role == Role.PME else Role.PME
+            if cible.role != role_attendu:
+                self.add_error("partie_mise_en_cause", "Sélectionnez une partie correspondant à votre rôle.")
+        return data
 
 
 class TraitementSinistreForm(forms.ModelForm):

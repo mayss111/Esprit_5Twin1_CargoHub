@@ -6,6 +6,7 @@ from .tasks import notifier
 def notifier_dossier(dossier, titre, message, lien="", *, lien_admin="", administrateurs=False, exclure=()):
     """Notifie les parties réellement liées à une réclamation ou un sinistre."""
     utilisateur_ids = {dossier.auteur_id}
+    utilisateur_ids.add(getattr(dossier, "partie_mise_en_cause_id", None))
     expedition = getattr(dossier, "expedition_effective", None) or getattr(dossier, "expedition", None)
     if expedition:
         utilisateur_ids.add(expedition.pme_id)

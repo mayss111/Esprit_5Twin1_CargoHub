@@ -22,7 +22,6 @@ MENU_PME = [
     ("Appels d’offres", "tenders:liste", "megaphone"),
     ("Suivi", "tracking:liste", "geo-alt"),
     ("Paiements", "payments:liste", "credit-card"),
-    ("Assurance", "insurance:liste", "shield-check"),
     ("Messagerie", "messaging:liste", "chat-dots"),
     ("Contrats", "contracts:liste", "file-earmark-text"),
     ("Aide et support", "messaging:assistant", "life-preserver"),
@@ -33,11 +32,11 @@ GROUPES_PME = [
     ("Expéditions", ["shipments:liste", "bookings:trouver"]),
     ("Entrepôts", ["warehouses:liste", "warehouses:mes_depots"]),
     ("Transport", ["bookings:liste", "tenders:liste", "tracking:liste"]),
+    ("Sinistres", ["insurance:liste"]),
     (
         "Services",
         [
             "payments:liste",
-            "insurance:liste",
             "reclamations:liste",
             "messaging:liste",
             "contracts:liste",
@@ -49,12 +48,12 @@ GROUPES_PME = [
 GROUPES_TRANSPORTEUR = [
     ("Flotte", ["fleet:vehicules", "fleet:liste", "fleet:planificateur", "maintenance:liste"]),
     ("Activité", ["bookings:demandes", "bookings:liste", "tenders:liste", "tracking:liste"]),
+    ("Sinistres", ["insurance:liste"]),
     (
         "Services",
         [
             "payments:liste",
             "reclamations:liste",
-            "insurance:liste",
             "messaging:liste",
             "contracts:liste",
             "messaging:assistant",

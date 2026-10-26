@@ -54,6 +54,26 @@ function messageControle(champ) {
 
 document.addEventListener("submit", (event) => {
   const form = event.target;
+  if (form instanceof HTMLFormElement && /\/supprimer\//.test(form.action) && !form.closest(".modal") && !form.dataset.suppressionConfirmee) {
+    event.preventDefault();
+    const cible = document.getElementById("modalSuppressionSinistre");
+    if (cible && window.bootstrap?.Modal) {
+      const modal = window.bootstrap.Modal.getOrCreateInstance(cible);
+      const confirmer = cible.querySelector("form button[type=submit]");
+      if (confirmer) {
+        confirmer.onclick = () => {
+          form.dataset.suppressionConfirmee = "1";
+          modal.hide();
+          form.submit();
+        };
+      }
+      modal.show();
+    } else if (window.confirm("Voulez-vous supprimer définitivement ce dossier ?")) {
+      form.dataset.suppressionConfirmee = "1";
+      form.submit();
+    }
+    return;
+  }
   if (!(form instanceof HTMLFormElement) || !form.hasAttribute("data-controle")) return;
   form.querySelectorAll(".controle-erreur").forEach((erreur) => erreur.remove());
   form.querySelectorAll(".is-invalid").forEach((champ) => {
