@@ -15,23 +15,39 @@ MOTS_NEGATIFS = ["retard", "abîmé", "cassé", "impoli", "jamais", "perdu", "sa
 MOTS_POSITIFS = ["rapide", "parfait", "ponctuel", "soigneux", "merci", "excellent", "bien"]
 
 
-def analyser_sentiment(commentaire: str, note: int) -> str:
-    try:
-        data = ai.demander_json(
-            f"Avis client (note {note}/5) : « {commentaire} ». Quel est le sentiment ?",
-            systeme='Format : {"sentiment": "POSITIF" | "NEUTRE" | "NEGATIF"}',
-        )
-        if data.get("sentiment") in Avis.Sentiment.values:
-            return data["sentiment"]
-    except ai.IAIndisponible:
-        pass
+def _repli_sentiment(commentaire: str, note: int) -> str:
+    """Repli sans clé : mots-clés, note, et contradiction note/texte (un « mais » adoucit un reproche)."""
     texte = (commentaire or "").lower()
-    score = (note - 3) + sum(m in texte for m in MOTS_POSITIFS) - sum(m in texte for m in MOTS_NEGATIFS)
+    positifs = sum(mot in texte for mot in MOTS_POSITIFS)
+    negatifs = sum(mot in texte for mot in MOTS_NEGATIFS)
+    if "mais" in texte and negatifs and note >= 3:
+        negatifs -= 1
+    if note >= 4 and negatifs > positifs:
+        return Avis.Sentiment.NEGATIF
+    if note <= 2 and positifs > negatifs:
+        return Avis.Sentiment.POSITIF
+    score = (note - 3) + positifs - negatifs
     if score > 0:
         return Avis.Sentiment.POSITIF
     if score < 0:
         return Avis.Sentiment.NEGATIF
     return Avis.Sentiment.NEUTRE
+
+
+def analyser_sentiment(commentaire: str, note: int) -> str:
+    try:
+        data = ai.demander_json(
+            f"Avis client (note {note}/5) : « {commentaire} ». Quel est le sentiment ?",
+            systeme=(
+                "Tu classes un avis de livraison. Si la note et le texte se contredisent, "
+                'fais primer le texte. Format : {"sentiment": "POSITIF" | "NEUTRE" | "NEGATIF"}'
+            ),
+        )
+        if data.get("sentiment") in Avis.Sentiment.values:
+            return data["sentiment"]
+    except ai.IAIndisponible:
+        pass
+    return _repli_sentiment(commentaire, note)
 
 
 def resumer_avis(avis_qs) -> str:

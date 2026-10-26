@@ -1,6 +1,7 @@
 """M5 — Suivi & livraison. Tables : SuiviPosition, PreuveLivraison, Incident, Avis."""
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
@@ -18,6 +19,15 @@ class SuiviPosition(models.Model):
 
     def __str__(self):
         return f"{self.latitude}, {self.longitude}"
+
+    def clean(self):
+        erreurs = {}
+        if self.latitude is not None and not -90 <= self.latitude <= 90:
+            erreurs["latitude"] = "La latitude doit être comprise entre -90 et 90."
+        if self.longitude is not None and not -180 <= self.longitude <= 180:
+            erreurs["longitude"] = "La longitude doit être comprise entre -180 et 180."
+        if erreurs:
+            raise ValidationError(erreurs)
 
 
 class PreuveLivraison(Horodate):
@@ -44,6 +54,10 @@ class Incident(Horodate):
     description = models.TextField()
     statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.OUVERT)
 
+    def clean(self):
+        if self.description is not None and len(self.description.strip()) < 10:
+            raise ValidationError({"description": "Décrivez l’incident en au moins 10 caractères."})
+
 
 class Avis(Horodate):
     class Sentiment(models.TextChoices):
@@ -61,3 +75,14 @@ class Avis(Horodate):
     class Meta:
         verbose_name_plural = "avis"
         unique_together = [("reservation", "auteur")]
+
+
+class ResumeTransporteur(Horodate):
+    """Résumé IA des avis reçus par un transporteur (rempli par une tâche Celery)."""
+
+    transporteur = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="resume_avis")
+    texte = models.TextField(blank=True)
+    en_cours = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Résumé de {self.transporteur}"
