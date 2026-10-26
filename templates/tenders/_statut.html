@@ -1,3 +1,4 @@
-{% if statut == "OUVERT" or statut == "PROPOSEE" %}<span class="badge text-bg-warning"><i class="bi bi-hourglass-split" aria-hidden="true"></i> {{ libelle }}</span>
-{% elif statut == "ATTRIBUE" or statut == "RETENUE" %}<span class="badge text-bg-success"><i class="bi bi-trophy" aria-hidden="true"></i> {{ libelle }}</span>
-{% else %}<span class="badge text-bg-secondary"><i class="bi bi-x-circle" aria-hidden="true"></i> {{ libelle }}</span>{% endif %}
+{% load cargohub %}
+{% if statut == "OUVERT" or statut == "PROPOSEE" %}<span class="badge text-bg-warning"><i class="bi bi-hourglass-split" aria-hidden="true"></i> {% tr libelle %}</span>
+{% elif statut == "ATTRIBUE" or statut == "RETENUE" %}<span class="badge text-bg-success"><i class="bi bi-trophy" aria-hidden="true"></i> {% tr libelle %}</span>
+{% else %}<span class="badge text-bg-secondary"><i class="bi bi-x-circle" aria-hidden="true"></i> {% tr libelle %}</span>{% endif %}

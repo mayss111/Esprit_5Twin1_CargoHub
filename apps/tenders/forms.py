@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django import forms
+from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 from django.utils import timezone
 
 from apps.bookings.models import Reservation
@@ -13,22 +14,48 @@ from .models import AppelOffre, Offre
 TRAJET_INCOMPATIBLE = "Ce trajet part trop loin de la date souhaitée ou ne passe pas par les bonnes villes."
 
 
+RESERVATIONS_BLOQUANTES = [Reservation.Statut.EN_ATTENTE, Reservation.Statut.ACCEPTEE, Reservation.Statut.EN_TRANSIT]
+EXPEDITION_INDISPONIBLE = "Cette expédition ne peut pas faire l’objet d’un appel d’offres."
+
+
 def expeditions_pour_appel(pme):
-    """Expéditions publiées de la PME, sans transporteur déjà trouvé ni appel d'offres, et pas encore parties
-    (date souhaitée aujourd'hui ou plus tard : une date limite dans le futur reste possible)."""
-    deja_attribuees = Reservation.objects.filter(
-        statut__in=[Reservation.Statut.ACCEPTEE, Reservation.Statut.EN_TRANSIT, Reservation.Statut.LIVREE]
-    ).values("expedition_id")
+    """
+    Expéditions de la PME pour lesquelles un appel d'offres a un sens :
+    publiées, avec de la marchandise (poids > 0), qui partent APRÈS aujourd'hui (pour qu'une date limite
+    future et antérieure à l'expédition soit possible), sans réservation en cours et sans appel d'offres.
+    """
+    poids = ExpressionWrapper(
+        F("articles__poids_kg") * F("articles__quantite"), output_field=DecimalField(max_digits=12, decimal_places=2)
+    )
+    en_cours = Reservation.objects.filter(statut__in=RESERVATIONS_BLOQUANTES).values("expedition_id")
     return (
         Expedition.objects.filter(
             pme=pme,
             statut=Expedition.Statut.PUBLIEE,
-            appel_offre__isnull=True,  # une expédition n'a qu'un seul appel d'offres (OneToOne)
-            date_souhaitee__gte=timezone.localdate(),
+            date_souhaitee__gt=timezone.localdate(),
+            appel_offre__isnull=True,  # une expédition n'a qu'UN appel d'offres (OneToOne), même clos
         )
-        .exclude(pk__in=deja_attribuees)
+        .exclude(pk__in=en_cours)
+        .annotate(poids=Sum(poids))
+        .filter(poids__gt=0)
         .select_related("adresse_depart", "adresse_arrivee")
+        .order_by("date_souhaitee")
     )
+
+
+def pourquoi_indisponible(expedition):
+    """Raison, en français simple, pour laquelle cette expédition n'est pas proposée (None si elle l'est)."""
+    if expedition.statut != Expedition.Statut.PUBLIEE:
+        return f"elle n’est pas publiée ({expedition.get_statut_display().lower()})"
+    if expedition.poids_total_kg <= 0:
+        return "elle n’a aucune marchandise (0 kg)"
+    if expedition.date_souhaitee <= timezone.localdate():
+        return "elle part aujourd’hui ou est déjà passée : plus le temps de recevoir des offres"
+    if expedition.reservations.filter(statut__in=RESERVATIONS_BLOQUANTES).exists():
+        return "elle a déjà une réservation en cours"
+    if AppelOffre.objects.filter(expedition=expedition).exists():
+        return "elle a déjà un appel d’offres"
+    return None
 
 
 class AppelOffreForm(forms.ModelForm):
@@ -54,11 +81,14 @@ class AppelOffreForm(forms.ModelForm):
         self.fields["prix_max"].required = True
         # Validation côté navigateur, cohérente avec clean_date_cloture() : pas de date limite passée.
         self.fields["date_cloture"].widget.attrs["min"] = timezone.localtime().strftime("%Y-%m-%dT%H:%M")
+        self.pme = pme
         if self.instance.pk:
             del self.fields["expedition"]  # on ne change pas l'expédition d'un appel existant
         else:
-            self.fields["expedition"].queryset = expeditions_pour_appel(pme)
-            self.fields["expedition"].empty_label = "Choisissez une expédition publiée"
+            champ = self.fields["expedition"]
+            champ.queryset = expeditions_pour_appel(pme)
+            champ.empty_label = "Choisissez une expédition publiée"
+            champ.error_messages["invalid_choice"] = EXPEDITION_INDISPONIBLE
 
     def clean_date_cloture(self):
         date = self.cleaned_data["date_cloture"]
@@ -76,6 +106,10 @@ class AppelOffreForm(forms.ModelForm):
         data = super().clean()
         expedition = data.get("expedition") or getattr(self.instance, "expedition", None)
         date = data.get("date_cloture")
+        # Côté serveur, même si quelqu'un force un identifiant dans le POST : on revérifie toutes les règles.
+        if "expedition" in self.fields and expedition and (raison := pourquoi_indisponible(expedition)):
+            self.add_error("expedition", f"{EXPEDITION_INDISPONIBLE} Raison : {raison}.")
+            return data
         if expedition and expedition.poids_total_kg <= 0:
             self.add_error("expedition" if "expedition" in self.fields else None, EXPEDITION_VIDE)
         if expedition and date and date.date() > expedition.date_souhaitee:

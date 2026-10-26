@@ -1,6 +1,7 @@
 """M5 — Fidélité & parrainage. Tables : PointsFidelite, CodePromo, Parrainage."""
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.core.models import Horodate
@@ -26,6 +27,12 @@ class CodePromo(Horodate):
 
     def __str__(self):
         return self.code
+
+    def clean(self):
+        if self.valeur is not None and self.valeur <= 0:
+            raise ValidationError({"valeur": "La valeur doit être supérieure à 0."})
+        if self.type == self.Type.POURCENTAGE and self.valeur is not None and self.valeur > 100:
+            raise ValidationError({"valeur": "Le pourcentage ne peut pas dépasser 100."})
 
 
 class Parrainage(Horodate):

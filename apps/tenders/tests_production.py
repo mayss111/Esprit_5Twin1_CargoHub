@@ -141,36 +141,88 @@ def test_retenir_reverifie_le_trajet(pme, appel_offre, offre, trajet):
 
 
 def test_appel_d_offres_sur_une_expedition_vide(pme, expedition, appel_offre):
-    from apps.bookings.services import EXPEDITION_VIDE
-    from apps.tenders.forms import AppelOffreForm
+    from apps.tenders.forms import EXPEDITION_INDISPONIBLE, AppelOffreForm
 
     expedition.articles.all().delete()
     appel_offre.delete()  # l'expédition redevient disponible pour un appel
-    expedition.refresh_from_db()
     date = (expedition.date_souhaitee - timedelta(days=1)).strftime("%Y-%m-%dT18:00")
     form = AppelOffreForm({"expedition": expedition.pk, "date_cloture": date, "prix_max": "150"}, pme=pme)
-    assert form.errors["expedition"] == [EXPEDITION_VIDE]
+    assert form.errors["expedition"] == [EXPEDITION_INDISPONIBLE]
 
 
 # ---------------------------------------------------------------- 5. formulaire « Nouvel appel d'offres »
 
 
-def test_expeditions_proposees_pour_un_appel(pme, expedition, trajet):
+def _rendre(expedition, cas, trajet, autre_pme):
+    """Met l'expédition dans la situation `cas` (qui doit l'exclure du formulaire)."""
     from apps.bookings import services
     from apps.shipments.models import Expedition
-    from apps.tenders.forms import AppelOffreForm, expeditions_pour_appel
 
-    assert list(expeditions_pour_appel(pme)) == [expedition]
-    reservation = services.reserver(expedition, trajet)
-    assert list(expeditions_pour_appel(pme)) == [expedition]  # simple demande : toujours proposée
-    services.changer_statut(reservation, Reservation.Statut.ACCEPTEE)
-    assert not expeditions_pour_appel(pme).exists()  # un transporteur est déjà trouvé
+    maj = Expedition.objects.filter(pk=expedition.pk).update
+    if cas == "brouillon":
+        maj(statut=Expedition.Statut.BROUILLON)
+    elif cas == "0_kg":
+        expedition.articles.all().delete()
+    elif cas == "part_aujourd_hui":
+        maj(date_souhaitee=timezone.localdate())
+    elif cas == "date_passee":
+        maj(date_souhaitee=timezone.localdate() - timedelta(days=1))
+    elif cas == "appel_existant":
+        AppelOffre.objects.create(expedition=expedition, date_cloture=timezone.now() + timedelta(hours=5))
+    elif cas == "autre_pme":
+        maj(pme=autre_pme)
+    else:  # réservation EN_ATTENTE, ACCEPTEE ou EN_TRANSIT
+        reservation = services.reserver(expedition, trajet)
+        for statut in {"en_attente": [], "acceptee": ["ACCEPTEE"], "en_transit": ["ACCEPTEE", "EN_TRANSIT"]}[cas]:
+            services.changer_statut(reservation, statut)
 
-    services.changer_statut(reservation, Reservation.Statut.ANNULEE)
-    Expedition.objects.filter(pk=expedition.pk).update(date_souhaitee=timezone.localdate() - timedelta(days=1))
-    assert not expeditions_pour_appel(pme).exists()  # date passée : aucune date limite possible
-    Expedition.objects.filter(pk=expedition.pk).update(date_souhaitee=timezone.localdate())
-    assert list(expeditions_pour_appel(pme)) == [expedition]
+
+CAS_EXCLUS = [
+    "brouillon",
+    "0_kg",
+    "part_aujourd_hui",
+    "date_passee",
+    "en_attente",
+    "acceptee",
+    "en_transit",
+    "appel_existant",
+    "autre_pme",
+]
+
+
+@pytest.mark.parametrize("cas", CAS_EXCLUS)
+def test_expedition_exclue_du_formulaire(client, pme, autre_pme, expedition, trajet, cas):
+    from apps.tenders.forms import EXPEDITION_INDISPONIBLE, AppelOffreForm, expeditions_pour_appel
+
+    assert list(expeditions_pour_appel(pme)) == [expedition]  # au départ : proposée
+    _rendre(expedition, cas, trajet, autre_pme)
+    assert not expeditions_pour_appel(pme).exists()
+
+    # Identifiant forcé dans le POST : refusé côté serveur, aucun appel créé.
+    date = (timezone.localtime() + timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M")
+    form = AppelOffreForm({"expedition": expedition.pk, "date_cloture": date, "prix_max": "150"}, pme=pme)
+    assert form.errors["expedition"] == [EXPEDITION_INDISPONIBLE]
+
+    # ?expedition=<id> : pas pré-rempli, et la page explique pourquoi.
+    client.force_login(pme)
+    reponse = client.get(reverse("tenders:creer"), {"expedition": expedition.pk})
+    assert "expedition" not in reponse.context["form"].initial
+    html = reponse.content.decode()
+    assert ("pas d’appel d’offres possible, car" in html) is (cas != "autre_pme")  # l'id d'un autre : silence
+    assert "Aucune de vos expéditions ne peut" in html and reverse("shipments:creer") in html
+
+
+def test_raison_affichee_et_preremplissage(client, pme, expedition, trajet, autre_pme):
+    from apps.tenders.forms import AppelOffreForm, pourquoi_indisponible
+
+    assert pourquoi_indisponible(expedition) is None
+    client.force_login(pme)
+    assert client.get(reverse("tenders:creer"), {"expedition": expedition.pk}).context["form"].initial == {
+        "expedition": expedition.pk
+    }
+    assert client.get(reverse("tenders:creer"), {"expedition": "abc"}).context["form"].initial == {}
+    _rendre(expedition, "en_attente", trajet, autre_pme)
+    assert pourquoi_indisponible(expedition) == "elle a déjà une réservation en cours"
 
     attribut_min = AppelOffreForm(pme=pme).fields["date_cloture"].widget.attrs["min"]
     assert attribut_min.startswith(timezone.localtime().strftime("%Y-%m-%dT")) and len(attribut_min) == 16
@@ -204,14 +256,19 @@ def test_identifiants_remplaces_par_les_noms(texte, attendu):
     assert sans_identifiants(texte, {63: "Karim", 64: "Nabil"}) == attendu
 
 
-def test_notes_des_avis_envoyees_au_llm(settings, pme, autre_pme, appel_offre, offre, trajet, autre_transporteur):
+def test_notes_des_avis_envoyees_au_llm(
+    settings, pme, autre_pme, appel_offre, offre, trajet, autre_transporteur, autre_trajet
+):
     import json as json_
 
     from apps.bookings import services
     from apps.tenders.ai import SANS_AVIS, recommander_offre
     from apps.tracking.models import Avis
 
-    concurrente = Offre.objects.create(appel=appel_offre, transporteur=autre_transporteur, prix=Decimal("120"))
+    Trajet.objects.filter(pk=autre_trajet.pk).update(ville_depart="Monastir")  # offre compatible
+    concurrente = Offre.objects.create(
+        appel=appel_offre, transporteur=autre_transporteur, trajet=autre_trajet, prix=Decimal("120")
+    )
     passee = services.reserver(appel_offre.expedition, trajet)
     Avis.objects.create(reservation=passee, auteur=pme, cible=offre.transporteur, note=4)
     Avis.objects.create(reservation=passee, auteur=autre_pme, cible=offre.transporteur, note=5)
@@ -268,3 +325,80 @@ def test_donnees_demo_soutenance_idempotentes(db):
 
     notes = {o["transporteur"]: o["note"] for o in resumer_offres(appel)}
     assert notes == {"Karim": 4.7, "Mohamed": 2.5}  # vrai arbitrage : Mohamed moins cher, Karim mieux noté
+
+
+# ---------------------------------------------------------------- 3 (retest). offre devenue incompatible
+
+
+@pytest.fixture
+def offre_incompatible(appel_offre, autre_transporteur, autre_trajet):
+    """Nabil propose un trajet Sousse → Tunis : il ne passe pas par Monastir (cas de l'appel #62)."""
+    return Offre.objects.create(
+        appel=appel_offre, transporteur=autre_transporteur, trajet=autre_trajet, prix=Decimal("70")
+    )
+
+
+def test_badge_trajet_incompatible_a_la_place_de_retenir(client, pme, appel_offre, offre, offre_incompatible):
+    client.force_login(pme)
+    reponse = client.get(reverse("tenders:detail", args=[appel_offre.pk]))
+    html = reponse.content.decode()
+    assert reponse.context["incompatibles"] == {offre_incompatible.pk}
+    assert "Trajet incompatible" in html
+    assert reverse("tenders:retenir", args=[offre_incompatible.pk]) not in html
+    assert reverse("tenders:retenir", args=[offre.pk]) in html  # l'offre compatible garde son bouton
+
+
+def test_retenir_une_offre_incompatible_par_la_page(client, pme, appel_offre, offre_incompatible):
+    client.force_login(pme)
+    reponse = client.post(reverse("tenders:retenir", args=[offre_incompatible.pk]), follow=True)
+    assert "ne correspond plus à l’expédition" in reponse.content.decode()
+    assert not Reservation.objects.exists()
+    offre_incompatible.refresh_from_db()
+    assert offre_incompatible.statut == Offre.Statut.PROPOSEE
+
+
+def test_aide_au_choix_ignore_les_offres_incompatibles(settings, appel_offre, offre, offre_incompatible):
+    import json as json_
+
+    from apps.tenders.ai import recommander_offre, resumer_offres
+
+    assert [o["offre_id"] for o in resumer_offres(appel_offre)] == [offre.pk]  # jamais envoyée au LLM
+
+    settings.AI_API_KEY = "cle-de-test"
+    reponse = json_.dumps({"offre_id": offre_incompatible.pk, "explication": "La moins chère."})
+    with mock.patch("apps.core.ai.demander", return_value=reponse):
+        resultat = recommander_offre(appel_offre)
+    assert resultat["offre_id"] == offre.pk and resultat["methode"].startswith("règle")  # repli
+
+
+def test_lancer_aide_au_choix_compte_seulement_les_offres_compatibles(
+    client, pme, appel_offre, offre, offre_incompatible
+):
+    client.force_login(pme)
+    reponse = client.post(reverse("tenders:recommander", args=[appel_offre.pk]), follow=True)
+    assert "au moins 2 offres compatibles" in reponse.content.decode()
+    appel_offre.refresh_from_db()
+    assert appel_offre.recommandation_statut == ""
+
+
+def test_donnees_demo_se_reparent(db):
+    from apps.accounts.models import Utilisateur
+
+    call_command("donnees_demo", stdout=StringIO())
+    appel = AppelOffre.objects.get(expedition__description="[démo soutenance]")
+    karim = appel.offres.get(transporteur__email="karim@transport.tn")
+    # Ce qui a pu arriver en production pendant les essais :
+    Vehicule.objects.filter(immatriculation="214 TU 3381").update(conforme=False)
+    Utilisateur.objects.filter(email="mohamed@transport.tn").update(is_active=False)
+    karim.trajet.etapes.create(ordre=3, ville="Hammamet")
+    karim.trajet.etapes.filter(ordre=1).update(ville="Kairouan")
+
+    sortie = StringIO()
+    call_command("donnees_demo", stdout=sortie)
+    texte = sortie.getvalue()
+    assert texte.count("-> compatible") == 2 and "INCOMPATIBLE" not in texte
+    assert "Sfax - Tunis, via Monastir, Sousse, score 100/100, note 4.7/5" in texte
+    assert Utilisateur.objects.get(email="mohamed@transport.tn").is_active
+    karim.trajet.refresh_from_db()
+    assert [e.ville for e in karim.trajet.etapes.all()] == ["Monastir", "Sousse"]
+    assert est_compatible(appel.expedition, karim.trajet)

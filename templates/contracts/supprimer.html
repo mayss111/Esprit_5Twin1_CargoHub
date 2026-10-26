@@ -1,14 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Supprimer le contrat{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr "Supprimer le contrat" %}{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-md-6">
   <div class="card card-ch p-4">
-    <h1 class="page-title h3 mb-3">Supprimer le contrat de la {{ contrat.reservation|lower }} ?</h1>
-    <p>Le contrat n’est signé par personne : vous pourrez le générer à nouveau.</p>
+    <h1 class="page-title h3 mb-3">{% tr "Supprimer le contrat de la" %} {{ contrat.reservation|lower }} ?</h1>
+    <p>{% tr "Le contrat n’est signé par personne : vous pourrez le générer à nouveau." %}</p>
     <form method="post">{% csrf_token %}
       <div class="d-flex gap-2">
-        <button class="btn btn-danger" type="submit">Supprimer</button>
-        <a class="btn btn-outline-secondary" href="{% url 'contracts:detail' contrat.pk %}">Annuler</a>
+        <button class="btn btn-danger" type="submit">{% tr "Supprimer" %}</button>
+        <a class="btn btn-outline-secondary" href="{% url 'contracts:detail' contrat.pk %}">{% tr "Annuler" %}</a>
       </div>
     </form>
   </div>

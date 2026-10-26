@@ -1,14 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Messagerie{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr "Messagerie" %}{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-4">
   <div>
-    <h1 class="page-title mb-1">Messagerie</h1>
-    <p class="text-muted mb-0">Vos échanges avec les PME et les transporteurs, liés à une réservation.</p>
+    <h1 class="page-title mb-1">{% tr "Messagerie" %}</h1>
+    <p class="text-muted mb-0">{% tr "Vos échanges avec les PME et les transporteurs, liés à une réservation." %}</p>
   </div>
   <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-outline-secondary" href="{% url 'messaging:assistant' %}"><i class="bi bi-life-preserver" aria-hidden="true"></i> Aide et support</a>
-    <a class="btn btn-accent" href="{% url 'messaging:nouvelle' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> Nouvelle conversation</a>
+    <a class="btn btn-outline-secondary" href="{% url 'messaging:assistant' %}"><i class="bi bi-life-preserver" aria-hidden="true"></i> {% tr "Aide et support" %}</a>
+    <a class="btn btn-accent" href="{% url 'messaging:nouvelle' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> {% tr "Nouvelle conversation" %}</a>
   </div>
 </div>
 {% if object_list %}
@@ -19,14 +20,14 @@
       <a class="fw-semibold stretched-link" href="{% url 'messaging:conversation' c.pk %}">
         {% for p in c.participants.all %}{% if p != user %}{{ p }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}
       </a>
-      <div class="small text-muted">{% if c.reservation %}{{ c.reservation }} · {% endif %}{% if c.dernier %}dernier message le {{ c.dernier|date:"d/m/Y H:i" }}{% else %}aucun message{% endif %}</div>
+      <div class="small text-muted">{% if c.reservation %}{{ c.reservation }} · {% endif %}{% if c.dernier %}{% tr "dernier message le" %} {{ c.dernier|date:"d/m/Y H:i" }}{% else %}{% tr "aucun message" %}{% endif %}</div>
     </div>
-    {% if c.non_lus %}<span class="badge rounded-pill text-bg-warning">{{ c.non_lus }}<span class="visually-hidden"> message{{ c.non_lus|pluralize }} non lu{{ c.non_lus|pluralize }}</span></span>{% endif %}
+    {% if c.non_lus %}<span class="badge rounded-pill text-bg-warning">{{ c.non_lus }}<span class="visually-hidden"> {% tr "message" %}{{ c.non_lus|pluralize }} {% tr "non lu" %}{{ c.non_lus|pluralize }}</span></span>{% endif %}
   </li>
   {% endfor %}
 </ul>
 {% include "core/_pagination.html" %}
 {% else %}
-<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-chat-dots fs-1 d-block mb-2" aria-hidden="true"></i>Aucune conversation. Démarrez-en une à partir d’une réservation.</div>
+<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-chat-dots fs-1 d-block mb-2" aria-hidden="true"></i>{% tr "Aucune conversation. Démarrez-en une à partir d’une réservation." %}</div>
 {% endif %}
 {% endblock %}

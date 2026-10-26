@@ -75,6 +75,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.LangueExpliciteMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -172,6 +173,8 @@ CELERY_BEAT_SCHEDULE = {
     "verifier-conformite": {"task": "apps.maintenance.tasks.verifier_conformite", "schedule": 60 * 60 * 24},
     # M4 — clôture automatique des appels d'offres
     "cloturer-appels-offres": {"task": "apps.tenders.tasks.cloturer_appels_offres", "schedule": 60 * 5},
+    # M2 — clôture des réservations d'entrepôt dont la fin est atteinte
+    "suivre-depots": {"task": "apps.warehouses.tasks.suivre_depots", "schedule": 60 * 5},
 }
 
 CHANNEL_LAYERS = {
@@ -196,6 +199,14 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="CargoHub <no-reply@cargo
 AI_API_KEY = env("AI_API_KEY", default="")
 AI_BASE_URL = env("AI_BASE_URL", default="https://api.groq.com/openai/v1")
 AI_MODEL = env("AI_MODEL", default="openai/gpt-oss-120b")
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+GEMINI_MODEL = env("GEMINI_MODEL", default="gemini-3.5-flash-lite")
+# Modèle local de recommandation d'entrepôts. Les tests le laissent éteint.
+SENTENCE_TRANSFORMERS_ACTIF = env.bool("SENTENCE_TRANSFORMERS_ACTIF", default=True)
+SENTENCE_TRANSFORMERS_MODEL = env(
+    "SENTENCE_TRANSFORMERS_MODEL",
+    default="paraphrase-multilingual-MiniLM-L12-v2",
+)
 
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY", default="")

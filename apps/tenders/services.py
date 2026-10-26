@@ -9,6 +9,23 @@ from apps.bookings.tasks import notifier
 from .models import AppelOffre, Offre
 
 
+def offre_retenable(offre: Offre, expedition) -> bool:
+    """Une offre ne peut être retenue (ou recommandée) que si son trajet convient toujours à l'expédition."""
+    return (
+        offre.statut == Offre.Statut.PROPOSEE and offre.trajet is not None and est_compatible(expedition, offre.trajet)
+    )
+
+
+def offres_retenables(appel) -> list:
+    """Offres proposées au trajet compatible : les seules que la PME peut retenir ou que l’IA peut conseiller."""
+    offres = (
+        appel.offres.filter(statut=Offre.Statut.PROPOSEE)
+        .select_related("transporteur", "trajet__vehicule")
+        .prefetch_related("trajet__etapes")
+    )
+    return [o for o in offres if offre_retenable(o, appel.expedition)]
+
+
 @transaction.atomic
 def retenir_offre(offre: Offre, par) -> Reservation:
     """

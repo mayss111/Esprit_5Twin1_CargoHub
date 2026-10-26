@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load cargohub %}
+{% block title %}{{ reservation.reference }}{% endblock %}
+{% block content %}
+<p class="mb-2"><a href="{% url 'warehouses:mes_depots' %}">{% tr "Mes dépôts" %}</a></p>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+  <div>
+    <h1 class="page-title mb-1">{{ reservation.reference }}</h1>
+    <span class="badge-statut {% if reservation.statut == 'RESERVE' %}badge-PUBLIEE{% elif reservation.statut == 'ANNULE' %}badge-ANNULEE{% else %}badge-LIVREE{% endif %}">{% tr reservation.get_statut_display %}</span>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if reservation.annulable_par_pme %}
+      <a class="btn btn-outline-secondary" href="{% url 'warehouses:depot_annuler' reservation.pk %}">{% tr "Annuler" %}</a>
+    {% endif %}
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-md-6">
+    <section class="card card-ch p-3 h-100">
+      <h2 class="h6">{% tr "Expédition" %}</h2>
+      <p class="mb-1"><a href="{% url 'shipments:detail' reservation.expedition.pk %}">{{ reservation.expedition.reference }}</a></p>
+      <p class="mb-1">{{ reservation.expedition.adresse_depart.ville }} → {{ reservation.expedition.adresse_arrivee.ville }}</p>
+      <p class="mb-0">{% tr "Volume réservé :" %} {{ reservation.volume_reserve|default:reservation.volume_m3 }} m³</p>
+    </section>
+  </div>
+  <div class="col-md-6">
+    <section class="card card-ch p-3 h-100">
+      <h2 class="h6">{% tr "Dépôt" %}</h2>
+      <p class="mb-1">{{ reservation.entrepot.nom }}</p>
+      <p class="mb-1">{{ reservation.entrepot.adresse }}, {{ reservation.entrepot.ville }}</p>
+      <p class="mb-1">{{ reservation.debut|date:"d/m/Y" }} · {{ reservation.debut|time:"H:i" }} – {{ reservation.fin|time:"H:i" }}</p>
+      <p class="mb-1">{% tr "Fin de réservation :" %} {% if reservation.fin_stockage_prevue %}{{ reservation.fin_stockage_prevue|date:"d/m/Y H:i" }}{% else %}—{% endif %}</p>
+      <p class="mb-0">{% tr "Réservé le" %} {{ reservation.created_at|date:"d/m/Y H:i" }}</p>
+    </section>
+  </div>
+</div>
+{% if reservation.motif_annulation %}
+  <p class="mt-3 mb-0">{% tr "Motif :" %} {{ reservation.motif_annulation }}</p>
+{% endif %}
+{% endblock %}

@@ -25,4 +25,7 @@ openpyxl==3.1.5           # M5 — export Excel
 
 # Intelligence artificielle
 openai==3.35.1            # client compatible Groq / OpenRouter / Ollama
+google-genai==2.33.0       # M2 — vérification des marchandises (Gemini)
+pydantic==2.14.1           # M2 — validation de la réponse JSON Gemini
 scikit-learn==1.9.1       # M3 et M4 — modèles de prédiction
+sentence-transformers==6.2.0  # M2 — recommandation d'entrepôts, repli si le modèle est absent

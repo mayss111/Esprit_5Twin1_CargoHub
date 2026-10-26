@@ -1,0 +1,21 @@
+{% load cargohub %}
+<div class="barre-acces" role="group" aria-label="{% tr 'Accessibilité' %}">
+  <form method="post" action="{% url 'core:langue' %}" class="barre-acces-groupe">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{% url_retour %}">
+    <span class="visually-hidden">{% tr "Langue" %}</span>
+    <button type="submit" name="langue" value="fr" lang="fr" {% if request.LANGUAGE_CODE == "fr" %}aria-current="true"{% endif %}>FR</button>
+    <button type="submit" name="langue" value="ar" lang="ar" {% if request.LANGUAGE_CODE == "ar" %}aria-current="true"{% endif %}>AR</button>
+    <button type="submit" name="langue" value="en" lang="en" {% if request.LANGUAGE_CODE == "en" %}aria-current="true"{% endif %}>EN</button>
+  </form>
+  <div class="barre-acces-groupe" role="group" aria-label="{% tr 'Taille du texte' %}">
+    <button type="button" id="texte-reduire" aria-label="{% tr 'Réduire le texte' %}">{% tr "A−" %}</button>
+    <button type="button" id="texte-agrandir" aria-label="{% tr 'Agrandir le texte' %}">{% tr "A+" %}</button>
+  </div>
+  <button type="button" id="lecture-vocale" aria-pressed="false" aria-label="{% tr 'Lecture vocale' %}"
+    data-lire="{% tr 'Lecture vocale' %}"
+    data-stop="{% tr 'Arrêter la lecture' %}"
+    data-indisponible="{% tr 'La lecture vocale n’est pas disponible dans ce navigateur.' %}"
+    data-langue="{{ request.LANGUAGE_CODE|default:'fr' }}"><i class="bi bi-volume-up-fill" aria-hidden="true"></i></button>
+  <span id="lecture-message" class="visually-hidden" role="status"></span>
+</div>
