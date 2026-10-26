@@ -28,9 +28,17 @@ class MesReclamationsView(RoleRequiredMixin, ListView):
 
     def get_queryset(self):
         if self.request.user.role == Role.TRANSPORTEUR:
-            acces = Q(auteur=self.request.user) | Q(partie_mise_en_cause=self.request.user) | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            )
         elif self.request.user.role == Role.PME:
-            acces = Q(auteur=self.request.user) | Q(partie_mise_en_cause=self.request.user) | Q(expedition__pme=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__pme=self.request.user)
+            )
         else:
             acces = Q(auteur=self.request.user)
         queryset = Reclamation.objects.filter(acces).distinct().select_related("expedition", "auteur")
@@ -98,9 +106,17 @@ class MesReclamationsMixin(LoginRequiredMixin):
 
     def get_queryset(self):
         if self.request.user.role == Role.TRANSPORTEUR:
-            acces = Q(auteur=self.request.user) | Q(partie_mise_en_cause=self.request.user) | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            )
         elif self.request.user.role == Role.PME:
-            acces = Q(auteur=self.request.user) | Q(partie_mise_en_cause=self.request.user) | Q(expedition__pme=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__pme=self.request.user)
+            )
         else:
             acces = Q(auteur=self.request.user)
         return Reclamation.objects.filter(acces).distinct().select_related("expedition", "auteur", "assigne_a")
@@ -116,10 +132,14 @@ class ReclamationEcouterView(LoginRequiredMixin, View):
             queryset = Reclamation.objects.all()
         elif request.user.role == Role.TRANSPORTEUR:
             queryset = Reclamation.objects.filter(
-                Q(auteur=request.user) | Q(partie_mise_en_cause=request.user) | Q(expedition__reservations__trajet__transporteur=request.user)
+                Q(auteur=request.user)
+                | Q(partie_mise_en_cause=request.user)
+                | Q(expedition__reservations__trajet__transporteur=request.user)
             )
         else:
-            queryset = Reclamation.objects.filter(Q(auteur=request.user) | Q(partie_mise_en_cause=request.user) | Q(expedition__pme=request.user))
+            queryset = Reclamation.objects.filter(
+                Q(auteur=request.user) | Q(partie_mise_en_cause=request.user) | Q(expedition__pme=request.user)
+            )
         reclamation = get_object_or_404(queryset.distinct(), pk=pk)
         texte = f"{reclamation.titre}. {reclamation.description}."
         if reclamation.reponse_admin:
