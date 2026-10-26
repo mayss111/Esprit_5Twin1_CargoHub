@@ -9,7 +9,8 @@ from apps.core.roles import Role
 
 from .models import Message, TicketSupport
 
-EXTENSIONS_AUDIO = (".webm", ".ogg", ".mp3", ".wav", ".m4a", ".mp4", ".mpeg", ".mpga")
+# FileExtensionValidator attend les extensions sans point.
+EXTENSIONS_AUDIO = ("webm", "ogg", "mp3", "wav", "m4a", "mp4", "mpeg", "mpga")
 TAILLE_MAX_AUDIO = 25 * 1024 * 1024
 
 

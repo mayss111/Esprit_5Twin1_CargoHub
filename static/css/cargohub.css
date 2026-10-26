@@ -125,6 +125,9 @@ a { color: var(--ch-navy); }
 .chat-bulle { display: inline-block; background: var(--ch-panel); border: 1px solid var(--ch-border);
   border-radius: .8rem; padding: .5rem .8rem; text-align: left; overflow-wrap: anywhere; }
 .chat-moi .chat-bulle { background: #FFF4DE; border-color: #F5D08A; }
+.chat-audio audio { display: block; width: min(20rem, 100%); min-width: 15rem; }
+.vocal-preview { padding: .65rem; border: 1px solid var(--ch-border); border-radius: .6rem; background: var(--ch-panel); }
+.vocal-preview audio { display: block; width: min(24rem, 100%); }
 .message-etat { color: #067647; font-weight: 600; }
 .chat-auteur { display: flex; align-items: center; gap: .45rem; }
 .profil-avatar { display: inline-flex; align-items: center; justify-content: center; width: 2.6rem; height: 2.6rem; overflow: hidden; color: var(--ch-navy); background: #E8EEF7; border: 2px solid var(--ch-border); border-radius: 50%; font-size: 1.35rem; }

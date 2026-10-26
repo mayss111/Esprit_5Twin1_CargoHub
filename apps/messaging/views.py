@@ -5,11 +5,12 @@ Back-office  : traitement des tickets et modération des messages signalés par 
 """
 
 import logging
+import mimetypes
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.contrib import messages
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.db.models import Count, Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -40,6 +41,11 @@ def diffuser(message):
             {
                 "type": "chat.message",
                 "message": TEXTE_MASQUE if message.signale else message.contenu,
+                "audio_url": (
+                    reverse("messaging:message_audio", args=[message.pk])
+                    if message.fichier_audio and not message.signale
+                    else ""
+                ),
                 "auteur": str(message.auteur),
                 "auteur_id": message.auteur_id,
                 "date": timezone.localtime(message.created_at).strftime("%d/%m %H:%M"),
@@ -106,6 +112,8 @@ class ConversationDetailView(RoleRequiredMixin, View):
             return redirect("messaging:conversation", pk=pk)
         form = MessageForm(request.POST, request.FILES)
         if not form.is_valid():
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
             return self.afficher(conversation, form)
         try:
             message = envoyer_message(
@@ -198,7 +206,8 @@ class MessageAudioView(RoleRequiredMixin, View):
         message = get_object_or_404(queryset)
         if not message.fichier_audio:
             return HttpResponse(status=404)
-        response = FileResponse(message.fichier_audio.open("rb"), content_type="audio/webm")
+        content_type = mimetypes.guess_type(message.fichier_audio.name)[0] or "application/octet-stream"
+        response = FileResponse(message.fichier_audio.open("rb"), content_type=content_type)
         response["Content-Disposition"] = "inline"
         response["Cache-Control"] = "private, no-store"
         return response
@@ -380,6 +389,8 @@ class BackofficeConversationDetailView(AdminRequiredMixin, View):
         conversation = self.get_conversation()
         form = MessageForm(request.POST, request.FILES)
         if not form.is_valid():
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
             return self.afficher(conversation, form)
         try:
             message = envoyer_message(

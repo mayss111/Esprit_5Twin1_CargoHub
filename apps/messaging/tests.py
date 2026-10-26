@@ -183,6 +183,23 @@ def test_piece_jointe_sans_texte_acceptee(client, conversation, pme):
     assert message.piece_jointe.name.endswith("preuve.pdf")
 
 
+def test_message_vocal_stocke_et_accessible_aux_participants(client, conversation, pme, intrus):
+    client.force_login(pme)
+    audio = SimpleUploadedFile("message-vocal.webm", b"audio-data", content_type="audio/webm")
+    reponse = client.post(
+        reverse("messaging:conversation", args=[conversation.pk]),
+        {"contenu": "", "fichier_audio": audio},
+    )
+    assert reponse.status_code == 302
+    message = conversation.messages.get()
+    assert message.fichier_audio.name.endswith("message-vocal.webm")
+    assert not message.piece_jointe
+    assert client.get(reverse("messaging:message_audio", args=[message.pk])).status_code == 200
+
+    client.force_login(intrus)
+    assert client.get(reverse("messaging:message_audio", args=[message.pk])).status_code == 404
+
+
 def test_message_signale_masque_pour_l_interlocuteur(client, conversation, pme, transporteur):
     client.force_login(pme)
     reponse = client.post(
