@@ -22,7 +22,7 @@ from .forms import EntrepotForm
 from .models import Entrepot
 from .services.capacity import synthese_entrepot
 from .services.distance import distance_km
-from .services.recommander import depuis_json
+from .services.recommander import classement_immediat, depuis_json, recommander, vers_json
 from .services.reservation import STATUTS_ELIGIBLES
 from .tasks import calculer_recommandation_entrepots
 
@@ -219,8 +219,18 @@ class RecommanderEntrepotView(RoleRequiredMixin, View):
         return redirect("warehouses:liste")
 
     def post(self, request):
-        jeton = secrets.token_urlsafe(16)
         jour = _date_post(request.POST.get("date"))
+        if classement_immediat():
+            jeton = secrets.token_urlsafe(16)
+            resultat = vers_json(recommander(request.user, request.POST.get("expedition"), jour))
+            ecrire(
+                _cle_recommandation(jeton),
+                {"statut": "PRET", "user_id": request.user.pk, "resultat": resultat},
+            )
+            contexte = _contexte_carte(request)
+            _appliquer_recommandation(contexte, request.user, jeton)
+            return render(request, "warehouses/liste.html", contexte)
+        jeton = secrets.token_urlsafe(16)
         ecrire(
             _cle_recommandation(jeton),
             {"statut": "EN_COURS", "user_id": request.user.pk},
