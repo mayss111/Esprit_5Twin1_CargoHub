@@ -1,6 +1,6 @@
 # Module 3 — Transporteurs & Véhicules (apps/fleet)
 
-Module de **Lakhdher** : gestion de flotte, trajets, conformité, impact écologique, pages Django (front-office transporteur + back-office) et API REST consommée par le SPA React (`frontend/`).
+Module de **Lakhdher** : gestion de flotte, trajets, conformité, bilans CO₂ rendus par Django (front-office transporteur + back-office) et API REST consommée par le module Matching (M4).
 
 ## Modèles
 
@@ -96,6 +96,8 @@ Réponse paginée `{"count": n, "results": [...]}` : trajets ouverts, à venir, 
 ## CO₂
 
 `emissions = distance_km × facteur(type) × (charge / capacité)` — facteurs modifiables par l'admin, points éco = CO₂ ÷ 100 (transmis au module Fidélité M5).
+
+Le transporteur consulte le bilan par véhicule dans `/flotte/impact/`. Le rapport `/ecologie/` compare les émissions partagées au scénario d'un trajet dédié et est mis à jour à la livraison.
 
 ## Tests
 

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}CO₂ économisé{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <h1 class="page-title mb-1">CO₂ économisé grâce au partage</h1>
+    <p class="text-muted mb-0">Comparaison avec un trajet dédié, calculée à la livraison des expéditions.</p>
+  </div>
+  {% if est_transporteur %}
+  <a class="btn btn-outline-success" href="{% url 'fleet:impact' %}">
+    <i class="bi bi-bar-chart-line" aria-hidden="true"></i> Voir mon impact par véhicule
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-4">
+    <div class="card card-ch p-3 h-100">
+      <div class="text-muted small">CO₂ économisé au total</div>
+      <div class="fs-3 fw-bold text-success">{{ co2_total_economise }} kg</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-4">
+    <div class="card card-ch p-3 h-100">
+      <div class="text-muted small">Expéditions livrées</div>
+      <div class="fs-3 fw-bold">{{ empreintes|length }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card card-ch p-3 mb-4">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Expédition</th>
+          <th>Trajet</th>
+          <th>Distance</th>
+          <th>Partagé</th>
+          <th>Dédié</th>
+          <th>Économisé</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for empreinte in empreintes %}
+        <tr>
+          <td class="fw-semibold">#{{ empreinte.reservation.expedition_id }}</td>
+          <td>{{ empreinte.reservation.trajet.ville_depart }} → {{ empreinte.reservation.trajet.ville_arrivee }}</td>
+          <td>{{ empreinte.distance_km }} km</td>
+          <td>{{ empreinte.co2_partage_kg }} kg</td>
+          <td>{{ empreinte.co2_dedie_kg }} kg</td>
+          <td><span class="badge text-bg-success">{{ empreinte.co2_economise_kg }} kg</span></td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-muted py-4 text-center">
+            Aucune expédition livrée pour l’instant. Le CO₂ économisé apparaîtra à la livraison.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

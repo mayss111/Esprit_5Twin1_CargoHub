@@ -12,6 +12,22 @@
   <div class="col-sm-4"><div class="kpi"><div class="small text-muted">{% tr "Points éco" %}</div><div class="val">{{ total.points_eco }}</div></div></div>
 </section>
 {% if bilans %}
+<section class="card card-ch p-3 p-md-4 mb-4" aria-labelledby="graphique-co2-titre">
+  <h2 id="graphique-co2-titre" class="h5 mb-3">CO₂ par véhicule</h2>
+  {% for vehicule, bilan in bilans %}
+  <div class="mb-3">
+    <div class="d-flex justify-content-between gap-3 small mb-1">
+      <span class="fw-semibold">{{ vehicule.immatriculation }}</span>
+      <span>{{ bilan.co2_total_kg }} kg</span>
+    </div>
+    <div class="progress" role="img" aria-label="{{ vehicule.immatriculation }} : {{ bilan.co2_total_kg }} kg de CO₂">
+      <div class="progress-bar bg-success" style="width: {% widthratio bilan.co2_total_kg total.co2_total_kg 100 %}%"></div>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+{% if bilans %}
 <div class="table-responsive"><table class="table table-ch align-middle">
   <caption class="visually-hidden">{% tr "Bilan CO₂ par véhicule" %}</caption>
   <thead><tr><th scope="col">{% tr "Véhicule" %}</th><th scope="col">{% tr "Trajets terminés" %}</th><th scope="col">{% tr "CO₂ émis" %}</th><th scope="col">{% tr "Points éco" %}</th><th scope="col"><span class="visually-hidden">{% tr "Actions" %}</span></th></tr></thead>
