@@ -8,7 +8,6 @@ import hashlib
 import json
 import logging
 import re
-import time
 import unicodedata
 from datetime import date, datetime
 from decimal import Decimal
@@ -151,25 +150,14 @@ def generer_json(description):
     if not settings.GEMINI_API_KEY:
         raise AssistantIndisponible("L'assistant IA n'est pas configuré.")
     try:
-        from google import genai
-        from google.genai import types
+        from apps.shipments.services.gemini_client import generer_texte
     except ImportError as exc:
         raise AssistantIndisponible(MESSAGE_INDISPONIBLE) from exc
-
-    client = genai.Client(api_key=settings.GEMINI_API_KEY, http_options=types.HttpOptions(timeout=20_000))
-    debut = time.perf_counter()
     try:
-        reponse = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=_consigne(description),
-            config=types.GenerateContentConfig(temperature=0, response_mime_type="application/json"),
-        )
-        texte = reponse.text or ""
+        texte, duree = generer_texte(_consigne(description))
     except Exception as exc:
-        duree = int((time.perf_counter() - debut) * 1000)
-        logger.warning("Assistant Gemini indisponible (%s) après %d ms", type(exc).__name__, duree)
+        logger.warning("Assistant Gemini indisponible (%s)", type(exc).__name__)
         raise AssistantIndisponible(MESSAGE_INDISPONIBLE) from exc
-    duree = int((time.perf_counter() - debut) * 1000)
     logger.info("Assistant Gemini en %d ms", duree)
     return texte, duree
 

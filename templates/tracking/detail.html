@@ -28,7 +28,7 @@
       <p class="text-muted">Aucune position pour le moment.</p>
       {% endif %}
       {% if est_transporteur and reservation.statut != "LIVREE" %}
-      <form method="post">{% csrf_token %}
+      <form method="post" novalidate data-controle>{% csrf_token %}
         <input type="hidden" name="action" value="position">
         {{ form_position|crispy }}
         <button class="btn btn-primary" type="submit">Enregistrer la position</button>
@@ -51,7 +51,7 @@
       {% empty %}
       <p class="text-muted">Aucun incident déclaré.</p>
       {% endfor %}
-      <form method="post" class="mt-3">{% csrf_token %}
+      <form method="post" class="mt-3" novalidate data-controle>{% csrf_token %}
         <input type="hidden" name="action" value="incident">
         {{ form_incident|crispy }}
         <button class="btn btn-outline-danger" type="submit">Déclarer un incident</button>
@@ -72,14 +72,14 @@
       <p class="text-muted">Le transporteur n’a pas encore généré de code.</p>
       {% endif %}
       {% if est_transporteur and reservation.statut != "LIVREE" %}
-      <form method="post" enctype="multipart/form-data" class="mt-2">{% csrf_token %}
+      <form method="post" enctype="multipart/form-data" class="mt-2" novalidate data-controle>{% csrf_token %}
         <input type="hidden" name="action" value="preuve">
         {{ form_preuve|crispy }}
         <button class="btn btn-primary" type="submit">{% if preuve %}Mettre à jour la photo{% else %}Générer le code{% endif %}</button>
       </form>
       {% endif %}
       {% if est_pme and preuve and not preuve.confirmee_le %}
-      <form method="post" class="mt-3">{% csrf_token %}
+      <form method="post" class="mt-3" novalidate data-controle>{% csrf_token %}
         <input type="hidden" name="action" value="confirmer">
         {{ form_confirmation|crispy }}
         <button class="btn btn-success" type="submit">Confirmer la livraison</button>
@@ -100,7 +100,7 @@
       </article>
       {% empty %}<p class="text-muted">Pas encore d’avis.</p>{% endfor %}
       {% if reservation.statut == "LIVREE" and not mon_avis %}
-      <form method="post" data-ia="Analyse du sentiment…">{% csrf_token %}
+      <form method="post" novalidate data-controle data-ia="Analyse du sentiment…">{% csrf_token %}
         <input type="hidden" name="action" value="avis">
         {{ form_avis|crispy }}
         <button class="btn btn-primary" type="submit">Publier l’avis</button>

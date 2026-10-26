@@ -18,7 +18,7 @@
       {% if parrainage %}
       <p>Votre parrain : {{ parrainage.parrain.email }}{% if parrainage.recompense_versee %} — récompense versée{% endif %}.</p>
       {% else %}
-      <form method="post">{% csrf_token %}
+      <form method="post" novalidate data-controle>{% csrf_token %}
         {{ form_parrain|crispy }}
         <button class="btn btn-primary" type="submit">Enregistrer mon parrain</button>
       </form>

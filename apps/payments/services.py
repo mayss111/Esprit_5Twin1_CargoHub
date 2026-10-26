@@ -1,19 +1,17 @@
 """Encaissement, facture PDF, commission et remise d’un code promo."""
 
 from decimal import Decimal
-from io import BytesIO
 
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
 
 from apps.bookings.models import Reservation
 
 from .models import Commission, Facture, Paiement
+from .pdf import rendre_pdf
 
 TAUX_COMMISSION = Decimal("0.08")
 STATUTS_PAYABLES = (
@@ -66,36 +64,14 @@ def appliquer_code(paiement: Paiement, code: str) -> Paiement:
     return paiement
 
 
-def rendre_pdf(facture: Facture) -> bytes:
-    paiement = facture.paiement
-    reservation = paiement.reservation
-    buffer = BytesIO()
-    page = canvas.Canvas(buffer, pagesize=A4)
-    page.setTitle(facture.numero)
-    y = 800
-    page.setFont("Helvetica-Bold", 16)
-    page.drawString(50, y, "CargoHub — Facture")
-    page.setFont("Helvetica", 11)
-    for ligne in (
-        f"Numéro : {facture.numero}",
-        f"Date : {timezone.localdate():%d/%m/%Y}",
-        f"Réservation : #{reservation.pk}",
-        f"PME : {reservation.expedition.pme.email}",
-        f"Transporteur : {reservation.trajet.transporteur.email}",
-        f"Montant TTC : {paiement.montant} DT",
-        f"Code promo : {paiement.code_promo or '—'}",
-        f"Statut : {paiement.get_statut_display()}",
-    ):
-        y -= 22
-        page.drawString(50, y, ligne)
-    page.showPage()
-    page.save()
-    return buffer.getvalue()
+def rafraichir_pdf(facture: Facture) -> Facture:
+    facture.fichier.save(f"{facture.numero}.pdf", ContentFile(rendre_pdf(facture)), save=True)
+    return facture
 
 
 def _attacher_pdf(facture: Facture) -> Facture:
     if not facture.fichier:
-        facture.fichier.save(f"{facture.numero}.pdf", ContentFile(rendre_pdf(facture)), save=True)
+        rafraichir_pdf(facture)
     return facture
 
 

@@ -13,7 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends libpq5 fonts-de
 
 COPY requirements/ requirements/
 ARG REQUIREMENTS=requirements/base.txt
-RUN pip install -r ${REQUIREMENTS}
+# Torch CPU avant le reste : sinon sentence-transformers installe la version CUDA,
+# trop lourde, et le worker bloque la machine au premier classement.
+RUN pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.14.1"
+RUN pip install --timeout 180 --retries 8 --upgrade-strategy only-if-needed -r ${REQUIREMENTS}
 
 COPY . .
 

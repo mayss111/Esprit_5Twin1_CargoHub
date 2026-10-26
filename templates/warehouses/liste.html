@@ -64,6 +64,14 @@
       </div>
     </div>
   </form>
+  {% if recommandation_statut == "EN_COURS" %}
+    <div class="alert alert-info mt-3 mb-0" role="status" id="recommandation-attente"
+      data-statut-url="{% url 'warehouses:recommandation_statut' %}?jeton={{ recommandation_jeton }}"
+      data-resultat-url="{% url 'warehouses:liste' %}?reco={{ recommandation_jeton }}"
+      data-timeout="{% tr "La recherche prend plus de temps que prévu. Rechargez la page dans un moment." %}">
+      <p class="mb-0" data-message>{% tr "Recherche des entrepôts en cours. La page se met à jour toute seule." %}</p>
+    </div>
+  {% endif %}
   {% if recommandation.erreur %}
     <div class="alert alert-warning mt-3 mb-0" role="alert">{{ recommandation.erreur }}</div>
   {% elif recommandation.recommandations %}
@@ -132,4 +140,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="{% static 'shipments/js/filtre.js' %}"></script>
 <script src="{% static 'warehouses/js/carte.js' %}?v=20261026b"></script>
+{% if recommandation_statut == "EN_COURS" %}
+<script src="{% static 'warehouses/js/recommandation.js' %}?v=20261026g"></script>
+{% endif %}
 {% endblock %}

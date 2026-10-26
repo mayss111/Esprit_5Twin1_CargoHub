@@ -98,7 +98,7 @@ class ExportExcelView(AdminRequiredMixin, View):
 
 class ExportPdfView(AdminRequiredMixin, View):
     def get(self, request):
-        kpis, series, _remplissage = indicateurs()
-        reponse = HttpResponse(pdf_pilotage(kpis, series), content_type="application/pdf")
+        kpis, series, remplissage = indicateurs()
+        reponse = HttpResponse(pdf_pilotage(kpis, series, remplissage), content_type="application/pdf")
         reponse["Content-Disposition"] = 'attachment; filename="cargohub-pilotage.pdf"'
         return reponse
