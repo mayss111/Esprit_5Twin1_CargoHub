@@ -22,3 +22,6 @@ staticfiles/
 .DS_Store
 htmlcov/
 .coverage
+
+# Celery generated scheduler database
+celerybeat-schedule
