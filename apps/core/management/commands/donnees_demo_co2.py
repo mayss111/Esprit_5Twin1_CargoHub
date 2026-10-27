@@ -93,8 +93,14 @@ class Command(BaseCommand):
         )
 
         trajet_demo = Trajet.objects.get(vehicule__immatriculation="214 TU 3382", distance_km=270)
-        depart, _ = Adresse.objects.get_or_create(ligne="Zone industrielle", ville="Monastir")
-        arrivee, _ = Adresse.objects.get_or_create(ligne="Rue de Marseille", ville="Tunis")
+        # Les adresses de démonstration ne sont pas uniques en base : reprendre la première
+        # correspondance évite MultipleObjectsReturned après plusieurs exécutions de donnees_demo.
+        depart = Adresse.objects.filter(ligne="Zone industrielle", ville="Monastir").order_by("pk").first()
+        if depart is None:
+            depart = Adresse.objects.create(ligne="Zone industrielle", ville="Monastir")
+        arrivee = Adresse.objects.filter(ligne="Rue de Marseille", ville="Tunis").order_by("pk").first()
+        if arrivee is None:
+            arrivee = Adresse.objects.create(ligne="Rue de Marseille", ville="Tunis")
         expedition, _ = Expedition.objects.get_or_create(
             pme=pme,
             description="Expédition de démonstration pour valider le CO₂ économisé.",
@@ -121,7 +127,14 @@ class Command(BaseCommand):
             trajet=trajet_demo,
             defaults={"statut": Reservation.Statut.LIVREE},
         )
-        enregistrer_empreinte_reservation(reservation)
+        # Le seed initial crée certaines livraisons directement sans passer par le workflow
+        # de changement de statut. Recalculer les empreintes rend le bilan de démo complet.
+        livraisons = Reservation.objects.filter(
+            statut=Reservation.Statut.LIVREE,
+            expedition__pme=pme,
+        ).select_related("expedition", "trajet__vehicule")
+        for livraison in livraisons:
+            enregistrer_empreinte_reservation(livraison)
         self.stdout.write(
-            self.style.SUCCESS("Données CO₂ prêtes : 3 véhicules, 4 trajets terminés et 1 livraison de démonstration.")
+            self.style.SUCCESS("Données CO2 prêtes : 3 véhicules, 4 trajets terminés et 1 livraison de démonstration.")
         )
