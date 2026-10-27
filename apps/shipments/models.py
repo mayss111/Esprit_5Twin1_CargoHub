@@ -52,6 +52,8 @@ class Expedition(Horodate):
     class Statut(models.TextChoices):
         BROUILLON = "BROUILLON", "Brouillon"
         PUBLIEE = "PUBLIEE", "Publiée"
+        A_VERIFIER = "A_VERIFIER", "À vérifier"
+        REFUSEE = "REFUSEE", "Refusée"
         RESERVEE = "RESERVEE", "Réservée"
         LIVREE = "LIVREE", "Livrée"
         ANNULEE = "ANNULEE", "Annulée"
@@ -67,11 +69,16 @@ class Expedition(Horodate):
     # related_name="+" : deux liens vers Adresse, sans nom inverse en double.
     adresse_depart = models.ForeignKey(Adresse, on_delete=models.PROTECT, related_name="+")
     adresse_arrivee = models.ForeignKey(Adresse, on_delete=models.PROTECT, related_name="+")
-    date_souhaitee = models.DateField("date d'expédition")
+    date_souhaitee = models.DateField("date de départ")
+    date_arrivee = models.DateField("date d'arrivée")
     description = models.TextField(blank=True)
     statut = models.CharField(max_length=20, choices=Statut.choices, default=Statut.BROUILLON)
     # Réservé à une estimation future. Cette version ne calcule pas de prix.
     prix_estime = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    motif_decision = models.TextField("motif de la décision", blank=True)
+    empreinte_verification = models.CharField(max_length=64, blank=True)
+    verifie_le = models.DateTimeField(null=True, blank=True)
+    duree_verification_ms = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -97,13 +104,29 @@ class Expedition(Horodate):
         return self.reservations.filter(statut__in=RESERVATIONS_CONFIRMEES).exists()
 
     def peut_etre_modifiee(self):
-        return self.statut in {self.Statut.BROUILLON, self.Statut.PUBLIEE} and not self.a_une_reservation_confirmee()
+        modifiables = {
+            self.Statut.BROUILLON,
+            self.Statut.PUBLIEE,
+            self.Statut.REFUSEE,
+            self.Statut.A_VERIFIER,
+        }
+        return self.statut in modifiables and not self.a_une_reservation_confirmee()
 
     def peut_etre_annulee(self):
-        return self.statut == self.Statut.PUBLIEE and not self.a_une_reservation_confirmee()
+        return self.peut_etre_modifiee()
+
+    @property
+    def controles_recents(self):
+        if self.verifie_le is None:
+            return self.controles.none()
+        return self.controles.filter(verifie_le=self.verifie_le)
+
+    def bon_disponible(self):
+        """Bon de transport utilisable : l'expédition a déjà été autorisée."""
+        return self.statut in {self.Statut.PUBLIEE, self.Statut.RESERVEE, self.Statut.LIVREE}
 
     def peut_etre_supprimee(self):
-        return self.statut == self.Statut.BROUILLON
+        return False
 
 
 class ArticleExpedie(models.Model):
@@ -159,3 +182,67 @@ class ArticleExpedie(models.Model):
     @property
     def est_interdit(self):
         return self.type_marchandise in CATEGORIES_INTERDITES
+
+
+class RegleInterdite(Horodate):
+    """Règle CargoHub. Gemini ne décide pas seul : seule une règle active confirme un refus."""
+
+    nom = models.CharField(max_length=80, unique=True)
+    description = models.TextField()
+    motif = models.TextField("motif d'interdiction")
+    mots_cles = models.CharField(
+        max_length=255,
+        help_text="Mots séparés par des virgules, cherchés dans le nom et la description.",
+    )
+    actif = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["nom"]
+        verbose_name = "règle d'interdiction"
+        verbose_name_plural = "règles d'interdiction"
+
+    def __str__(self):
+        return self.nom
+
+    def mots(self):
+        return [mot.casefold() for mot in self.mots_lisibles()]
+
+    def mots_lisibles(self):
+        return [mot.strip() for mot in self.mots_cles.split(",") if mot.strip()]
+
+
+class ControleArticle(models.Model):
+    """Résultat d'une vérification pour un article. Les lots précédents sont conservés."""
+
+    class Risque(models.TextChoices):
+        FAIBLE = "FAIBLE", "Faible"
+        MOYEN = "MOYEN", "Moyen"
+        ELEVE = "ELEVE", "Élevé"
+        INCONNU = "INCONNU", "Inconnu"
+
+    class Decision(models.TextChoices):
+        AUTORISE = "AUTORISE", "Autorisé"
+        A_VERIFIER = "A_VERIFIER", "À vérifier"
+        REFUSE = "REFUSE", "Refusé"
+
+    expedition = models.ForeignKey(Expedition, on_delete=models.CASCADE, related_name="controles")
+    article = models.ForeignKey(ArticleExpedie, null=True, blank=True, on_delete=models.SET_NULL)
+    identifiant_article = models.PositiveIntegerField()
+    nom = models.CharField(max_length=150)
+    categorie_declaree = models.CharField(max_length=20)
+    categorie_proposee = models.CharField(max_length=80, blank=True)
+    risque = models.CharField(max_length=10, choices=Risque.choices, default=Risque.INCONNU)
+    suspicion = models.BooleanField(default=False)
+    verification_manuelle = models.BooleanField(default=False)
+    motif = models.TextField(blank=True)
+    informations = models.TextField(blank=True)
+    decision = models.CharField(max_length=12, choices=Decision.choices)
+    regle = models.ForeignKey(RegleInterdite, null=True, blank=True, on_delete=models.SET_NULL)
+    verifie_le = models.DateTimeField()
+
+    class Meta:
+        ordering = ["identifiant_article"]
+        verbose_name = "contrôle d'article"
+
+    def __str__(self):
+        return f"{self.nom} ({self.get_decision_display()})"

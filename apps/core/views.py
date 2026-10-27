@@ -1,7 +1,33 @@
 from django.http import HttpResponse
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import ListView, TemplateView
 
+from apps.accounts.reliability import score_fiabilite
+from apps.core.roles import Role
+
 from .mixins import AdminRequiredMixin, RoleRequiredMixin
+from .traductions import LANGUES
+
+
+def choisir_langue(request):
+    """Enregistre FR, EN ou AR. Le choix est ignoré s'il vient seulement du navigateur."""
+    code = request.POST.get("langue", "fr")
+    if code not in LANGUES:
+        code = "fr"
+    suivant = request.POST.get("next") or reverse("core:accueil")
+    if not url_has_allowed_host_and_scheme(suivant, allowed_hosts={request.get_host()}):
+        suivant = reverse("core:accueil")
+    reponse = redirect(suivant)
+    reponse.set_cookie(
+        "cargohub_langue",
+        code,
+        max_age=60 * 60 * 24 * 365,
+        samesite="Lax",
+        secure=request.is_secure(),
+    )
+    return reponse
 
 
 def sante(request):
@@ -11,6 +37,14 @@ def sante(request):
 
 class AccueilView(TemplateView):
     template_name = "core/accueil.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        context["fiabilite_accueil"] = (
+            score_fiabilite(user) if user.is_authenticated and user.role in {Role.PME, Role.TRANSPORTEUR} else None
+        )
+        return context
 
 
 class ListeFrontView(RoleRequiredMixin, ListView):

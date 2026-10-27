@@ -1,0 +1,29 @@
+{% extends "backoffice/base.html" %}
+{% load cargohub %}
+{% block title %}{% tr "Contrats" %}{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">{% tr "Contrats" %}</h1>
+<p class="text-muted">{{ page_obj.paginator.count }} {% tr "contrat(s)" %}</p>
+<nav class="nav nav-pills mb-3" aria-label="{% tr "Filtrer par signature" %}">
+  <a class="nav-link {% if not request.GET.signature %}active{% endif %}" href="?">{% tr "Tous" %}</a>
+  <a class="nav-link {% if request.GET.signature == 'en_attente' %}active{% endif %}" href="?signature=en_attente">{% tr "En attente de signature" %}</a>
+  <a class="nav-link {% if request.GET.signature == 'signes' %}active{% endif %}" href="?signature=signes">{% tr "Signés" %}</a>
+</nav>
+{% if object_list %}
+<div class="table-responsive"><table class="table table-ch align-middle">
+  <caption class="visually-hidden">{% tr "Contrats" %}</caption>
+  <thead><tr><th scope="col">{% tr "Réservation" %}</th><th scope="col">{% tr "PME" %}</th><th scope="col">{% tr "Transporteur" %}</th><th scope="col">{% tr "Signé" %}</th><th scope="col">{% tr "Créé le" %}</th></tr></thead>
+  <tbody>{% for c in object_list %}
+    <tr>
+      <td><a href="{% url 'bo_contracts:detail' c.pk %}">{{ c.reservation }}</a></td>
+      <td>{{ c.reservation.expedition.pme }}</td>
+      <td>{{ c.reservation.trajet.transporteur }}</td>
+      <td>{{ c.est_signe|yesno:"Oui,Non" }}</td>
+      <td>{{ c.created_at|date:"d/m/Y" }}</td>
+    </tr>{% endfor %}
+  </tbody></table></div>
+{% include "core/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5">{% tr "Aucun contrat." %}</div>
+{% endif %}
+{% endblock %}

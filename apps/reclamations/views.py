@@ -1,0 +1,290 @@
+from datetime import datetime
+
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
+from django.utils import timezone
+from django.views import View
+from django.views.generic import CreateView, DetailView, ListView, UpdateView
+
+from apps.bookings.notification_service import notifier_dossier
+from apps.core.audio import AudioIndisponible, tts_http_response
+from apps.core.mixins import AdminRequiredMixin, RoleRequiredMixin
+from apps.core.roles import Role, est_admin
+
+from .forms import ReclamationForm, TraitementReclamationForm
+from .models import Reclamation
+
+
+class MesReclamationsView(RoleRequiredMixin, ListView):
+    model = Reclamation
+    roles = [Role.PME, Role.TRANSPORTEUR]
+    template_name = "reclamations/liste.html"
+    context_object_name = "reclamations"
+    paginate_by = None
+
+    def get_queryset(self):
+        if self.request.user.role == Role.TRANSPORTEUR:
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            )
+        elif self.request.user.role == Role.PME:
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__pme=self.request.user)
+            )
+        else:
+            acces = Q(auteur=self.request.user)
+        queryset = Reclamation.objects.filter(acces).distinct().select_related("expedition", "auteur")
+        if recherche := self.request.GET.get("q", "").strip():
+            queryset = queryset.filter(Q(reference__icontains=recherche) | Q(titre__icontains=recherche))
+        if statut := self.request.GET.get("statut"):
+            queryset = queryset.filter(statut=statut)
+        if type_reclamation := self.request.GET.get("type"):
+            queryset = queryset.filter(type_reclamation=type_reclamation)
+        for key, lookup in (("date_debut", "created_at__date__gte"), ("date_fin", "created_at__date__lte")):
+            valeur = self.request.GET.get(key)
+            if valeur:
+                try:
+                    queryset = queryset.filter(**{lookup: datetime.strptime(valeur, "%Y-%m-%d").date()})
+                except ValueError:
+                    pass
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["recherche"] = self.request.GET.get("q", "")
+        context["statuts"] = Reclamation.Statut.choices
+        context["types"] = Reclamation.Type.choices
+        context["filtres"] = self.request.GET
+        context["reclamations_concernees"] = self.object_list.exclude(auteur=self.request.user)
+        context["reclamations"] = self.object_list.filter(auteur=self.request.user)
+        return context
+
+
+class ReclamationCreerView(RoleRequiredMixin, CreateView):
+    model = Reclamation
+    form_class = ReclamationForm
+    roles = [Role.PME, Role.TRANSPORTEUR]
+    template_name = "reclamations/formulaire.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        form.instance.auteur = self.request.user
+        if self.request.user.role == Role.TRANSPORTEUR and not form.instance.partie_mise_en_cause_id:
+            form.instance.partie_mise_en_cause = form.instance.expedition.pme
+        response = super().form_valid(form)
+        notifier_dossier(
+            self.object,
+            "Nouvelle réclamation",
+            f"Une nouvelle réclamation concerne l’expédition {self.object.expedition.reference}.",
+            reverse("reclamations:detail", args=[self.object.pk]),
+            lien_admin=reverse("bo_reclamations:detail", args=[self.object.pk]),
+            administrateurs=True,
+            exclure=[self.request.user.pk],
+        )
+        messages.success(self.request, "Votre réclamation a été enregistrée et est en attente de traitement.")
+        return response
+
+    def get_success_url(self):
+        return reverse("reclamations:detail", args=[self.object.pk])
+
+
+class MesReclamationsMixin(LoginRequiredMixin):
+    model = Reclamation
+    context_object_name = "reclamation"
+
+    def get_queryset(self):
+        if self.request.user.role == Role.TRANSPORTEUR:
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            )
+        elif self.request.user.role == Role.PME:
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__pme=self.request.user)
+            )
+        else:
+            acces = Q(auteur=self.request.user)
+        return Reclamation.objects.filter(acces).distinct().select_related("expedition", "auteur", "assigne_a")
+
+
+class ReclamationDetailView(MesReclamationsMixin, DetailView):
+    template_name = "reclamations/detail.html"
+
+
+class ReclamationEcouterView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        if est_admin(request.user):
+            queryset = Reclamation.objects.all()
+        elif request.user.role == Role.TRANSPORTEUR:
+            queryset = Reclamation.objects.filter(
+                Q(auteur=request.user)
+                | Q(partie_mise_en_cause=request.user)
+                | Q(expedition__reservations__trajet__transporteur=request.user)
+            )
+        else:
+            queryset = Reclamation.objects.filter(
+                Q(auteur=request.user) | Q(partie_mise_en_cause=request.user) | Q(expedition__pme=request.user)
+            )
+        reclamation = get_object_or_404(queryset.distinct(), pk=pk)
+        texte = f"{reclamation.titre}. {reclamation.description}."
+        if reclamation.reponse_admin:
+            texte += f" Réponse administrative : {reclamation.reponse_admin}."
+        if reclamation.justification_decision:
+            texte += f" Justification : {reclamation.justification_decision}."
+        try:
+            return tts_http_response(texte)
+        except AudioIndisponible:
+            return HttpResponse("Le service audio est indisponible.", status=503)
+
+
+class ReclamationModifierView(MesReclamationsMixin, UpdateView):
+    form_class = ReclamationForm
+    template_name = "reclamations/formulaire.html"
+
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .filter(auteur=self.request.user, statut__in=[Reclamation.Statut.EN_ATTENTE, Reclamation.Statut.INFOS])
+        )
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        notifier_dossier(
+            self.object,
+            "Réclamation mise à jour",
+            f"La réclamation {self.object.reference} a été modifiée par son auteur.",
+            reverse("reclamations:detail", args=[self.object.pk]),
+            lien_admin=reverse("bo_reclamations:detail", args=[self.object.pk]),
+            administrateurs=True,
+            exclure=[self.request.user.pk],
+        )
+        messages.success(self.request, "Votre réclamation a été mise à jour.")
+        return response
+
+    def get_success_url(self):
+        return reverse("reclamations:detail", args=[self.object.pk])
+
+
+class ReclamationAnnulerView(MesReclamationsMixin, View):
+    def post(self, request, pk):
+        reclamation = get_object_or_404(self.get_queryset().filter(auteur=request.user), pk=pk)
+        if not reclamation.annulable_par_auteur:
+            messages.error(request, "Cette réclamation ne peut plus être annulée.")
+        else:
+            reclamation.statut = Reclamation.Statut.ANNULEE
+            reclamation.save(update_fields=["statut", "updated_at"])
+            messages.success(request, "Votre réclamation a été annulée.")
+        return redirect("reclamations:detail", pk=pk)
+
+
+class ReclamationSupprimerView(MesReclamationsMixin, View):
+    def post(self, request, pk):
+        reclamation = get_object_or_404(self.get_queryset().filter(auteur=request.user), pk=pk)
+        if not reclamation.modifiable_par_auteur:
+            messages.error(request, "Cette réclamation ne peut plus être supprimée après son traitement.")
+        else:
+            reclamation.delete()
+            messages.success(request, "La réclamation a été supprimée.")
+            return redirect("reclamations:liste")
+        return redirect("reclamations:detail", pk=pk)
+
+
+class BackofficeReclamationsView(AdminRequiredMixin, ListView):
+    model = Reclamation
+    template_name = "reclamations/backoffice/liste.html"
+    context_object_name = "reclamations"
+    paginate_by = 25
+
+    def get_queryset(self):
+        queryset = Reclamation.objects.select_related("auteur", "expedition", "assigne_a")
+        recherche = self.request.GET.get("q", "").strip()
+        if recherche:
+            queryset = queryset.filter(Q(reference__icontains=recherche) | Q(titre__icontains=recherche))
+        if statut := self.request.GET.get("statut"):
+            queryset = queryset.filter(statut=statut)
+        if type_reclamation := self.request.GET.get("type"):
+            queryset = queryset.filter(type_reclamation=type_reclamation)
+        for key, lookup in (("date_debut", "created_at__date__gte"), ("date_fin", "created_at__date__lte")):
+            valeur = self.request.GET.get(key)
+            if valeur:
+                try:
+                    queryset = queryset.filter(**{lookup: datetime.strptime(valeur, "%Y-%m-%d").date()})
+                except ValueError:
+                    pass
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["statuts"] = Reclamation.Statut.choices
+        context["types"] = Reclamation.Type.choices
+        context["filtres"] = self.request.GET
+        return context
+
+
+class BackofficeReclamationDetailView(AdminRequiredMixin, UpdateView):
+    model = Reclamation
+    form_class = TraitementReclamationForm
+    template_name = "reclamations/backoffice/detail.html"
+    context_object_name = "reclamation"
+
+    def get_queryset(self):
+        return Reclamation.objects.select_related("auteur", "expedition", "assigne_a")
+
+    def form_valid(self, form):
+        ancienne_version = Reclamation.objects.get(pk=self.object.pk)
+        ancien_statut = ancienne_version.statut
+        ancien_reponse = ancienne_version.reponse_admin
+        if form.cleaned_data.get("statut") == Reclamation.Statut.RESOLUE:
+            form.instance.resolue_le = timezone.now()
+        elif form.cleaned_data.get("statut") not in {Reclamation.Statut.RESOLUE, Reclamation.Statut.REJETEE}:
+            form.instance.resolue_le = None
+        if not form.instance.assigne_a_id and form.cleaned_data.get("statut") != Reclamation.Statut.EN_ATTENTE:
+            form.instance.assigne_a = self.request.user
+        response = super().form_valid(form)
+        nouveau_statut = self.object.statut
+        if nouveau_statut != ancien_statut or self.object.reponse_admin != ancien_reponse:
+            if nouveau_statut == Reclamation.Statut.INFOS:
+                titre = "Informations complémentaires demandées"
+                message = (
+                    f"Des informations complémentaires sont demandées pour la réclamation {self.object.reference}."
+                )
+            elif nouveau_statut in {Reclamation.Statut.RESOLUE, Reclamation.Statut.REJETEE}:
+                titre = "Décision concernant votre réclamation"
+                message = f"La réclamation {self.object.reference} a été traitée : {self.object.get_statut_display()}."
+            else:
+                titre = "Statut de votre réclamation mis à jour"
+                message = (
+                    f"La réclamation {self.object.reference} est maintenant « {self.object.get_statut_display()} »."
+                )
+            notifier_dossier(
+                self.object,
+                titre,
+                message,
+                reverse("reclamations:detail", args=[self.object.pk]),
+            )
+        messages.success(self.request, "La réclamation a été mise à jour.")
+        return response
+
+    def get_success_url(self):
+        return reverse("bo_reclamations:detail", args=[self.object.pk])

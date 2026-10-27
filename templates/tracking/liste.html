@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ titre }}{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">{{ titre }}</h1>
+<p class="text-muted">{{ sous_titre }}</p>
+{% if object_list %}
+<div class="table-responsive">
+  <table class="table table-ch align-middle">
+    <caption class="visually-hidden">Livraisons à suivre</caption>
+    <thead><tr><th scope="col">N°</th><th scope="col">Trajet</th><th scope="col">Statut</th><th scope="col"><span class="visually-hidden">Action</span></th></tr></thead>
+    <tbody>
+      {% for reservation in object_list %}
+      <tr>
+        <td>{{ reservation.pk }}</td>
+        <td>{{ reservation.trajet }}</td>
+        <td>{{ reservation.get_statut_display }}</td>
+        <td><a class="btn btn-sm btn-primary" href="{% url 'tracking:detail' reservation.pk %}">Ouvrir le suivi</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted border rounded-3 p-4 text-center mb-0">Aucune livraison en cours. Une réservation acceptée apparaîtra ici.</p>
+{% endif %}
+{% endblock %}

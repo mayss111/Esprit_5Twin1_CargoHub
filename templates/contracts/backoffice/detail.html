@@ -1,0 +1,21 @@
+{% extends "backoffice/base.html" %}
+{% load cargohub %}
+{% block title %}{% tr "Contrat" %} {{ contrat.reservation }}{% endblock %}
+{% block content %}
+<nav aria-label="{% tr "Fil d’Ariane" %}"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bo_contracts:liste' %}">{% tr "Contrats" %}</a></li><li class="breadcrumb-item active" aria-current="page">{{ contrat.reservation }}</li></ol></nav>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <h1 class="page-title mb-0">{% tr "Contrat de la" %} {{ contrat.reservation|lower }}</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-primary" href="{% url 'bo_contracts:pdf' contrat.pk %}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> PDF<span class="visually-hidden"> {% tr "(nouvel onglet)" %}</span></a>
+    <a class="btn btn-outline-danger" href="{% url 'bo_contracts:supprimer' contrat.pk %}"><i class="bi bi-trash" aria-hidden="true"></i> {% tr "Supprimer" %}</a>
+  </div>
+</div>
+<div class="card card-ch p-4 mb-3">{% include "contracts/_resume.html" %}</div>
+<div class="card card-ch p-4">
+  <h2 class="h5">{% tr "Documents de transport" %}</h2>
+  <ul class="mb-0">
+    {% for d in contrat.reservation.documents.all %}<li><a href="{{ d.fichier.url }}" target="_blank" rel="noopener">{% tr d.get_type_display %}<span class="visually-hidden"> {% tr "(nouvel onglet)" %}</span></a> · {{ d.created_at|date:"d/m/Y" }}</li>
+    {% empty %}<li class="text-muted">Aucun document.</li>{% endfor %}
+  </ul>
+</div>
+{% endblock %}

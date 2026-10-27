@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags  cargohub %}
+{% block title %}{% tr "Double authentification" %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-6">
+  <div class="card card-ch p-4">
+    <h1 class="page-title h3 mb-3"><i class="bi bi-shield-lock"></i> {% tr "Double authentification" %}</h1>
+    {% if configuration %}
+      <p>{% tr "Le back-office est protégé par un code à usage unique. Pour l’activer :" %}</p>
+      <ol class="small">
+        <li>{% tr "Installez une application d’authentification (Google Authenticator, Microsoft Authenticator…)." %}</li>
+        <li>{% tr "Scannez ce QR code avec l’application." %}</li>
+        <li>{% tr "Saisissez le code à 6 chiffres affiché." %}</li>
+      </ol>
+      <div class="text-center my-3"><div class="d-inline-block bg-white p-2 border rounded">{{ qr_code|safe }}</div></div>
+      <p class="small text-muted text-center">{% tr "Impossible de scanner ? Clé à saisir :" %} <code class="user-select-all">{{ cle_secrete }}</code></p>
+    {% else %}
+      <p class="text-muted">{% tr "Saisissez le code à 6 chiffres affiché par votre application d’authentification." %}</p>
+    {% endif %}
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="next" value="{{ suivant }}">
+      {{ form|crispy }}
+      <button class="btn btn-primary w-100" type="submit">{% if configuration %}{% tr "Activer" %}{% else %}{% tr "Valider" %}{% endif %}</button>
+    </form>
+  </div>
+</div></div>
+{% endblock %}

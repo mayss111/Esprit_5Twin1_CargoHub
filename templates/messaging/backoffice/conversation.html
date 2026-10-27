@@ -1,0 +1,78 @@
+{% extends "backoffice/base.html" %}
+{% load static %}
+{% block title %}Conversation #{{ conversation.pk }}{% endblock %}
+{% block content %}
+<nav aria-label="Fil d’Ariane"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bo_messaging:conversations' %}">Conversations</a></li><li class="breadcrumb-item active">Conversation #{{ conversation.pk }}</li></ol></nav>
+<h1 class="page-title h3 mb-1">Conversation #{{ conversation.pk }}</h1><p class="text-muted">{% for p in conversation.participants.all %}{{ p }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+<div class="card card-ch p-3 mb-3 chat-fil"><ol class="list-unstyled mb-0" id="fil" data-conversation="{{ conversation.pk }}" data-moi="{{ user.pk }}" aria-live="polite">{% for m, texte in fil %}<li class="chat-message {% if m.auteur_id == user.pk %}chat-moi{% endif %}"{% if forloop.last %} id="dernier"{% endif %}><div class="chat-auteur"><span class="profil-avatar profil-avatar-sm">{% if m.auteur.photo_profil %}<img src="{{ m.auteur.photo_profil.url }}" alt="Photo de {{ m.auteur }}">{% else %}<i class="bi bi-person-fill" aria-hidden="true"></i>{% endif %}</span><span class="small text-muted">{{ m.auteur }} · {{ m.created_at|date:"d/m H:i" }}{% if m.auteur_id == user.pk %}<span class="message-etat ms-2">Envoyé</span>{% endif %}</span></div><div class="chat-bulle">{% if texte %}{{ texte|linebreaksbr }}{% endif %}
+      {% if m.fichier_audio and not m.signale %}
+      <div class="chat-audio mt-1"><audio controls preload="metadata"
+             src="{% url 'messaging:message_audio' m.pk %}"
+             aria-label="Message vocal de {{ m.auteur }}">
+        <span>Votre navigateur ne prend pas en charge l'audio.</span>
+      </audio></div>
+      {% endif %}
+      </div>
+      {% if not m.signale and m.contenu %}
+      <button type="button"
+              class="btn btn-sm btn-link px-0 btn-ecouter"
+              data-tts-text="{{ m.contenu|force_escape }}"
+              aria-label="Écouter ce message">
+        <i class="bi bi-volume-up" aria-hidden="true"></i> Écouter
+      </button>
+      {% endif %}
+      {% if m.piece_jointe and not m.signale %}<a class="small" href="{{ m.piece_jointe.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip" aria-hidden="true"></i> Pièce jointe</a>{% endif %}</li>{% empty %}<li class="text-muted" data-vide>Aucun message.</li>{% endfor %}</ol></div>
+{% if conversation.est_bloquee %}<div class="alert alert-warning">Cette conversation est bloquée.</div>{% endif %}
+
+<p id="messagerie-annonce" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+
+<form method="post" action="{% url 'bo_messaging:conversation' conversation.pk %}" enctype="multipart/form-data" class="card card-ch p-3" data-envoi-message>
+  {% csrf_token %}
+
+  <div class="mb-3">
+    <label for="id_contenu" class="form-label">Votre message</label>
+    <textarea name="contenu" cols="40" rows="2" maxlength="2000" class="form-control" id="id_contenu"></textarea>
+  </div>
+
+  <div class="mb-3">
+    <label for="id_piece_jointe" class="form-label">Pièce jointe (facultatif)</label>
+    <input type="file" name="piece_jointe" accept=".pdf,.jpg,.jpeg,.png" class="form-control" id="id_piece_jointe">
+  </div>
+
+  {# Enregistreur vocal : l'envoi démarre automatiquement à l'arrêt #}
+  <div class="mb-3">
+    <label class="form-label" for="btn-enregistrer-vocal">Message vocal (facultatif)</label>
+    <div class="d-flex flex-wrap align-items-center gap-2" data-enregistreur-vocal>
+      <button type="button" class="btn btn-outline-danger" id="btn-enregistrer-vocal"
+              data-enregistrer-vocal{% if conversation.est_bloquee %} disabled{% endif %}>
+        <i class="bi bi-mic" aria-hidden="true"></i> Enregistrer un vocal
+      </button>
+      <span class="small text-muted" data-statut-vocal role="status" aria-live="polite">Cliquez pour commencer.</span>
+    </div>
+    <div class="vocal-preview d-none mt-2" data-apercu-vocal>
+      <audio controls preload="metadata" data-audio-apercu aria-label="Aperçu du message vocal"></audio>
+      <span class="small text-muted d-block mt-1" data-duree-vocal>Durée : —</span>
+      <div class="d-flex flex-wrap gap-2 mt-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-supprimer-vocal>
+          <i class="bi bi-trash" aria-hidden="true"></i> Supprimer
+        </button>
+        <button type="button" class="btn btn-sm btn-primary" data-envoyer-vocal>
+          <i class="bi bi-send" aria-hidden="true"></i> Envoyer le vocal
+        </button>
+      </div>
+    </div>
+    <div class="form-text">Le vocal est envoyé directement à l'utilisateur concerné à l'arrêt de l'enregistrement.</div>
+  </div>
+
+  {# Repli pour les navigateurs sans MediaRecorder ou pour choisir un fichier existant #}
+  <div class="mb-3">
+    <label for="id_fichier_audio" class="form-label">Ou choisir un fichier audio</label>
+    <input type="file" name="fichier_audio" id="id_fichier_audio" accept="audio/*" class="form-control">
+    <div class="form-text">MP3, WAV, OGG, WebM ou M4A, 25 Mo maximum.</div>
+  </div>
+
+  <button class="btn btn-primary" type="submit"{% if conversation.est_bloquee %} disabled{% endif %}><i class="bi bi-send" aria-hidden="true"></i> Envoyer</button>
+</form>
+<a class="btn btn-outline-secondary mt-3" href="{% url 'bo_messaging:conversations' %}">Retour aux conversations</a>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/messagerie.js' %}?v=10"></script>{% endblock %}

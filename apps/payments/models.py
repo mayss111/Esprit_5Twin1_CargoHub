@@ -1,5 +1,6 @@
 """M5 — Paiement & facturation. Tables : Paiement, Facture, Commission."""
 
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.core.models import Horodate
@@ -15,7 +16,19 @@ class Paiement(Horodate):
     reservation = models.OneToOneField("bookings.Reservation", on_delete=models.PROTECT, related_name="paiement")
     montant = models.DecimalField(max_digits=10, decimal_places=2)
     statut = models.CharField(max_length=12, choices=Statut.choices, default=Statut.EN_ATTENTE)
+    code_promo = models.CharField(max_length=30, blank=True)
     stripe_session_id = models.CharField(max_length=255, blank=True)
+
+    def clean(self):
+        if self.montant is not None and self.montant <= 0:
+            raise ValidationError({"montant": "Le montant doit être supérieur à 0."})
+
+    @property
+    def libelle_commission(self):
+        try:
+            return "Oui" if self.commission.versee else "Non"
+        except Commission.DoesNotExist:
+            return "—"
 
     def __str__(self):
         return f"Paiement #{self.pk} — {self.montant} DT"

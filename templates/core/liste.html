@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{{ titre }}{% endblock %}
+{% load cargohub %}
+{% block title %}{% tr titre %}{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-end mb-4">
   <div>
-    <h1 class="page-title mb-1">{{ titre }}</h1>
-    {% if sous_titre %}<p class="text-muted mb-0">{{ sous_titre }}</p>{% endif %}
+    <h1 class="page-title mb-1">{% tr titre %}</h1>
+    {% if sous_titre %}<p class="text-muted mb-0">{% tr sous_titre %}</p>{% endif %}
   </div>
   {% if bouton %}<a href="{% url bouton.1 %}" class="btn btn-accent"><i class="bi bi-plus-lg"></i> {{ bouton.0 }}</a>{% endif %}
 </div>

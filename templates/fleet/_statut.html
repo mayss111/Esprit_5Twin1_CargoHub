@@ -1,0 +1,5 @@
+{% load cargohub %}
+{% if statut == "OUVERT" or statut == "ACTIF" %}<span class="badge text-bg-success"><i class="bi bi-check-circle" aria-hidden="true"></i> {% tr libelle %}</span>
+{% elif statut == "COMPLET" or statut == "EN_COURS" or statut == "EN_MAINTENANCE" %}<span class="badge text-bg-warning"><i class="bi bi-hourglass-split" aria-hidden="true"></i> {% tr libelle %}</span>
+{% elif statut == "NON_CONFORME" %}<span class="badge text-bg-danger"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i> {% tr libelle %}</span>
+{% else %}<span class="badge text-bg-secondary"><i class="bi bi-x-circle" aria-hidden="true"></i> {% tr libelle %}</span>{% endif %}

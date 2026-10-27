@@ -30,7 +30,14 @@ services:
       - key: AI_API_KEY
         sync: false
       - key: AI_MODEL
-        value: llama-3.3-70b-versatile
+        value: openai/gpt-oss-120b
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite
+      # L'offre gratuite n'a pas la mémoire pour Sentence Transformers. Le classement lexical prend le relais.
+      - key: SENTENCE_TRANSFORMERS_ACTIF
+        value: "0"
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_PUBLIC_KEY

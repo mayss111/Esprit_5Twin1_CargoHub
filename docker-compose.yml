@@ -11,8 +11,10 @@ services:
     env_file: .env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
+      HF_HOME: /home/cargohub/.cache/huggingface
     volumes:
       - .:/app            # le code de votre PC est utilisé directement (rechargement auto)
+      - hfcache:/home/cargohub/.cache/huggingface
     ports:
       - "8000:8000"
     depends_on:
@@ -20,14 +22,18 @@ services:
       redis: { condition: service_started }
 
   worker:
-    image: cargohub-dev
+    image: cargohub-dev     # réutilise l'image construite par « web » (une seule construction)
     pull_policy: never
-    command: celery -A config worker --beat --loglevel=info
+    command: celery -A config worker --beat --loglevel=info --concurrency=2
     env_file: .env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
+      HF_HOME: /home/cargohub/.cache/huggingface
     volumes:
       - .:/app
+      - hfcache:/home/cargohub/.cache/huggingface
+    healthcheck:
+      disable: true
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_started }
@@ -40,8 +46,7 @@ services:
       POSTGRES_PASSWORD: cargohub
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Database access is internal to Compose; avoid host port 5432 conflicts.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cargohub"]
       interval: 5s
@@ -54,3 +59,5 @@ services:
 
 volumes:
   pgdata:
+  frontend_node_modules:
+  hfcache:

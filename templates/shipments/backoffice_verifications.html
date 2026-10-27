@@ -1,0 +1,95 @@
+{% extends "backoffice/base.html" %}
+{% load static  cargohub %}
+{% block title %}{% tr "Vérifications" %}{% endblock %}
+{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}?v=20261025e" rel="stylesheet">{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <h1 class="page-title mb-1">{% tr "Vérifications des marchandises" %}</h1>
+    <p class="text-muted mb-0">{% tr "Les demandes à contrôler apparaissent en premier. Un refus automatique reste visible." %}</p>
+  </div>
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'bo_shipments:interdictions' %}">{% tr "Règles d'interdiction" %}</a>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <span class="verif-compteur verif-compteur-attente">{{ nombre_a_verifier }} {% tr "à vérifier" %}</span>
+  <span class="verif-compteur verif-compteur-refus">{{ nombre_refusees }} {% tr "refusée" %}{{ nombre_refusees|pluralize }}</span>
+</div>
+
+<form method="get" class="card card-ch p-3 mb-4" role="search" data-filtre-auto>
+  <div class="row g-3 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label" for="verif-reference">{% tr "Référence" %}</label>
+      <input class="form-control" id="verif-reference" name="q" value="{{ filtre.q }}" maxlength="40">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="verif-email">{% tr "E-mail" %}</label>
+      <input class="form-control" id="verif-email" type="search" name="email" value="{{ filtre.email }}" maxlength="254" placeholder="{% tr "E-mail de la PME" %}" inputmode="email" autocomplete="off">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="verif-statut">{% tr "Statut" %}</label>
+      <select class="form-select" id="verif-statut" name="statut">
+        <option value="">{% tr "Tous" %}</option>
+        <option value="A_VERIFIER" {% if filtre.statut == "A_VERIFIER" %}selected{% endif %}>{% tr "À vérifier" %}</option>
+        <option value="REFUSEE" {% if filtre.statut == "REFUSEE" %}selected{% endif %}>{% tr "Refusée" %}</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="verif-date">{% tr "Date" %}</label>
+      <input class="form-control" id="verif-date" type="date" name="date" value="{{ filtre.date }}">
+    </div>
+  </div>
+  {% if recherche %}
+    <p class="mb-0 mt-2"><a href="{% url 'bo_shipments:verifications' %}">{% tr "Effacer les filtres" %}</a></p>
+  {% endif %}
+</form>
+
+{% if expeditions %}
+  <div class="verif-liste">
+    {% for expedition in expeditions %}
+      <article class="verif-carte verif-{{ expedition.statut }}">
+        <div class="verif-entete">
+          <div class="verif-identite">
+            <a class="verif-ref" href="{% url 'bo_shipments:detail' expedition.pk %}">{{ expedition.reference }}</a>
+            <span class="badge-statut badge-{{ expedition.statut }}">{% tr expedition.get_statut_display %}</span>
+          </div>
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'bo_shipments:detail' expedition.pk %}">{% tr "Ouvrir le dossier" %}</a>
+        </div>
+        <p class="verif-meta mb-2">
+          {{ expedition.pme.email }}
+          <span aria-hidden="true">·</span>
+          {{ expedition.adresse_depart.ville }} → {{ expedition.adresse_arrivee.ville }}
+          <span aria-hidden="true">·</span>
+          {% tr "Départ" %} {{ expedition.date_souhaitee|date:"d/m/Y" }}
+        </p>
+        {% if expedition.motif_decision %}
+          <p class="verif-motif">{{ expedition.motif_decision }}</p>
+        {% else %}
+          <p class="verif-motif verif-motif-vide">{% tr "Aucun motif enregistré." %}</p>
+        {% endif %}
+        {% if expedition.statut == "A_VERIFIER" %}
+          <form method="post" action="{% url 'bo_shipments:verification_decision' expedition.pk %}" class="verif-decision">
+            {% csrf_token %}
+            <label class="form-label" for="motif-{{ expedition.pk }}">{% tr "Motif si vous refusez" %}</label>
+            <div class="verif-decision-ligne">
+              <input class="form-control" id="motif-{{ expedition.pk }}" name="motif" minlength="10" placeholder="{% tr "Au moins 10 caractères" %}">
+              <button class="btn btn-success" type="submit" name="decision" value="accepter">{% tr "Accepter" %}</button>
+              <button class="btn btn-danger" type="submit" name="decision" value="refuser">{% tr "Refuser" %}</button>
+            </div>
+          </form>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+  {% include "core/_pagination.html" %}
+{% else %}
+  <p class="verif-vide">
+    {% if recherche %}
+      {% tr "Aucune expédition ne correspond à cette recherche." %}
+    {% else %}
+      {% tr "Aucune expédition à vérifier." %}
+    {% endif %}
+  </p>
+{% endif %}
+{% endblock %}
+{% block extra_js %}<script src="{% static 'shipments/js/filtre.js' %}"></script>{% endblock %}

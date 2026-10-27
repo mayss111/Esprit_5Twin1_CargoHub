@@ -1,0 +1,29 @@
+{% extends "backoffice/base.html" %}
+{% load cargohub %}
+{% block title %}{% tr "Messages signalés" %}{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">{% tr "Messages signalés" %}</h1>
+<p class="text-muted">{% tr "Messages masqués par la modération IA. Rétablissez ceux signalés à tort (cela améliore aussi le jeu de test)." %}</p>
+{% if object_list %}
+<div class="table-responsive"><table class="table table-ch align-middle">
+  <caption class="visually-hidden">{% tr "Messages signalés par la modération" %}</caption>
+  <thead><tr><th scope="col">{% tr "Message" %}</th><th scope="col">{% tr "Auteur" %}</th><th scope="col">{% tr "Raison" %}</th><th scope="col">{% tr "Date" %}</th><th scope="col"><span class="visually-hidden">{% tr "Actions" %}</span></th></tr></thead>
+  <tbody>{% for m in object_list %}
+    <tr>
+      <td>{{ m.contenu|truncatechars:120 }}</td>
+      <td>{{ m.auteur }}</td>
+      <td>{{ m.raison_signalement|default:"—" }}</td>
+      <td>{{ m.created_at|date:"d/m/Y H:i" }}</td>
+      <td class="text-end text-nowrap">
+        <form method="post" action="{% url 'bo_messaging:moderer' m.pk %}" class="d-inline">{% csrf_token %}
+          <button class="btn btn-sm btn-outline-success" name="action" value="retablir" type="submit">{% tr "Rétablir" %}</button>
+          <button class="btn btn-sm btn-outline-danger" name="action" value="supprimer" type="submit">{% tr "Supprimer" %}</button>
+        </form>
+      </td>
+    </tr>{% endfor %}
+  </tbody></table></div>
+{% include "core/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5">{% tr "Aucun message signalé." %}</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if object %}Modifier la réclamation{% else %}Nouvelle réclamation{% endif %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-lg-8">
+  <div class="d-flex justify-content-between align-items-end mb-4"><h1 class="page-title mb-0">{% if object %}Modifier la réclamation{% else %}Nouvelle réclamation{% endif %}</h1><a href="{% if object %}{% url 'reclamations:detail' object.pk %}{% else %}{% url 'reclamations:liste' %}{% endif %}">Retour</a></div>
+  <div class="card card-ch p-4"><form method="post" novalidate>{% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="mb-3"><label class="form-label" for="id_expedition">{{ form.expedition.label }} <span class="text-danger">*</span></label>{{ form.expedition }}{% if form.expedition.help_text %}<div class="form-text">{{ form.expedition.help_text }}</div>{% endif %}{% for error in form.expedition.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+    {% if form.partie_mise_en_cause %}<div class="mb-3"><label class="form-label" for="id_partie_mise_en_cause">{{ form.partie_mise_en_cause.label }}</label>{{ form.partie_mise_en_cause }}{% if form.partie_mise_en_cause.help_text %}<div class="form-text">{{ form.partie_mise_en_cause.help_text }}</div>{% endif %}{% for error in form.partie_mise_en_cause.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>{% endif %}
+    <div class="mb-3"><label class="form-label" for="id_titre">{{ form.titre.label }} <span class="text-danger">*</span></label>{{ form.titre }}<div class="form-text">{{ form.titre.help_text }}</div>{% for error in form.titre.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+    <div class="mb-3"><label class="form-label" for="id_type_reclamation">{{ form.type_reclamation.label }} <span class="text-danger">*</span></label>{{ form.type_reclamation }}{% for error in form.type_reclamation.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+    <div class="mb-3"><label class="form-label" for="id_description">{{ form.description.label }} <span class="text-danger">*</span></label>{{ form.description }}<div class="form-text">{{ form.description.help_text }} <span id="description-count"></span></div>{% for error in form.description.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+    <button class="btn btn-accent" type="submit">{% if object %}Enregistrer les modifications{% else %}Envoyer la réclamation{% endif %}</button>
+  </form></div>
+</div></div>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'reclamations/js/formulaire.js' %}"></script>{% endblock %}
+

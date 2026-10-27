@@ -1,0 +1,10 @@
+{% load trajets  cargohub %}
+<dl class="row mb-0">
+  <dt class="col-sm-4">{% tr "Statut" %}</dt><dd class="col-sm-8">{% include "bookings/_statut.html" with statut=reservation.statut libelle=reservation.get_statut_display %}</dd>
+  <dt class="col-sm-4">{% tr "Expédition" %}</dt><dd class="col-sm-8">{{ reservation.expedition.reference }} · {{ reservation.expedition.adresse_depart.ville }} → {{ reservation.expedition.adresse_arrivee.ville }}</dd>
+  <dt class="col-sm-4">{% tr "PME" %}</dt><dd class="col-sm-8">{{ reservation.expedition.pme }}</dd>
+  <dt class="col-sm-4">{% tr "Transporteur" %}</dt><dd class="col-sm-8">{{ reservation.trajet.transporteur }}</dd>
+  <dt class="col-sm-4">{% tr "Trajet" %}</dt><dd class="col-sm-8">{{ reservation.trajet|itineraire }}{% tr ", départ le" %} {{ reservation.trajet.date_depart|date:"d/m/Y à H:i" }}</dd>
+  <dt class="col-sm-4">{% tr "Prix convenu" %}</dt><dd class="col-sm-8">{% if reservation.prix_convenu %}{{ reservation.prix_convenu }} DT{% else %}—{% endif %}</dd>
+  <dt class="col-sm-4">{% tr "Score de compatibilité" %}</dt><dd class="col-sm-8">{{ reservation.score_matching|default:"—" }}{% if reservation.score_matching is not None %} / 100{% endif %}</dd>
+</dl>

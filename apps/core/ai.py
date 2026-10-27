@@ -8,7 +8,7 @@ configuration (clé, fournisseur, modèle) soit la même pour tout le monde.
 Fournisseur : n'importe quelle API compatible OpenAI, réglée dans .env
     AI_BASE_URL=https://api.groq.com/openai/v1   (Groq, offre gratuite)
     AI_BASE_URL=http://localhost:11434/v1        (Ollama, en local)
-    AI_MODEL=llama-3.3-70b-versatile
+    AI_MODEL=openai/gpt-oss-120b
 
 Sans AI_API_KEY, `disponible()` renvoie False : chaque fonction IA doit
 alors prévoir un comportement de repli, pour que l'application marche
@@ -17,6 +17,7 @@ toujours (en local, en test, et pendant la démo si le réseau tombe).
 
 import json
 import logging
+import time
 
 from django.conf import settings
 
@@ -45,15 +46,17 @@ def demander(
     """Envoie une question au modèle et renvoie le texte de la réponse."""
     if not disponible():
         raise IAIndisponible("AI_API_KEY n'est pas configurée")
+    debut = time.perf_counter()
     try:
         reponse = _client().chat.completions.create(
             model=settings.AI_MODEL,
             temperature=temperature,
             messages=[{"role": "system", "content": systeme}, {"role": "user", "content": prompt}],
         )
+        logger.info("Appel IA réussi en %d ms", (time.perf_counter() - debut) * 1000)
         return reponse.choices[0].message.content.strip()
     except Exception as exc:  # réseau, quota, modèle inconnu…
-        logger.warning("Appel IA en échec : %s", exc)
+        logger.warning("Appel IA en échec après %d ms : %s", (time.perf_counter() - debut) * 1000, exc)
         raise IAIndisponible(str(exc)) from exc
 
 
@@ -66,3 +69,14 @@ def demander_json(prompt: str, systeme: str = "") -> dict:
         return json.loads(texte[debut : fin + 1])
     except ValueError as exc:
         raise IAIndisponible(f"Réponse non JSON : {texte[:200]}") from exc
+
+
+def mesurer(fonction, *args, **kwargs) -> tuple:
+    """
+    Exécute une fonction IA et renvoie (résultat, durée en millisecondes).
+    À utiliser dans les vues et dans `evaluer_ia` pour montrer le temps de réponse au jury :
+        resultat, ms = ai.mesurer(suggerer_prix, distance_km=160, poids_kg=300)
+    """
+    debut = time.perf_counter()
+    resultat = fonction(*args, **kwargs)
+    return resultat, round((time.perf_counter() - debut) * 1000)

@@ -12,11 +12,16 @@ db.sqlite3
 media/
 staticfiles/
 
+# Notes locales, à ne pas pousser
+/partie-3-imen-kh/
+/shipments*
+
 # Éditeurs / OS
 .vscode/
 .idea/
 .DS_Store
+htmlcov/
+.coverage
 
-
-#Ignore vscode AI rules
-.github\instructions\codacy.instructions.md
+# Celery generated scheduler database
+celerybeat-schedule

@@ -64,6 +64,7 @@ def expedition(pme):
         adresse_depart=Adresse.objects.create(ligne="Zone industrielle", ville="Monastir"),
         adresse_arrivee=Adresse.objects.create(ligne="Rue de Marseille", ville="Tunis"),
         date_souhaitee=(timezone.now() + timedelta(days=2)).date(),
+        date_arrivee=(timezone.now() + timedelta(days=3)).date(),
         statut=Expedition.Statut.PUBLIEE,
     )
     ArticleExpedie.objects.create(
@@ -75,3 +76,63 @@ def expedition(pme):
         type_marchandise=ArticleExpedie.Type.TEXTILE,
     )
     return exp
+
+
+@pytest.fixture
+def reservation(expedition, trajet):
+    from apps.bookings.models import Reservation
+
+    return Reservation.objects.create(
+        expedition=expedition,
+        trajet=trajet,
+        statut=Reservation.Statut.ACCEPTEE,
+        prix_convenu=Decimal("100.00"),
+    )
+
+
+# ---------- M4 : un deuxième compte de chaque rôle et un appel d'offres (pour tester l'isolement des données)
+
+
+@pytest.fixture
+def autre_pme(db):
+    user = Utilisateur.objects.create_user("lina@test.tn", "motdepasse123", role=Role.PME, first_name="Lina")
+    ProfilPME.objects.create(utilisateur=user, raison_sociale="Huilerie Lina")
+    return user
+
+
+@pytest.fixture
+def autre_transporteur(db):
+    user = Utilisateur.objects.create_user("nabil@test.tn", "motdepasse123", role=Role.TRANSPORTEUR, first_name="Nabil")
+    ProfilTransporteur.objects.create(utilisateur=user, statut_validation=ProfilTransporteur.Statut.VALIDE)
+    return user
+
+
+@pytest.fixture
+def autre_trajet(autre_transporteur):
+    vehicule = Vehicule.objects.create(
+        transporteur=autre_transporteur,
+        type=Vehicule.Type.CAMIONNETTE,
+        immatriculation="987 TU 6543",
+        capacite_kg=1500,
+        capacite_m3=Decimal("10"),
+    )
+    return Trajet.objects.create(
+        transporteur=autre_transporteur,
+        vehicule=vehicule,
+        ville_depart="Sousse",
+        ville_arrivee="Tunis",
+        date_depart=timezone.now() + timedelta(days=3),
+        capacite_dispo_kg=Decimal("800"),
+        capacite_dispo_m3=Decimal("6"),
+        prix_indicatif=Decimal("70"),
+        distance_km=140,
+    )
+
+
+@pytest.fixture
+def appel_offre(expedition):
+    from apps.tenders.models import AppelOffre
+
+    return AppelOffre.objects.create(
+        expedition=expedition, date_cloture=timezone.now() + timedelta(days=1), prix_max=Decimal("200")
+    )

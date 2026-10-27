@@ -1,0 +1,16 @@
+{% load cargohub %}
+<h2 class="h5">{% tr "Historique des statuts" %}</h2>
+{% if historique %}
+<ol class="list-unstyled mb-0">
+  {% for h in historique %}
+  <li class="py-2 border-bottom">
+    <span class="small text-muted">{{ h.date|date:"d/m/Y H:i" }}</span> —
+    {% tr h.get_ancien_display %} <span aria-hidden="true">→</span><span class="visually-hidden">{% tr "devient" %}</span> <strong>{% tr h.get_nouveau_display %}</strong>
+    {% if h.par %}<span class="small text-muted">{% tr "par" %} {{ h.par }}</span>{% endif %}
+    {% if h.motif %}<div class="small">{% tr "Motif :" %} {{ h.motif }}</div>{% endif %}
+  </li>
+  {% endfor %}
+</ol>
+{% else %}
+<p class="text-muted mb-0">{% tr "Réservation créée le" %} {{ reservation.created_at|date:"d/m/Y H:i" }}{% tr ", en attente de réponse du transporteur." %}</p>
+{% endif %}

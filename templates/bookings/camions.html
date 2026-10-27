@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load trajets  cargohub %}
+{% block title %}{% tr "Camions compatibles" %}{% endblock %}
+{% block content %}
+<nav aria-label="{% tr "Fil d’Ariane" %}"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bookings:trouver' %}">{% tr "Trouver un camion" %}</a></li><li class="breadcrumb-item active" aria-current="page">{{ expedition.reference }}</li></ol></nav>
+<h1 class="page-title mb-1">{% tr "Camions compatibles" %}</h1>
+<p class="text-muted">{{ expedition.reference }} · {{ expedition.adresse_depart.ville }} → {{ expedition.adresse_arrivee.ville }} {% tr "· le" %} {{ expedition.date_souhaitee|date:"d/m/Y" }} · {{ expedition.poids_total_kg|floatformat:"-2" }} kg</p>
+
+{% if vide %}
+<div class="alert alert-warning" role="alert">{{ message_vide }} <a href="{% url 'shipments:detail' expedition.pk %}">{% tr "Ouvrir l’expédition" %}</a></div>
+{% elif not publiee %}
+<div class="alert alert-warning" role="alert">{% tr "Cette expédition n’est pas publiée (" %}{{ expedition.get_statut_display|lower }}{% tr ") : elle ne peut pas être réservée." %}</div>
+{% elif resultats %}
+<p class="small text-muted">{% tr "Score sur 100 : même itinéraire (50), date proche (30), place suffisante (20). Seuls les trajets à 60 ou plus sont affichés." %}</p>
+<ul class="list-unstyled row g-3">
+  {% for trajet, score in resultats %}
+  <li class="col-md-6">
+    <article class="card card-ch h-100 p-3" aria-labelledby="trajet-{{ trajet.pk }}">
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <h2 class="h6 mb-1" id="trajet-{{ trajet.pk }}">{{ trajet|itineraire }}</h2>
+        <span class="fw-bold">{% if trajet.prix_indicatif %}{{ trajet.prix_indicatif }} DT{% else %}{% tr "Prix à convenir" %}{% endif %}</span>
+      </div>
+      <p class="small mb-2">{% tr "Départ le" %} {{ trajet.date_depart|date:"d/m/Y à H:i" }} · {{ trajet.transporteur }}<br>
+        {% tr "Place libre :" %} {{ trajet.capacite_dispo_kg|floatformat:0 }} {% tr "kg et" %} {{ trajet.capacite_dispo_m3|floatformat:1 }} m³</p>
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <div class="progress flex-grow-1" role="progressbar" aria-label="{% tr "Score de compatibilité" %}" aria-valuenow="{{ score }}" aria-valuemin="0" aria-valuemax="100" style="height: .6rem">
+          <div class="progress-bar bg-success" style="width: {{ score }}%"></div>
+        </div>
+        <span class="small fw-semibold text-nowrap">{% tr "Score" %} {{ score }} / 100</span>
+      </div>
+      {% if trajet.pk in deja_demandes %}
+        <p class="small mb-0"><i class="bi bi-hourglass-split" aria-hidden="true"></i> {% tr "Demande déjà envoyée" %}</p>
+      {% else %}
+        <form method="post" action="{% url 'bookings:reserver' expedition.pk trajet.pk %}" class="mt-auto">{% csrf_token %}
+          <button class="btn btn-accent btn-sm" type="submit">{% tr "Réserver" %}<span class="visually-hidden"> {% tr "le trajet" %} {{ trajet.ville_depart }} → {{ trajet.ville_arrivee }} {% tr "du" %} {{ trajet.date_depart|date:"d/m" }}</span></button>
+        </form>
+      {% endif %}
+    </article>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-truck fs-1 d-block mb-2" aria-hidden="true"></i>
+  {% tr "Aucun camion compatible à ± 2 jours. Essayez un" %} <a href="{% url 'tenders:creer' %}?expedition={{ expedition.pk }}">{% tr "appel d’offres" %}</a> {% tr ": les transporteurs vous feront une proposition." %}</div>
+{% endif %}
+{% endblock %}

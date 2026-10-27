@@ -1,0 +1,107 @@
+{% extends "backoffice/base.html" %}
+{% load cargohub %}
+{% block title %}{% tr "Mouvements de colis" %}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+  <div>
+    <h1 class="page-title mb-1">{% tr "Mouvements de colis" %}</h1>
+    <p class="text-muted mb-0">{% tr "Entrées et sorties confirmées. Une alerte ne crée pas de sortie." %}</p>
+  </div>
+  <a class="btn btn-accent" href="{% url 'bo_warehouses:scanner' %}">{% tr "Scanner un colis" %}</a>
+</div>
+{% if retards %}
+  <div class="alert alert-warning" role="alert">
+    {% tr "Des colis approchent ou dépassent leur durée maximale." %}
+    <a href="{% url 'bo_warehouses:mouvements' %}?retard=1">{% tr "Voir les alertes" %}</a>
+  </div>
+{% endif %}
+
+<form method="get" class="card card-ch p-3 mb-3" role="search">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label" for="filtre-reference">{% tr "Référence expédition" %}</label>
+      <input class="form-control" id="filtre-reference" name="q" value="{{ filtre.q }}" maxlength="40">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="filtre-entrepot">{% tr "Entrepôt" %}</label>
+      <select class="form-select" id="filtre-entrepot" name="entrepot">
+        <option value="">{% tr "Tous" %}</option>
+        {% for entrepot in entrepots %}
+          <option value="{{ entrepot.pk }}" {% if filtre.entrepot == entrepot.pk|stringformat:"s" %}selected{% endif %}>{{ entrepot.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="filtre-date">{% tr "Date" %}</label>
+      <input class="form-control" id="filtre-date" type="date" name="date" value="{{ filtre.date }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="filtre-type">{% tr "Type" %}</label>
+      <select class="form-select" id="filtre-type" name="type">
+        <option value="">{% tr "Tous" %}</option>
+        {% for valeur, libelle in types %}
+          <option value="{{ valeur }}" {% if filtre.type == valeur %}selected{% endif %}>{% tr libelle %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-outline-secondary w-100" type="submit">{% tr "Filtrer" %}</button>
+    </div>
+    <div class="col-12 d-flex flex-wrap gap-3">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="filtre-presents" name="presents" value="1" {% if filtre.presents %}checked{% endif %}>
+        <label class="form-check-label" for="filtre-presents">{% tr "Colis présents" %}</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="filtre-retard" name="retard" value="1" {% if filtre.retard %}checked{% endif %}>
+        <label class="form-check-label" for="filtre-retard">{% tr "Durée maximale proche ou dépassée" %}</label>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% if lignes %}
+  <div class="table-responsive">
+    <table class="table table-ch align-middle">
+      <caption class="visually-hidden">{% tr "Historique des mouvements" %}</caption>
+      <thead>
+        <tr>
+          <th>{% tr "Date" %}</th>
+          <th>{% tr "Type" %}</th>
+          <th>{% tr "Expédition" %}</th>
+          <th>{% tr "Entrepôt" %}</th>
+          <th>{% tr "Par" %}</th>
+          <th>{% tr "Stockage" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in lignes %}
+          <tr>
+            <td>{{ ligne.mouvement.date|date:"d/m/Y H:i" }}</td>
+            <td>{% tr ligne.mouvement.get_type_display %}{% if ligne.mouvement.exceptionnel %} {% tr "(exceptionnelle)" %}{% endif %}</td>
+            <td>{{ ligne.mouvement.expedition.reference }}</td>
+            <td>{{ ligne.mouvement.entrepot.nom }}</td>
+            <td>{{ ligne.mouvement.scanne_par|default:"—" }}</td>
+            <td>
+              {% if ligne.stockage %}
+                {% if ligne.stockage.depasse %}{% tr "Dépassée" %}{% elif ligne.stockage.approche %}{% tr "Bientôt dépassée" %}{% else %}{% tr "Dans le délai" %}{% endif %}
+                <form method="post" action="{% url 'bo_warehouses:prolonger' ligne.mouvement.pk %}" class="mt-2">
+                  {% csrf_token %}
+                  <label class="form-label" for="heures-{{ ligne.mouvement.pk }}">{% tr "Prolonger (heures)" %}</label>
+                  <input class="form-control form-control-sm mb-1" id="heures-{{ ligne.mouvement.pk }}" name="heures" type="number" min="1" max="168" required>
+                  <label class="form-label" for="motif-{{ ligne.mouvement.pk }}">{% tr "Motif" %}</label>
+                  <input class="form-control form-control-sm mb-1" id="motif-{{ ligne.mouvement.pk }}" name="motif" minlength="10" required>
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">{% tr "Prolonger" %}</button>
+                </form>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "core/_pagination.html" %}
+{% else %}
+  <p>{% tr "Aucun mouvement ne correspond à cette recherche." %}</p>
+{% endif %}
+{% endblock %}

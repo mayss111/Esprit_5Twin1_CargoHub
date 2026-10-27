@@ -8,6 +8,7 @@ from apps.core.models import Horodate
 
 class Conversation(Horodate):
     participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="conversations")
+    bloquee_par = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="conversations_bloquees")
     reservation = models.ForeignKey(
         "bookings.Reservation", null=True, blank=True, on_delete=models.SET_NULL, related_name="conversations"
     )
@@ -15,17 +16,33 @@ class Conversation(Horodate):
     def __str__(self):
         return f"Conversation #{self.pk}"
 
+    def interlocuteurs(self, user):
+        """Les autres participants, vus par `user`."""
+        return [p for p in self.participants.all() if p != user]
+
+    def est_bloquee(self):
+        return self.bloquee_par.exists()
+
+    def est_bloquee_pour(self, user):
+        return self.bloquee_par.filter(pk=user.pk).exists()
+
 
 class Message(Horodate):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
     auteur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     contenu = models.TextField()
     piece_jointe = models.FileField(upload_to="messagerie/", blank=True)
+    fichier_audio = models.FileField(upload_to="messagerie/audio/", blank=True)
+    transcription = models.TextField(blank=True)
     lu = models.BooleanField(default=False)
     signale = models.BooleanField(default=False)  # rempli par la modération IA
+    raison_signalement = models.CharField(max_length=200, blank=True)
 
     class Meta:
         ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.auteur} : {self.contenu[:40]}"
 
 
 class TicketSupport(Horodate):
@@ -47,6 +64,13 @@ class TicketSupport(Horodate):
     assigne_a = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="tickets_assignes"
     )
+    reponse_ia = models.TextField(blank=True)  # première réponse de l'assistant, écrite par une tâche Celery
+    reponse_admin = models.TextField(blank=True)
 
     def __str__(self):
         return self.sujet
+
+    @property
+    def modifiable(self):
+        """L'auteur peut modifier ou supprimer son ticket tant qu'aucun admin ne l'a pris en charge."""
+        return self.statut == self.Statut.OUVERT

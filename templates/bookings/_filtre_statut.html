@@ -1,0 +1,7 @@
+{% load cargohub %}
+<nav class="nav nav-pills flex-wrap gap-1 mb-3" aria-label="{% tr "Filtrer par statut" %}">
+  <a class="nav-link{% if not statut_actif %} active{% endif %}" href="?"{% if not statut_actif %} aria-current="page"{% endif %}>{% tr "Toutes" %}</a>
+  {% for valeur, libelle in statuts %}
+  <a class="nav-link{% if statut_actif == valeur %} active{% endif %}" href="?statut={{ valeur }}"{% if statut_actif == valeur %} aria-current="page"{% endif %}>{% tr libelle %}</a>
+  {% endfor %}
+</nav>

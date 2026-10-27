@@ -1,0 +1,36 @@
+{% extends "backoffice/base.html" %}
+{% load cargohub %}
+{% block title %}{% tr "Appels d’offres" %}{% endblock %}
+{% block content %}
+<h1 class="page-title mb-3">{% tr "Appels d’offres" %}</h1>
+<section class="row g-3 mb-4" aria-label="{% tr "Indicateurs" %}">
+  <div class="col-sm-4"><div class="kpi"><div class="small text-muted">{% tr "Appels ouverts" %}</div><div class="val">{{ nb_ouverts }}</div></div></div>
+  <div class="col-sm-4"><div class="kpi"><div class="small text-muted">{% tr "Ouverts sans aucune offre" %}</div><div class="val">{{ nb_sans_offre }}</div></div></div>
+  <div class="col-sm-4"><div class="kpi"><div class="small text-muted">{% tr "Prix moyen des offres retenues" %}</div><div class="val">{% if prix_moyen_retenu %}{{ prix_moyen_retenu|floatformat:0 }} DT{% else %}—{% endif %}</div></div></div>
+</section>
+<nav class="nav nav-pills flex-wrap gap-1 mb-3" aria-label="{% tr "Filtrer par statut" %}">
+  <a class="nav-link{% if not request.GET.statut %} active{% endif %}" href="?"{% if not request.GET.statut %} aria-current="page"{% endif %}>{% tr "Tous" %}</a>
+  {% for valeur, libelle in statuts %}
+  <a class="nav-link{% if request.GET.statut == valeur %} active{% endif %}" href="?statut={{ valeur }}"{% if request.GET.statut == valeur %} aria-current="page"{% endif %}>{% tr libelle %}</a>
+  {% endfor %}
+</nav>
+{% if object_list %}
+<div class="table-responsive"><table class="table table-ch align-middle">
+  <caption class="visually-hidden">{% tr "Appels d’offres (" %}{{ page_obj.paginator.count }})</caption>
+  <thead><tr><th scope="col">{% tr "N°" %}</th><th scope="col">{% tr "PME" %}</th><th scope="col">{% tr "Trajet" %}</th><th scope="col">{% tr "Budget" %}</th><th scope="col">{% tr "Offres" %}</th><th scope="col">{% tr "Date limite" %}</th><th scope="col">{% tr "Statut" %}</th></tr></thead>
+  <tbody>{% for a in object_list %}
+    <tr>
+      <td><a href="{% url 'bo_tenders:detail' a.pk %}">#{{ a.pk }}</a></td>
+      <td>{{ a.expedition.pme }}</td>
+      <td>{{ a.expedition.adresse_depart.ville }} → {{ a.expedition.adresse_arrivee.ville }}</td>
+      <td>{% if a.prix_max %}{{ a.prix_max }} DT{% else %}—{% endif %}</td>
+      <td>{{ a.nb_offres }}</td>
+      <td>{{ a.date_cloture|date:"d/m/Y H:i" }}</td>
+      <td>{% include "tenders/_statut.html" with statut=a.statut libelle=a.get_statut_display %}</td>
+    </tr>{% endfor %}
+  </tbody></table></div>
+{% include "core/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5">{% tr "Aucun appel d’offres." %}</div>
+{% endif %}
+{% endblock %}

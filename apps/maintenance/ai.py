@@ -14,8 +14,13 @@ INTERVALLE_KM = 10_000  # vidange tous les 10 000 km (à ajuster)
 
 def predire_prochain_entretien(vehicule, aujourd_hui: date | None = None) -> dict:
     """Renvoie {"date_prevue", "km_prevu", "methode"}."""
-    aujourd_hui = aujourd_hui or date.today()
     historique = list(vehicule.entretiens.order_by("date").values_list("date", "kilometrage"))
+    return predire_depuis_historique(historique, aujourd_hui)
+
+
+def predire_depuis_historique(historique: list, aujourd_hui: date | None = None) -> dict:
+    """Même prédiction à partir d'une liste [(date, km), …] triée — utilisée aussi par `evaluer_ia`."""
+    aujourd_hui = aujourd_hui or date.today()
     if not historique:
         return {"date_prevue": aujourd_hui + timedelta(days=180), "km_prevu": INTERVALLE_KM, "methode": "règle"}
 

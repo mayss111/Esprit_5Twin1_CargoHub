@@ -1,14 +1,53 @@
 {% extends "base.html" %}
-{% load static %}
-{% block title %}{{ titre }}{% endblock %}
-{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}" rel="stylesheet">{% endblock %}
+{% load static cargohub %}
+{% block title %}{% tr titre %}{% endblock %}
+{% block extra_head %}<link href="{% static 'shipments/css/expeditions.css' %}?v=20261025r" rel="stylesheet">{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-end mb-4">
-  <h1 class="page-title mb-0">{{ titre }}</h1>
-  <a href="{% url 'shipments:liste' %}">Retour à la liste</a>
+<div class="saisie-page">
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="page-title mb-0">{% tr titre %}</h1>
+  <a href="{% url 'shipments:liste' %}">{% tr "Retour à la liste" %}</a>
 </div>
 
-<form method="post" class="card card-ch expedition-form p-3" novalidate>
+{% if not expedition %}
+<div class="row g-3 mb-3 saisie-outils">
+  <div class="col-lg-7">
+    <section class="card card-ch assistant-ia p-3 h-100" id="assistant-saisie" data-url="{% url 'shipments:assistant' %}" data-statut-url="{% url 'shipments:assistant_statut' %}">
+      <h2 class="h6 mb-1">{% tr "Créer mon expédition avec l'IA" %}</h2>
+      <p class="small text-muted mb-2">{% tr "L'assistant propose les champs. Vous vérifiez, vous complétez, puis vous enregistrez. Rien n'est publié avant votre confirmation." %}</p>
+      {% csrf_token %}
+      <label class="form-label" for="assistant-description">{% tr "Décrivez l'expédition" %}</label>
+      <textarea class="form-control form-control-sm mb-2" id="assistant-description" rows="2" placeholder="{% tr "Exemple : 5 cartons d'ordinateurs portables et 3 écrans, de Tunis à Sousse, le 15 novembre 2026. Poids total 80 kg. Les écrans sont fragiles." %}"></textarea>
+      <button class="btn btn-accent btn-sm" id="assistant-remplir" type="button">{% tr "Remplir automatiquement avec l'IA" %}</button>
+      <div class="d-none align-items-center gap-2 mt-2" id="assistant-chargement" role="status">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        {% tr "Analyse en cours…" %}
+      </div>
+      <div class="mt-2" id="assistant-propositions"></div>
+    </section>
+  </div>
+  <div class="col-lg-5">
+    <section class="card card-ch p-3 h-100">
+      <h2 class="h6 mb-1">{% tr "Créer plusieurs expéditions depuis un fichier Excel" %}</h2>
+      <p class="small text-muted mb-2">{% tr "Une ligne devient une expédition, publiée, refusée ou à vérifier. Le même groupe réunit plusieurs articles. Le formulaire manuel reste disponible." %}</p>
+      <p class="mb-2"><a href="{% url 'shipments:importer' %}?format=xlsx">{% tr "Télécharger le modèle Excel" %}</a></p>
+      <form method="post" action="{% url 'shipments:importer' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label class="form-label" for="import-fichier">{% tr "Fichier Excel" %}</label>
+        <input class="form-control form-control-sm" id="import-fichier" type="file" name="fichier" accept=".xlsx,.csv" required>
+        <button class="btn btn-accent btn-sm mt-2" type="submit">{% tr "Importer et publier" %}</button>
+      </form>
+  {% if erreurs_import %}
+    <div class="alert alert-danger mt-3 mb-0" role="alert">
+      {% for erreur in erreurs_import %}{{ erreur }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+    </div>
+  {% endif %}
+    </section>
+  </div>
+</div>
+{% endif %}
+
+<form method="post" class="card card-ch expedition-form p-3" novalidate data-ia="Vérification des marchandises…">
   {% csrf_token %}
   {% if saisie.generale.non_field_errors %}
     <div class="alert alert-danger" role="alert">
@@ -16,15 +55,16 @@
     </div>
   {% endif %}
 
-  <h2 class="h6 mb-2">Expédition</h2>
+  <h2 class="h6 mb-2">{% tr "Expédition" %}</h2>
   <div class="row g-2">
     <div class="col-md-3">{% include "shipments/_champ.html" with champ=saisie.generale.date_souhaitee %}</div>
-    <div class="col-md-9">{% include "shipments/_champ.html" with champ=saisie.generale.description %}</div>
+    <div class="col-md-3">{% include "shipments/_champ.html" with champ=saisie.generale.date_arrivee %}</div>
+    <div class="col-md-6">{% include "shipments/_champ.html" with champ=saisie.generale.description %}</div>
   </div>
 
   <div class="row g-3">
     <div class="col-md-6">
-      <h2 class="h6 mb-2">Adresse de départ</h2>
+      <h2 class="h6 mb-2">{% tr "Adresse de départ" %}</h2>
       <div class="row g-2">
         <div class="col-sm-7">{% include "shipments/_champ.html" with champ=saisie.depart.ligne %}</div>
         <div class="col-sm-5">{% include "shipments/_champ.html" with champ=saisie.depart.ville %}</div>
@@ -33,7 +73,7 @@
       </div>
     </div>
     <div class="col-md-6">
-      <h2 class="h6 mb-2">Adresse d'arrivée</h2>
+      <h2 class="h6 mb-2">{% tr "Adresse d'arrivée" %}</h2>
       <div class="row g-2">
         <div class="col-sm-7">{% include "shipments/_champ.html" with champ=saisie.arrivee.ligne %}</div>
         <div class="col-sm-5">{% include "shipments/_champ.html" with champ=saisie.arrivee.ville %}</div>
@@ -44,8 +84,8 @@
   </div>
 
   <div class="d-flex justify-content-between align-items-center mt-1 mb-2">
-    <h2 class="h6 mb-0">Articles</h2>
-    <button class="btn btn-outline-secondary btn-sm" id="ajouter-article" type="button">Ajouter un article</button>
+    <h2 class="h6 mb-0">{% tr "Articles" %}</h2>
+    <button class="btn btn-outline-secondary btn-sm" id="ajouter-article" type="button">{% tr "Ajouter un article" %}</button>
   </div>
   {{ saisie.articles.management_form }}
   {% if saisie.articles.non_form_errors %}
@@ -57,11 +97,12 @@
     {% endfor %}
   </div>
 
-  <div class="d-flex flex-wrap gap-2 mt-3">
-    <button class="btn btn-outline-secondary" type="submit" name="brouillon" value="1">Enregistrer le brouillon</button>
-    <button class="btn btn-accent" type="submit" name="publier" value="1">Publier la demande</button>
+  <div class="d-flex flex-wrap gap-2 mt-2">
+    <button class="btn btn-outline-secondary btn-sm" type="submit" name="brouillon" value="1">{% tr "Enregistrer le brouillon" %}</button>
+    <button class="btn btn-accent btn-sm" type="submit" name="publier" value="1">{% tr "Publier la demande" %}</button>
   </div>
 </form>
+</div>
 
 <template id="article-vide">
   {% include "shipments/_article.html" with form=saisie.articles.empty_form %}
@@ -69,4 +110,7 @@
 {% endblock %}
 {% block extra_js %}
 <script src="{% static 'shipments/js/articles.js' %}"></script>
+{% if not expedition %}
+<script src="{% static 'shipments/js/assistant.js' %}?v=20261026h"></script>
+{% endif %}
 {% endblock %}

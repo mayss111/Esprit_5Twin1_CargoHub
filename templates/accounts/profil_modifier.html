@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags  cargohub %}
+{% block title %}{% tr "Modifier mon profil" %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-lg-7">
+  <h1 class="page-title mb-4">{% tr "Modifier mon profil" %}</h1>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <fieldset class="card card-ch p-4 mb-3">
+      <legend class="h5">{% tr "Compte" %}</legend>
+      <p class="small text-muted">{% tr "Email :" %} {{ user.email }} {% tr "(non modifiable)" %}</p>
+      {% if user.photo_profil %}<img class="profil-avatar mb-3" src="{{ user.photo_profil.url }}" alt="Photo actuelle de {{ user }}">{% endif %}
+      {{ form|crispy }}
+    </fieldset>
+    {% if form_profil %}
+    <fieldset class="card card-ch p-4 mb-3">
+      <legend class="h5">{% if user.role == "PME" %}{% tr "Entreprise" %}{% else %}{% tr "Documents du transporteur" %}{% endif %}</legend>
+      {% if user.role == "TRANSPORTEUR" %}<p class="small text-muted">{% tr "Un nouveau document repasse le compte « en attente de validation » par un administrateur." %}</p>{% endif %}
+      {{ form_profil|crispy }}
+    </fieldset>
+    {% endif %}
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" type="submit">{% tr "Enregistrer" %}</button>
+      <a class="btn btn-outline-secondary" href="{% url 'accounts:profil' %}">{% tr "Annuler" %}</a>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

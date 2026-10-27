@@ -6,9 +6,12 @@ from django import forms
 from django.core.validators import MinValueValidator
 from django.db import transaction
 from django.forms import inlineformset_factory
-from django.utils import timezone
+from django.utils import timezone, translation
 
-from .models import CATEGORIES_INTERDITES, Adresse, ArticleExpedie, Expedition
+from apps.core.traductions import traduire
+
+from .models import CATEGORIES_INTERDITES, Adresse, ArticleExpedie, Expedition, RegleInterdite
+from .services.ai_checker import VerificationIndisponible, appliquer_verification
 
 GOUVERNORATS = [
     ("Ariana", "Ariana"),
@@ -55,45 +58,72 @@ class AdresseForm(forms.ModelForm):
             "code_postal": forms.TextInput(attrs={"class": "form-control form-control-sm"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, role="de départ", **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["gouvernorat"].widget.attrs["class"] = "form-select form-select-sm"
         self.fields["ligne"].label = "Rue"
         self.fields["ville"].label = "Ville"
         self.fields["code_postal"].label = "Code postal"
         self.fields["code_postal"].required = False
+        self.fields["ligne"].error_messages["required"] = f"Indiquez la rue {role}."
+        self.fields["ville"].error_messages["required"] = f"Indiquez la ville {role}."
 
 
 class ExpeditionForm(forms.ModelForm):
     """Informations générales. Le statut est décidé au moment de l'enregistrement."""
 
     date_souhaitee = forms.DateField(
-        label="Date d'expédition",
+        label="Date de départ",
         input_formats=["%Y-%m-%d"],
         widget=forms.DateInput(
             format="%Y-%m-%d",
             attrs={"type": "date", "class": "form-control form-control-sm"},
         ),
+        error_messages={"required": "Indiquez la date de départ."},
+    )
+    date_arrivee = forms.DateField(
+        label="Date d'arrivée",
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(
+            format="%Y-%m-%d",
+            attrs={"type": "date", "class": "form-control form-control-sm"},
+        ),
+        error_messages={"required": "Indiquez la date d'arrivée."},
     )
 
     class Meta:
         model = Expedition
-        fields = ("date_souhaitee", "description")
+        fields = ("date_souhaitee", "date_arrivee", "description")
         widgets = {
-            "description": forms.Textarea(attrs={"rows": 1, "class": "form-control form-control-sm"}),
+            "description": forms.Textarea(attrs={"rows": 2, "class": "form-control form-control-sm"}),
         }
-        labels = {"description": "Description"}
+        labels = {"description": "Description de l'expédition"}
 
-    def __init__(self, *args, publier=False, **kwargs):
+    def __init__(self, *args, publier=False, publication=False, **kwargs):
         self.publier = publier
+        self.publication = publication
         super().__init__(*args, **kwargs)
 
     def clean_date_souhaitee(self):
         date = self.cleaned_data["date_souhaitee"]
         creation = self.instance.pk is None
         if (creation or self.publier) and date < timezone.localdate():
-            raise forms.ValidationError("La date d'expédition ne peut pas être dans le passé.")
+            raise forms.ValidationError("La date de départ ne peut pas être dans le passé.")
         return date
+
+    def clean_description(self):
+        description = (self.cleaned_data.get("description") or "").strip()
+        if self.publication and len(description) < 10:
+            raise forms.ValidationError("Décrivez l'expédition en au moins 10 caractères pour la publier.")
+        return description
+
+    def clean(self):
+        nettoye = super().clean()
+        depart = nettoye.get("date_souhaitee")
+        arrivee = nettoye.get("date_arrivee")
+        if depart and arrivee and arrivee < depart:
+            self.add_error("date_arrivee", "La date d'arrivée ne peut pas précéder la date de départ.")
+        return nettoye
 
 
 class ArticleExpedieForm(forms.ModelForm):
@@ -126,6 +156,7 @@ class ArticleExpedieForm(forms.ModelForm):
         }
         labels = {
             "designation": "Nom de l'article",
+            "description": "Description de l'article",
             "type_marchandise": "Catégorie",
             "quantite": "Quantité",
             "poids_kg": "Poids (kg)",
@@ -134,13 +165,23 @@ class ArticleExpedieForm(forms.ModelForm):
             "valeur_declaree": "Valeur déclarée (DT)",
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, publication=False, **kwargs):
+        self.publication = publication
         super().__init__(*args, **kwargs)
+        langue = translation.get_language() or "fr"
+        choix = self.fields["type_marchandise"]
+        choix.choices = [(valeur, traduire(libelle, langue)) for valeur, libelle in choix.choices]
         self.fields["description"].required = False
         self.fields["valeur_declaree"].required = False
         _exiger_minimum(self.fields["quantite"], 1, "La quantité doit être supérieure à zéro.")
         _exiger_minimum(self.fields["poids_kg"], Decimal("0.01"), "Le poids doit être supérieur à zéro.")
         _exiger_minimum(self.fields["volume_m3"], Decimal("0.001"), "Le volume doit être supérieur à zéro.")
+
+    def clean_description(self):
+        description = (self.cleaned_data.get("description") or "").strip()
+        if self.publication and len(description) < 10:
+            raise forms.ValidationError("Décrivez l'article en au moins 10 caractères pour publier la demande.")
+        return description
 
 
 ArticleFormSet = inlineformset_factory(
@@ -169,16 +210,33 @@ def articles_retenus(formset):
 
 
 def controler_publication(articles):
-    """Règles supplémentaires appliquées seulement au moment de publier."""
+    """Catégories refusées au moment de publier. L'article lui-même est toujours exigé."""
     erreurs = []
-    if not articles:
-        erreurs.append("Ajoutez au moins un article pour publier l'expédition.")
     for article in articles:
         if article.get("type_marchandise") in CATEGORIES_INTERDITES:
             nom = article.get("designation") or "cet article"
             erreurs.append(f"La catégorie de « {nom} » est interdite au transport.")
     if erreurs:
         raise forms.ValidationError(erreurs)
+
+
+class RegleInterditeForm(forms.ModelForm):
+    class Meta:
+        model = RegleInterdite
+        fields = ("nom", "description", "motif", "mots_cles", "actif")
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+            "motif": forms.Textarea(attrs={"rows": 2, "class": "form-control"}),
+            "nom": forms.TextInput(attrs={"class": "form-control"}),
+            "mots_cles": forms.TextInput(attrs={"class": "form-control"}),
+        }
+        labels = {
+            "nom": "Nom",
+            "description": "Description",
+            "motif": "Motif d'interdiction",
+            "mots_cles": "Mots-clés",
+            "actif": "Interdiction active",
+        }
 
 
 class SaisieExpedition:
@@ -191,16 +249,32 @@ class SaisieExpedition:
         self.depart = AdresseForm(
             data,
             prefix="depart",
+            role="de départ",
             instance=None if expedition is None else expedition.adresse_depart,
         )
         self.arrivee = AdresseForm(
             data,
             prefix="arrivee",
+            role="d'arrivée",
             instance=None if expedition is None else expedition.adresse_arrivee,
         )
-        self.generale = ExpeditionForm(data, prefix="generale", instance=expedition, publier=publier)
+        publication = publier or (
+            expedition is not None and expedition.pk and expedition.statut == Expedition.Statut.PUBLIEE
+        )
+        self.generale = ExpeditionForm(
+            data,
+            prefix="generale",
+            instance=expedition,
+            publier=publier,
+            publication=publication,
+        )
         instance = expedition if expedition is not None else Expedition(pme=self.pme)
-        self.articles = ArticleFormSet(data, prefix="articles", instance=instance)
+        self.articles = ArticleFormSet(
+            data,
+            prefix="articles",
+            instance=instance,
+            form_kwargs={"publication": publication},
+        )
 
     def is_valid(self):
         formulaires_valides = all(
@@ -214,15 +288,18 @@ class SaisieExpedition:
         if self.expedition is not None and self.expedition.pk and not self.expedition.peut_etre_modifiee():
             self.generale.add_error(None, "Cette expédition ne peut plus être modifiée.")
             return False
-        if not formulaires_valides:
-            return False
-        if self.publier or (self.expedition is not None and self.expedition.statut == Expedition.Statut.PUBLIEE):
+        if self.articles.is_valid() and not articles_retenus(self.articles):
+            self.generale.add_error(None, "Ajoutez au moins un article.")
+            formulaires_valides = False
+        if formulaires_valides and (
+            self.publier or (self.expedition is not None and self.expedition.statut == Expedition.Statut.PUBLIEE)
+        ):
             try:
                 controler_publication(articles_retenus(self.articles))
             except forms.ValidationError as exc:
                 self.generale.add_error(None, exc)
                 return False
-        return True
+        return formulaires_valides
 
     def save(self):
         if not self.is_valid():
@@ -232,11 +309,56 @@ class SaisieExpedition:
             expedition.pme = self.pme
             expedition.adresse_depart = self.depart.save()
             expedition.adresse_arrivee = self.arrivee.save()
-            if self.publier:
-                expedition.statut = Expedition.Statut.PUBLIEE
-            elif expedition.pk is None or expedition.statut == Expedition.Statut.BROUILLON:
+            reverifier = self.publier or expedition.statut == Expedition.Statut.PUBLIEE
+            if not self.publier and (expedition.pk is None or expedition.statut == Expedition.Statut.BROUILLON):
                 expedition.statut = Expedition.Statut.BROUILLON
             expedition.save()
             self.articles.instance = expedition
             self.articles.save()
+            if reverifier:
+                self._verifier(expedition)
+        expedition.refresh_from_db()
         return expedition
+
+    def _verifier(self, expedition):
+        """En test, la vérification reste dans la requête. Avec Redis, Celery la prend."""
+        from django.conf import settings
+
+        from apps.core.resultat_ia import ecrire
+        from apps.shipments.tasks import verifier_expedition
+
+        if settings.CELERY_TASK_ALWAYS_EAGER:
+            try:
+                appliquer_verification(expedition)
+            except VerificationIndisponible as exc:
+                expedition.statut = Expedition.Statut.BROUILLON
+                expedition.motif_decision = str(exc)
+                expedition.empreinte_verification = ""
+                expedition.save(update_fields=["statut", "motif_decision", "empreinte_verification", "updated_at"])
+            return
+        ecrire(f"verif:{expedition.pk}", {"statut": "EN_COURS"})
+        identifiant = expedition.pk
+
+        def envoyer(identifiant=identifiant):
+            try:
+                verifier_expedition.delay(identifiant)
+            except Exception:
+                ecrire(f"verif:{identifiant}", {"statut": "ERREUR"})
+
+        transaction.on_commit(envoyer)
+
+
+class ImportExpeditionsForm(forms.Form):
+    fichier = forms.FileField(
+        label="Fichier Excel",
+        widget=forms.ClearableFileInput(attrs={"class": "form-control", "accept": ".xlsx,.csv"}),
+    )
+
+    def clean_fichier(self):
+        fichier = self.cleaned_data["fichier"]
+        nom = (fichier.name or "").lower()
+        if not nom.endswith((".csv", ".xlsx")):
+            raise forms.ValidationError("Utilisez un fichier Excel .xlsx ou un CSV.")
+        if fichier.size > 2 * 1024 * 1024:
+            raise forms.ValidationError("Le fichier dépasse 2 Mo.")
+        return fichier

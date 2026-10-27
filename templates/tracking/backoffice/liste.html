@@ -1,0 +1,44 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Incidents et avis{% endblock %}
+{% block content %}
+<h1 class="page-title mb-3">Incidents et avis</h1>
+<h2 class="h5">Incidents</h2>
+{% if object_list %}
+<div class="table-responsive mb-4">
+  <table class="table table-ch align-middle">
+    <caption class="visually-hidden">Incidents déclarés</caption>
+    <thead><tr><th scope="col">N°</th><th scope="col">Type</th><th scope="col">Déclaré par</th><th scope="col">Statut</th><th scope="col"><span class="visually-hidden">Action</span></th></tr></thead>
+    <tbody>
+      {% for incident in object_list %}
+      <tr>
+        <td>{{ incident.pk }}</td>
+        <td>{{ incident.get_type_display }}</td>
+        <td>{{ incident.declare_par }}</td>
+        <td>{{ incident.get_statut_display }}</td>
+        <td><a class="btn btn-sm btn-primary" href="{% url 'bo_tracking:detail' incident.pk %}">Traiter</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<p class="text-muted">Aucun incident.</p>{% endif %}
+<h2 class="h5">Derniers avis</h2>
+{% if avis_liste %}
+<div class="table-responsive">
+  <table class="table table-ch">
+    <caption class="visually-hidden">Avis récents</caption>
+    <thead><tr><th scope="col">Note</th><th scope="col">Sentiment</th><th scope="col">Auteur</th><th scope="col">Commentaire</th></tr></thead>
+    <tbody>
+      {% for avis in avis_liste %}
+      <tr>
+        <td>{{ avis.note }}/5</td>
+        <td>{{ avis.get_sentiment_display|default:"—" }}</td>
+        <td>{{ avis.auteur }}</td>
+        <td>{{ avis.commentaire|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<p class="text-muted">Aucun avis.</p>{% endif %}
+{% endblock %}

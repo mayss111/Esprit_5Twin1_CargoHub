@@ -1,8 +1,4 @@
-"""Vues du module Impact écologique — Membre 3.
-
-Point de départ : une page liste front-office et une page liste back-office.
-Ajoutez ici vos vues de création, détail, modification…
-"""
+"""Rapports d'émissions et d'économies de CO₂ pour les utilisateurs."""
 
 from django.db.models import Q
 
@@ -14,8 +10,9 @@ from .models import EmpreinteCarbone
 class MonBilanView(ListeFrontView):
     model = EmpreinteCarbone
     roles = []
-    titre = "Mon bilan CO₂"
-    sous_titre = "Le CO₂ économisé grâce au partage des camions."
+    titre = "CO₂ économisé grâce au partage"
+    sous_titre = "Comparez les émissions de vos expéditions partagées avec un transport dédié."
+    template_name = "ecology/bilan.html"
     colonnes = [
         ("reservation", "Réservation"),
         ("distance_km", "Distance (km)"),
@@ -25,7 +22,15 @@ class MonBilanView(ListeFrontView):
     def get_queryset(self):
         return EmpreinteCarbone.objects.filter(
             Q(reservation__expedition__pme=self.request.user) | Q(reservation__trajet__transporteur=self.request.user)
-        )
+        ).select_related("reservation__expedition", "reservation__trajet__vehicule")
+
+    def get_context_data(self, **kwargs):
+        contexte = super().get_context_data(**kwargs)
+        empreintes = list(self.get_queryset())
+        contexte["empreintes"] = empreintes
+        contexte["co2_total_economise"] = round(sum(item.co2_economise_kg for item in empreintes), 2)
+        contexte["est_transporteur"] = getattr(self.request.user, "role", None) == "TRANSPORTEUR"
+        return contexte
 
 
 class BackofficeEmpreinteCarboneView(ListeBackofficeView):

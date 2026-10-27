@@ -1,0 +1,32 @@
+{% extends "backoffice/base.html" %}
+{% load crispy_forms_tags  cargohub %}
+{% block title %}{{ ticket.sujet }}{% endblock %}
+{% block content %}
+<nav aria-label="{% tr "Fil d’Ariane" %}"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'bo_messaging:liste' %}">{% tr "Tickets" %}</a></li><li class="breadcrumb-item active" aria-current="page">{{ ticket.sujet }}</li></ol></nav>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <h1 class="page-title mb-0">{{ ticket.sujet }}</h1>
+  <a class="btn btn-outline-danger" href="{% url 'bo_messaging:ticket_supprimer' ticket.pk %}"><i class="bi bi-trash" aria-hidden="true"></i> {% tr "Supprimer" %}</a>
+</div>
+<p>{% include "messaging/_statut_ticket.html" %} {% tr "· par" %} <a href="{% url 'bo_accounts:detail' ticket.auteur_id %}">{{ ticket.auteur }}</a> ({% tr ticket.auteur.get_role_display %}{% tr ") le" %} {{ ticket.created_at|date:"d/m/Y H:i" }}</p>
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card card-ch p-4 mb-3">
+      <h2 class="h6 text-muted">{% tr "Demande" %}</h2>
+      <p class="mb-0">{{ ticket.description|linebreaksbr }}</p>
+    </div>
+    <div class="card card-ch p-4">
+      <h2 class="h6 text-muted"><i class="bi bi-robot" aria-hidden="true"></i> {% tr "Suggestion de l’assistant IA" %}</h2>
+      <p class="mb-0">{{ ticket.reponse_ia|default:"Pas encore de suggestion."|linebreaksbr }}</p>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card card-ch p-4">
+      <h2 class="h5">{% tr "Traitement" %}</h2>
+      <form method="post">{% csrf_token %}
+        {{ form|crispy }}
+        <button class="btn btn-primary" type="submit">{% tr "Enregistrer" %}</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

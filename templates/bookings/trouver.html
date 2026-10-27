@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load cargohub %}
+{% block title %}{% tr "Trouver un camion" %}{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">{% tr "Trouver un camion" %}</h1>
+<p class="text-muted">{% tr "Choisissez une expédition publiée : CargoHub vous propose les trajets compatibles, classés par score." %}</p>
+{% if expeditions %}
+<div class="row g-3">
+  {% for e in expeditions %}
+  <div class="col-md-6 col-lg-4">
+    <article class="card card-ch h-100 p-3">
+      <h2 class="h6 mb-1">{{ e.reference }}</h2>
+      <p class="mb-1">{{ e.adresse_depart.ville }} <span aria-hidden="true">→</span><span class="visually-hidden">{% tr "vers" %}</span> {{ e.adresse_arrivee.ville }}</p>
+      <p class="small text-muted mb-2">{% tr "Le" %} {{ e.date_souhaitee|date:"d/m/Y" }} · {{ e.poids_total_kg|floatformat:"-2" }} kg
+        {% if e.demandes %}· {{ e.demandes }} {% tr "demande" %}{{ e.demandes|pluralize }} {% tr "en cours" %}{% endif %}</p>
+      {% if e.poids_total_kg <= 0 %}
+      <p class="small text-danger mb-0 mt-auto" role="note"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> {{ message_vide }}
+        <a href="{% url 'shipments:detail' e.pk %}">{% tr "Ajouter des articles" %}<span class="visually-hidden"> {% tr "à" %} {{ e.reference }}</span></a></p>
+      {% else %}
+      <div class="mt-auto d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-accent" href="{% url 'bookings:camions' e.pk %}"><i class="bi bi-truck" aria-hidden="true"></i> {% tr "Camions compatibles" %}<span class="visually-hidden"> {% tr "pour" %} {{ e.reference }}</span></a>
+        {% if not e.appel_offre %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tenders:creer' %}?expedition={{ e.pk }}"><i class="bi bi-megaphone" aria-hidden="true"></i> {% tr "Lancer un appel d’offres" %}<span class="visually-hidden"> {% tr "pour" %} {{ e.reference }}</span></a>{% endif %}
+      </div>
+      {% endif %}
+    </article>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-muted border rounded-3 py-5"><i class="bi bi-box-seam fs-1 d-block mb-2" aria-hidden="true"></i>
+  {% tr "Aucune expédition publiée." %} <a href="{% url 'shipments:liste' %}">{% tr "Publiez une expédition" %}</a> {% tr "pour chercher un camion." %}</div>
+{% endif %}
+{% endblock %}

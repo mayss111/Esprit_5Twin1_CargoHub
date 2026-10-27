@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags  cargohub %}
+{% block title %}{% tr "Contrat" %} {{ contrat.reservation }}{% endblock %}
+{% block content %}
+<nav aria-label="{% tr "Fil d’Ariane" %}"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'contracts:liste' %}">{% tr "Mes contrats" %}</a></li><li class="breadcrumb-item active" aria-current="page">{{ contrat.reservation }}</li></ol></nav>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <h1 class="page-title mb-0">{% tr "Contrat de la" %} {{ contrat.reservation|lower }}</h1>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-primary" href="{% url 'contracts:pdf' contrat.pk %}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> {% tr "Télécharger le PDF" %}<span class="visually-hidden"> {% tr "(nouvel onglet)" %}</span></a>
+    {% if contrat.sans_signature %}<a class="btn btn-outline-danger" href="{% url 'contracts:supprimer' contrat.pk %}"><i class="bi bi-trash" aria-hidden="true"></i> {% tr "Supprimer" %}</a>{% endif %}
+  </div>
+</div>
+<p>
+  {% if contrat.est_signe %}<span class="badge text-bg-success">{% tr "Signé par les deux parties" %}</span>
+  {% else %}<span class="badge text-bg-warning">{% tr "En attente de signature" %}</span>{% endif %}
+  {% tr "· vous êtes" %} {% if partie == "PME" %}{% tr "l’expéditeur" %}{% else %}{% tr "le transporteur" %}{% endif %}
+</p>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card card-ch p-4 mb-3">
+      <h2 class="h5 mb-3">{% tr "Résumé" %}</h2>
+      {% include "contracts/_resume.html" %}
+    </div>
+    {% if peut_signer %}
+    <div class="card card-ch p-4 mb-3">
+      <h2 class="h5">{% tr "Signer le contrat" %}</h2>
+      <form method="post" action="{% url 'contracts:signer' contrat.pk %}">{% csrf_token %}
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" name="accepte" value="oui" id="accepte" required>
+          <label class="form-check-label" for="accepte">{% tr "J’ai lu le contrat (PDF) et j’en accepte les conditions." %}</label>
+        </div>
+        <button class="btn btn-accent" type="submit"><i class="bi bi-pen" aria-hidden="true"></i> {% tr "Signer électroniquement" %}</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  <div class="col-lg-5">
+    <div class="card card-ch p-4">
+      <h2 class="h5">{% tr "Documents de transport" %}</h2>
+      <ul class="list-unstyled">
+        {% for d in documents %}
+        <li class="d-flex justify-content-between align-items-center py-1 border-bottom">
+          <a href="{{ d.fichier.url }}" target="_blank" rel="noopener">{% tr d.get_type_display %}<span class="visually-hidden"> {% tr "(nouvel onglet)" %}</span></a>
+          <form method="post" action="{% url 'contracts:document_supprimer' d.pk %}">{% csrf_token %}
+            <button class="btn btn-link btn-sm text-danger p-0" type="submit" aria-label="Supprimer le document {% tr d.get_type_display %}"><i class="bi bi-trash" aria-hidden="true"></i></button>
+          </form>
+        </li>
+        {% empty %}
+        <li class="text-muted small">Aucun document.</li>
+        {% endfor %}
+      </ul>
+      <h3 class="h6 mt-3">{% tr "Ajouter un document" %}</h3>
+      <form method="post" enctype="multipart/form-data">{% csrf_token %}
+        {{ form_document|crispy }}
+        <button class="btn btn-primary btn-sm" type="submit">{% tr "Ajouter" %}</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
