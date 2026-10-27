@@ -30,9 +30,17 @@ class MesSinistresView(RoleRequiredMixin, ListView):
 
     def get_queryset(self):
         if self.request.user.role == Role.TRANSPORTEUR:
-            acces = Q(auteur=self.request.user) | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            )
         elif self.request.user.role == Role.PME:
-            acces = Q(auteur=self.request.user) | Q(expedition__pme=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__pme=self.request.user)
+            )
         else:
             acces = Q(auteur=self.request.user)
         return Sinistre.objects.filter(acces).distinct().select_related("expedition", "police")
@@ -57,6 +65,8 @@ class SinistreCreerView(RoleRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.auteur = self.request.user
+        if self.request.user.role == Role.TRANSPORTEUR and not form.instance.partie_mise_en_cause_id:
+            form.instance.partie_mise_en_cause = form.instance.expedition.pme
         form.instance.statut = Sinistre.Statut.A_VERIFIER
         response = super().form_valid(form)
         for fichier in form.cleaned_data.get("justificatifs", []):
@@ -83,9 +93,17 @@ class MesSinistresMixin(LoginRequiredMixin):
 
     def get_queryset(self):
         if self.request.user.role == Role.TRANSPORTEUR:
-            acces = Q(auteur=self.request.user) | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            )
         elif self.request.user.role == Role.PME:
-            acces = Q(auteur=self.request.user) | Q(expedition__pme=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__pme=self.request.user)
+            )
         else:
             acces = Q(auteur=self.request.user)
         return Sinistre.objects.filter(acces).distinct().select_related("expedition", "auteur", "assigne_a")
@@ -106,10 +124,14 @@ class SinistreEcouterView(LoginRequiredMixin, View):
             queryset = Sinistre.objects.all()
         elif request.user.role == Role.TRANSPORTEUR:
             queryset = Sinistre.objects.filter(
-                Q(auteur=request.user) | Q(expedition__reservations__trajet__transporteur=request.user)
+                Q(auteur=request.user)
+                | Q(partie_mise_en_cause=request.user)
+                | Q(expedition__reservations__trajet__transporteur=request.user)
             )
         else:
-            queryset = Sinistre.objects.filter(Q(auteur=request.user) | Q(expedition__pme=request.user))
+            queryset = Sinistre.objects.filter(
+                Q(auteur=request.user) | Q(partie_mise_en_cause=request.user) | Q(expedition__pme=request.user)
+            )
         sinistre = get_object_or_404(queryset.distinct(), pk=pk)
         texte = f"{sinistre.titre}. {sinistre.description}."
         if sinistre.decision_admin:

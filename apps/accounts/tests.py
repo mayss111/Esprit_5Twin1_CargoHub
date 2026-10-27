@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
-from apps.accounts.forms import TAILLE_MAX_DOCUMENT, valider_document
+from apps.accounts.forms import TAILLE_MAX_DOCUMENT, ConnexionForm, valider_document
 from apps.accounts.models import ProfilPME, ProfilTransporteur, Utilisateur
 from apps.accounts.reliability import score_fiabilite
 from apps.bookings.models import Reservation
@@ -52,6 +52,38 @@ def test_inscription_pme_sans_entreprise_refusee(client, db):
 def test_connexion_par_email(client, pme):
     reponse = client.post(reverse("accounts:connexion"), {"username": "pme@test.tn", "password": "motdepasse123"})
     assert reponse.status_code == 302
+
+
+def test_connexion_invalide_affiche_un_message(client):
+    reponse = client.post(
+        reverse("accounts:connexion"),
+        {"username": "email-invalide", "password": "court"},
+    )
+    assert reponse.status_code == 200
+    assert "Connexion impossible" in reponse.content.decode()
+
+
+def test_connexion_champs_vides_affiche_un_message(client):
+    reponse = client.post(reverse("accounts:connexion"), {"username": "", "password": ""})
+    assert reponse.status_code == 200
+    assert "Veuillez remplir" in reponse.content.decode()
+
+
+def test_connexion_controle_email_et_mot_de_passe(client):
+    form = ConnexionForm(data={"username": " email-invalide ", "password": "court"})
+    assert not form.is_valid()
+    assert "username" in form.errors
+    assert "password" in form.errors
+    assert "8 caractères" in str(form.errors["password"])
+    assert 'required="required"' not in form.as_p()
+
+
+def test_connexion_affiche_controle_et_confirmation_deconnexion(client, pme):
+    html = _html(client, "accounts:connexion")
+    assert "data-controle" not in html
+    client.force_login(pme)
+    page = client.get(reverse("core:accueil")).content.decode()
+    assert "Voulez-vous vraiment vous déconnecter ?" in page
 
 
 def _html(client, nom_url):

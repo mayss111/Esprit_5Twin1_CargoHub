@@ -28,9 +28,17 @@ class MesReclamationsView(RoleRequiredMixin, ListView):
 
     def get_queryset(self):
         if self.request.user.role == Role.TRANSPORTEUR:
-            acces = Q(auteur=self.request.user) | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            )
         elif self.request.user.role == Role.PME:
-            acces = Q(auteur=self.request.user) | Q(expedition__pme=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__pme=self.request.user)
+            )
         else:
             acces = Q(auteur=self.request.user)
         queryset = Reclamation.objects.filter(acces).distinct().select_related("expedition", "auteur")
@@ -73,6 +81,8 @@ class ReclamationCreerView(RoleRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.auteur = self.request.user
+        if self.request.user.role == Role.TRANSPORTEUR and not form.instance.partie_mise_en_cause_id:
+            form.instance.partie_mise_en_cause = form.instance.expedition.pme
         response = super().form_valid(form)
         notifier_dossier(
             self.object,
@@ -96,9 +106,17 @@ class MesReclamationsMixin(LoginRequiredMixin):
 
     def get_queryset(self):
         if self.request.user.role == Role.TRANSPORTEUR:
-            acces = Q(auteur=self.request.user) | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__reservations__trajet__transporteur=self.request.user)
+            )
         elif self.request.user.role == Role.PME:
-            acces = Q(auteur=self.request.user) | Q(expedition__pme=self.request.user)
+            acces = (
+                Q(auteur=self.request.user)
+                | Q(partie_mise_en_cause=self.request.user)
+                | Q(expedition__pme=self.request.user)
+            )
         else:
             acces = Q(auteur=self.request.user)
         return Reclamation.objects.filter(acces).distinct().select_related("expedition", "auteur", "assigne_a")
@@ -114,10 +132,14 @@ class ReclamationEcouterView(LoginRequiredMixin, View):
             queryset = Reclamation.objects.all()
         elif request.user.role == Role.TRANSPORTEUR:
             queryset = Reclamation.objects.filter(
-                Q(auteur=request.user) | Q(expedition__reservations__trajet__transporteur=request.user)
+                Q(auteur=request.user)
+                | Q(partie_mise_en_cause=request.user)
+                | Q(expedition__reservations__trajet__transporteur=request.user)
             )
         else:
-            queryset = Reclamation.objects.filter(Q(auteur=request.user) | Q(expedition__pme=request.user))
+            queryset = Reclamation.objects.filter(
+                Q(auteur=request.user) | Q(partie_mise_en_cause=request.user) | Q(expedition__pme=request.user)
+            )
         reclamation = get_object_or_404(queryset.distinct(), pk=pk)
         texte = f"{reclamation.titre}. {reclamation.description}."
         if reclamation.reponse_admin:
@@ -173,6 +195,18 @@ class ReclamationAnnulerView(MesReclamationsMixin, View):
             reclamation.statut = Reclamation.Statut.ANNULEE
             reclamation.save(update_fields=["statut", "updated_at"])
             messages.success(request, "Votre réclamation a été annulée.")
+        return redirect("reclamations:detail", pk=pk)
+
+
+class ReclamationSupprimerView(MesReclamationsMixin, View):
+    def post(self, request, pk):
+        reclamation = get_object_or_404(self.get_queryset().filter(auteur=request.user), pk=pk)
+        if not reclamation.modifiable_par_auteur:
+            messages.error(request, "Cette réclamation ne peut plus être supprimée après son traitement.")
+        else:
+            reclamation.delete()
+            messages.success(request, "La réclamation a été supprimée.")
+            return redirect("reclamations:liste")
         return redirect("reclamations:detail", pk=pk)
 
 

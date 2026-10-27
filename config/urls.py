@@ -28,7 +28,7 @@ urlpatterns = [
     path("", include("apps.core.urls")),
     path("comptes", RedirectView.as_view(pattern_name="accounts:accueil", permanent=False)),
     path("backoffice/", include("apps.dashboard.urls")),
-    path("django-admin/", admin.site.urls),  # outil de développement, pas le back-office final
+    path("django-admin/", admin.site.urls),
     # API REST (JWT) — utilisée par le matching M4 et les intégrations.
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

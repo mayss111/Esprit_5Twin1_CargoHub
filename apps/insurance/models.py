@@ -63,6 +63,13 @@ class Sinistre(Horodate):
     expedition = models.ForeignKey(
         "shipments.Expedition", null=True, blank=True, on_delete=models.PROTECT, related_name="sinistres"
     )
+    partie_mise_en_cause = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="sinistres_mis_en_cause",
+    )
     police = models.ForeignKey(
         PoliceAssurance, null=True, blank=True, on_delete=models.SET_NULL, related_name="sinistres"
     )

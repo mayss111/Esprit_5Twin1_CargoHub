@@ -30,7 +30,13 @@ class SinistreForm(forms.ModelForm):
         label="Justificatifs",
         required=False,
         validators=[FileExtensionValidator(EXTENSIONS_DOCUMENTS), valider_document],
-        widget=MultipleFileInput(attrs={"class": "form-control", "accept": ".pdf,.jpg,.jpeg,.png", "multiple": True}),
+        widget=MultipleFileInput(
+            attrs={
+                "class": "form-control",
+                "accept": ".pdf,.jpg,.jpeg,.png",
+                "multiple": True,
+            }
+        ),
         help_text="Photos JPG/PNG ou PDF, 5 Mo maximum par fichier.",
     )
 
@@ -38,6 +44,7 @@ class SinistreForm(forms.ModelForm):
         model = Sinistre
         fields = (
             "expedition",
+            "partie_mise_en_cause",
             "titre",
             "description",
             "type_sinistre",
@@ -47,6 +54,7 @@ class SinistreForm(forms.ModelForm):
         )
         labels = {
             "expedition": "Expédition concernée",
+            "partie_mise_en_cause": "Sinistre contre",
             "titre": "Titre",
             "description": "Description détaillée",
             "type_sinistre": "Type de sinistre",
@@ -55,12 +63,21 @@ class SinistreForm(forms.ModelForm):
         }
         widgets = {
             "expedition": forms.Select(attrs={"class": "form-select"}),
+            "partie_mise_en_cause": forms.Select(attrs={"class": "form-select"}),
             "titre": forms.TextInput(attrs={"class": "form-control", "minlength": 5, "maxlength": 150}),
             "description": forms.Textarea(
-                attrs={"class": "form-control", "rows": 6, "minlength": 20, "maxlength": 5000}
+                attrs={
+                    "class": "form-control",
+                    "rows": 6,
+                    "minlength": 20,
+                    "maxlength": 5000,
+                }
             ),
             "type_sinistre": forms.Select(attrs={"class": "form-select"}),
-            "date_incident": forms.DateInput(format="%Y-%m-%d", attrs={"class": "form-control", "type": "date"}),
+            "date_incident": forms.DateInput(
+                format="%Y-%m-%d",
+                attrs={"class": "form-control", "type": "date"},
+            ),
             "montant_estime": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.01"}),
         }
 
@@ -72,9 +89,14 @@ class SinistreForm(forms.ModelForm):
         elif user.role == Role.PME:
             queryset = Expedition.objects.filter(pme=user)
         else:
-            queryset = Expedition.objects.filter(reservations__trajet__transporteur=user).distinct()
+            # Un transporteur peut déclarer un sinistre dès qu'il identifie
+            # l'expédition concernée, même si aucune réservation n'est encore
+            # enregistrée à son nom.
+            queryset = Expedition.objects.all()
         self.fields["expedition"].queryset = queryset.select_related(
-            "pme", "adresse_depart", "adresse_arrivee"
+            "pme",
+            "adresse_depart",
+            "adresse_arrivee",
         ).order_by("-created_at")
         self.fields["expedition"].required = True
         self.fields["date_incident"].input_formats = ["%Y-%m-%d"]
@@ -87,6 +109,15 @@ class SinistreForm(forms.ModelForm):
         else:
             self.fields["montant_estime"].label = "Montant estimé de la perte (DT)"
             self.fields["montant_estime"].help_text = "Montant de la perte estimé par la PME."
+        cible_role = Role.TRANSPORTEUR if user.role == Role.PME else Role.PME
+        self.fields["partie_mise_en_cause"].queryset = Utilisateur.objects.filter(
+            role=cible_role,
+            is_active=True,
+        ).order_by("email")
+        self.fields["partie_mise_en_cause"].required = False
+        self.fields["partie_mise_en_cause"].help_text = (
+            "Sélectionnez le transporteur concerné." if user.role == Role.PME else "Sélectionnez l'expéditeur concerné."
+        )
 
     def clean_titre(self):
         titre = self.cleaned_data.get("titre", "").strip()
@@ -116,6 +147,18 @@ class SinistreForm(forms.ModelForm):
             raise forms.ValidationError("Cette expédition ne vous est pas accessible.")
         return expedition
 
+    def clean(self):
+        data = super().clean()
+        cible = data.get("partie_mise_en_cause")
+        if cible:
+            role_attendu = Role.TRANSPORTEUR if self.user.role == Role.PME else Role.PME
+            if cible.role != role_attendu:
+                self.add_error(
+                    "partie_mise_en_cause",
+                    "Sélectionnez une partie correspondant à votre rôle.",
+                )
+        return data
+
 
 class TraitementSinistreForm(forms.ModelForm):
     class Meta:
@@ -139,7 +182,8 @@ class TraitementSinistreForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["assigne_a"].queryset = Utilisateur.objects.filter(
-            Q(is_superuser=True) | Q(role=Role.ADMIN), is_active=True
+            Q(is_superuser=True) | Q(role=Role.ADMIN),
+            is_active=True,
         )
 
     def clean(self):
@@ -148,9 +192,15 @@ class TraitementSinistreForm(forms.ModelForm):
         if statut and self.instance.pk and not self.instance.peut_passer_a(statut):
             self.add_error("statut", "Cette transition de statut n'est pas autorisée.")
         if statut == Sinistre.Statut.REFUSE and not data.get("justification_decision", "").strip():
-            self.add_error("justification_decision", "Une justification est obligatoire pour refuser un sinistre.")
+            self.add_error(
+                "justification_decision",
+                "Une justification est obligatoire pour refuser un sinistre.",
+            )
         if statut == Sinistre.Statut.ACCEPTE and not data.get("decision_admin", "").strip():
-            self.add_error("decision_admin", "Écrivez la décision avant d'accepter le sinistre.")
+            self.add_error(
+                "decision_admin",
+                "Écrivez la décision avant d'accepter le sinistre.",
+            )
         return data
 
 
