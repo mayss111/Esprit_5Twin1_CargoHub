@@ -42,6 +42,19 @@ services:
         sync: false
       - key: STRIPE_PUBLIC_KEY
         sync: false
+      # Emails (M1 — « Mot de passe oublié ») : sans ces variables, Django n'envoie rien (backend console).
+      - key: EMAIL_BACKEND
+        value: django.core.mail.backends.smtp.EmailBackend
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD   # mot de passe d'application Gmail, jamais dans Git
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
 
   - type: keyvalue
     name: cargohub-redis
