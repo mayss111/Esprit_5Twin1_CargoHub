@@ -101,16 +101,12 @@ class ConnexionForm(AuthenticationForm):
     def clean_password(self):
         password = self.cleaned_data.get("password", "")
         if len(password) < 8:
-            raise forms.ValidationError(
-                "Le mot de passe doit contenir au moins 8 caractères."
-            )
+            raise forms.ValidationError("Le mot de passe doit contenir au moins 8 caractères.")
         return password
 
     def clean(self):
         data = super().clean()
-        if not self.data.get("username", "").strip() or not self.data.get(
-            "password", ""
-        ):
+        if not self.data.get("username", "").strip() or not self.data.get("password", ""):
             self.add_error(None, "Veuillez remplir l’adresse email et le mot de passe.")
         return data
 

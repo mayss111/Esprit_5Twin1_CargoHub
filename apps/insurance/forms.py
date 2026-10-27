@@ -64,9 +64,7 @@ class SinistreForm(forms.ModelForm):
         widgets = {
             "expedition": forms.Select(attrs={"class": "form-select"}),
             "partie_mise_en_cause": forms.Select(attrs={"class": "form-select"}),
-            "titre": forms.TextInput(
-                attrs={"class": "form-control", "minlength": 5, "maxlength": 150}
-            ),
+            "titre": forms.TextInput(attrs={"class": "form-control", "minlength": 5, "maxlength": 150}),
             "description": forms.Textarea(
                 attrs={
                     "class": "form-control",
@@ -80,9 +78,7 @@ class SinistreForm(forms.ModelForm):
                 format="%Y-%m-%d",
                 attrs={"class": "form-control", "type": "date"},
             ),
-            "montant_estime": forms.NumberInput(
-                attrs={"class": "form-control", "min": "0", "step": "0.01"}
-            ),
+            "montant_estime": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.01"}),
         }
 
     def __init__(self, *args, user, **kwargs):
@@ -112,9 +108,7 @@ class SinistreForm(forms.ModelForm):
             self.fields.pop("montant_estime", None)
         else:
             self.fields["montant_estime"].label = "Montant estimé de la perte (DT)"
-            self.fields["montant_estime"].help_text = (
-                "Montant de la perte estimé par la PME."
-            )
+            self.fields["montant_estime"].help_text = "Montant de la perte estimé par la PME."
         cible_role = Role.TRANSPORTEUR if user.role == Role.PME else Role.PME
         self.fields["partie_mise_en_cause"].queryset = Utilisateur.objects.filter(
             role=cible_role,
@@ -128,17 +122,13 @@ class SinistreForm(forms.ModelForm):
     def clean_titre(self):
         titre = self.cleaned_data.get("titre", "").strip()
         if len(titre) < 5:
-            raise forms.ValidationError(
-                "Le titre doit contenir au moins 5 caractères utiles."
-            )
+            raise forms.ValidationError("Le titre doit contenir au moins 5 caractères utiles.")
         return titre
 
     def clean_description(self):
         description = " ".join(self.cleaned_data.get("description", "").strip().split())
         if len(description) < 20:
-            raise forms.ValidationError(
-                "Décrivez le sinistre en au moins 20 caractères utiles."
-            )
+            raise forms.ValidationError("Décrivez le sinistre en au moins 20 caractères utiles.")
         return description
 
     def clean_date_incident(self):
@@ -185,12 +175,8 @@ class TraitementSinistreForm(forms.ModelForm):
             "statut": forms.Select(attrs={"class": "form-select"}),
             "assigne_a": forms.Select(attrs={"class": "form-select"}),
             "decision_admin": forms.Textarea(attrs={"class": "form-control", "rows": 5}),
-            "justification_decision": forms.Textarea(
-                attrs={"class": "form-control", "rows": 3}
-            ),
-            "montant_rembourse": forms.NumberInput(
-                attrs={"class": "form-control", "min": "0", "step": "0.01"}
-            ),
+            "justification_decision": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "montant_rembourse": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.01"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -205,18 +191,12 @@ class TraitementSinistreForm(forms.ModelForm):
         statut = data.get("statut")
         if statut and self.instance.pk and not self.instance.peut_passer_a(statut):
             self.add_error("statut", "Cette transition de statut n'est pas autorisée.")
-        if (
-            statut == Sinistre.Statut.REFUSE
-            and not data.get("justification_decision", "").strip()
-        ):
+        if statut == Sinistre.Statut.REFUSE and not data.get("justification_decision", "").strip():
             self.add_error(
                 "justification_decision",
                 "Une justification est obligatoire pour refuser un sinistre.",
             )
-        if (
-            statut == Sinistre.Statut.ACCEPTE
-            and not data.get("decision_admin", "").strip()
-        ):
+        if statut == Sinistre.Statut.ACCEPTE and not data.get("decision_admin", "").strip():
             self.add_error(
                 "decision_admin",
                 "Écrivez la décision avant d'accepter le sinistre.",

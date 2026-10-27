@@ -20,8 +20,6 @@ from apps.tracking.routing import websocket_urlpatterns as tracking_ws  # noqa: 
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": AllowedHostsOriginValidator(
-            AuthMiddlewareStack(URLRouter(messaging_ws + tracking_ws))
-        ),
+        "websocket": AllowedHostsOriginValidator(AuthMiddlewareStack(URLRouter(messaging_ws + tracking_ws))),
     }
 )
